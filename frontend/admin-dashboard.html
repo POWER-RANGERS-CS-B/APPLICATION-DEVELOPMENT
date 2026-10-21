@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <script src="js/transitions.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DineQueue Admin Dashboard</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+  <main class="page">
+    <div class="topbar">
+      <div>
+        <span class="section-kicker">Admin Workspace</span>
+        <h1 class="logo-title">Dashboard</h1>
+      </div>
+      <button class="secondary" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="metrics dashboard-metrics">
+      <div class="metric-card income-card">
+        <p class="muted">Today’s Income</p>
+        <h2>₱<span id="todayIncome">0.00</span></h2>
+      </div>
+
+      <div class="metric-card">
+        <p class="muted">Live Orders</p>
+        <h2 id="orderCount">0</h2>
+      </div>
+
+      <div class="metric-card">
+        <p class="muted">Reservations</p>
+        <h2 id="reservationCount">0</h2>
+      </div>
+
+      <div class="metric-card">
+        <p class="muted">Order History</p>
+        <h2 id="historyCount">0</h2>
+      </div>
+
+      <div class="metric-card">
+        <p class="muted">System</p>
+        <h2>Online</h2>
+      </div>
+    </div>
+
+    <div class="admin-grid admin-grid-fixed">
+      <div class="admin-panel">
+        <h2>Live Orders</h2>
+        <div id="orders" class="dashboard-scroll"></div>
+      </div>
+
+      <div class="admin-panel">
+        <h2>Reservations</h2>
+        <div id="reservations" class="dashboard-scroll"></div>
+      </div>
+
+      <div class="admin-panel order-history-panel">
+        <h2>Order History</h2>
+        <div id="history" class="dashboard-scroll"></div>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+
+</html>

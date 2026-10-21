@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <script src="js/transitions.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DineQueue Login</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+  <main class="page center-page">
+    <section class="auth-shell">
+      <div class="auth-brand">
+        <div>
+          <div class="logo-mark">🍽</div>
+          <h1>DineQueue</h1>
+          <p class="page-subtitle">
+            Login to access customer ordering, admin monitoring, or kitchen display.
+          </p>
+        </div>
+
+        <div>
+          <span class="section-kicker">System Access</span>
+          <p class="page-subtitle">Secure API login connected to your backend.</p>
+        </div>
+      </div>
+
+      <div class="auth-main">
+        <section class="auth-card">
+          <span class="section-kicker">Welcome Back</span>
+          <h1 class="logo-title">Login</h1>
+          <p class="page-subtitle">
+            Use your account to continue.
+          </p>
+
+          <input id="fullName" type="text" placeholder="Full name for signup only" />
+          <input id="email" type="email" placeholder="Email" />
+          <input id="password" type="password" placeholder="Password" />
+
+          <button onclick="login()">Login</button>
+          <button class="secondary" onclick="signup()">Signup as Customer</button>
+
+          <p id="authMessage"></p>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+</body>
+
+</html>

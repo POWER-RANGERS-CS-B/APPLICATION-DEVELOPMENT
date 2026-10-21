@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <script src="js/transitions.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DineQueue Customer</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+  <div class="main-container">
+    <div class="content-wrapper">
+
+      <main class="page">
+        <div class="topbar">
+          <div>
+            <span class="section-kicker">Customer Workspace</span>
+            <h1 class="logo-title">DineQueue</h1>
+          </div>
+          <div class="topbar-actions">
+            <button class="secondary" onclick="showChoicePanel()">Home</button>
+            <button class="secondary" onclick="logout()">Logout</button>
+          </div>
+        </div>
+
+        <div class="customer-layout">
+          <aside class="customer-sidebar card">
+            <h2>Order Flow</h2>
+            <p class="page-subtitle">Follow the simple DineQueue process.</p>
+
+            <div class="flow-steps">
+              <div class="flow-step active">
+                <strong>1</strong>
+                <span>Choose Type</span>
+              </div>
+              <div class="flow-step">
+                <strong>2</strong>
+                <span>Select Chairs</span>
+              </div>
+              <div class="flow-step">
+                <strong>3</strong>
+                <span>Order Food</span>
+              </div>
+              <div class="flow-step">
+                <strong>4</strong>
+                <span>Receipt</span>
+              </div>
+            </div>
+          </aside>
+
+          <div>
+            <section id="choicePanel" class="card">
+              <div class="choice-hero">
+                <div class="choice-copy">
+                  <span class="section-kicker">Start Order</span>
+                  <h2>How would you like to dine?</h2>
+                  <p class="page-subtitle">
+                    Choose dine-in to select chairs, or takeout to go directly to the menu.
+                  </p>
+                </div>
+
+                <div class="choice-buttons">
+                  <button class="choice-card-btn" onclick="chooseType('dine_in')">
+                    <span>Dine-In</span>
+                    <small>Select available chairs before ordering.</small>
+                  </button>
+
+                  <button class="choice-card-btn" onclick="chooseType('takeout')">
+                    <span>Takeout</span>
+                    <small>Skip chair selection and order food for pickup.</small>
+                  </button>
+
+                  <button class="choice-card-btn reservation-choice" onclick="showReservationSection()">
+                    <span>Reservation</span>
+                    <small>Book a table by choosing your date, time, and chairs.</small>
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <section id="reservationSection" class="card reservation-card" style="display: none;">
+              <div class="card-header">
+                <div>
+                  <span class="section-kicker">Table Booking</span>
+                  <h2>Make a Reservation</h2>
+                  <p>Choose your preferred date and time before selecting chairs.</p>
+                </div>
+              </div>
+
+              <div class="reservation-layout">
+                <div class="reservation-form">
+                  <label>
+                    Reservation Date
+                    <input id="reservationDate" type="date" />
+                  </label>
+
+                  <label>
+                    Reservation Time
+                    <input id="reservationTime" type="time" />
+                  </label>
+
+                  <label>
+                    Guest Name
+                    <input id="reservationName" type="text" placeholder="Enter customer name" />
+                  </label>
+
+                  <label>
+                    Contact Number
+                    <input id="reservationContact" type="text" placeholder="Enter contact number" />
+                  </label>
+
+                  <div class="reservation-actions">
+                    <button onclick="continueReservationToChairs()">Continue to Chair Selection</button>
+                    <button class="secondary" onclick="showChoicePanel()">Back</button>
+                  </div>
+                </div>
+
+                <aside class="reservation-preview">
+                  <h3>Booking Summary</h3>
+                  <p><strong>Step 1:</strong> Select date and time</p>
+                  <p><strong>Step 2:</strong> Choose available chairs</p>
+                  <p><strong>Step 3:</strong> Confirm reservation</p>
+                  <p class="muted">
+                    Your selected chairs will be used as the guest count for the reservation.
+                  </p>
+                </aside>
+              </div>
+            </section>
+
+            <section id="floorSection" class="card" style="display: none;">
+              <div class="card-header">
+                <div>
+                  <span class="section-kicker">Seat Selection</span>
+                  <h2>Choose Chairs</h2>
+                  <p>Select vacant chairs from the floor plan.</p>
+                </div>
+
+                <div class="guest-pill">
+                  Guests selected:
+                  <strong id="guestCount">0</strong>
+                </div>
+              </div>
+
+              <div class="floor-toolbar">
+                <span class="status-pill">Gold = selected</span>
+                <span class="status-pill">Dim red/gray = unavailable</span>
+              </div>
+
+              <div class="floor-scroll-wrapper">
+                <div id="floorPlan" class="floor-plan"></div>
+              </div>
+
+              <div class="cart-actions">
+                <button onclick="lockSelectedChairs()">Confirm Chairs</button>
+                <button class="secondary" onclick="showChoicePanel()">Back</button>
+              </div>
+            </section>
+
+            <section id="menuSection" class="card" style="display: none;">
+              <div class="card-header">
+                <div>
+                  <span class="section-kicker">Pre-Order Menu</span>
+                  <h2>Menu</h2>
+                  <p>Browse food items and add them to your cart.</p>
+                </div>
+              </div>
+
+              <div class="menu-shell">
+                <main class="menu-main-area">
+                  <div class="category-tabs">
+                    <button class="active" onclick="filterMenuCategory('All', this)">All</button>
+                    <button onclick="filterMenuCategory('Appetizers', this)">Appetizers</button>
+                    <button onclick="filterMenuCategory('Main Course', this)">Main Course</button>
+                    <button onclick="filterMenuCategory('Rice Meals', this)">Rice Meals</button>
+                    <button onclick="filterMenuCategory('Beverages', this)">Drinks</button>
+                    <button onclick="filterMenuCategory('Desserts', this)">Desserts</button>
+                  </div>
+
+                  <div class="menu-search-row">
+                    <input id="menuSearch" type="search" placeholder="Search menu..." oninput="filterMenuBySearch()" />
+                  </div>
+
+                  <div class="menu-scroll-area">
+                    <div id="menuGrid"></div>
+                  </div>
+                </main>
+
+                <aside class="cart">
+                  <h3>Your Cart</h3>
+                  <div id="cartItems"></div>
+
+                  <div class="cart-actions">
+                    <h3>Total: ₱<span id="cartTotal">0.00</span></h3>
+                    <button onclick="openPaymentPanel()">Proceed to Payment</button>
+                  </div>
+                </aside>
+              </div>
+            </section>
+
+            <section id="paymentSection" class="card payment-page" style="display: none;">
+              <div class="card-header">
+                <div>
+                  <span class="section-kicker">Payment</span>
+                  <h2>Choose Payment Method</h2>
+                  <p>Select how you want to pay for your order.</p>
+                </div>
+              </div>
+
+              <div class="payment-layout">
+                <div class="payment-methods">
+                  <label class="payment-method-card active">
+                    <input type="radio" name="paymentMethod" value="Cash" checked onchange="selectPaymentCard(this)" />
+                    <div>
+                      <h3>Cash</h3>
+                      <p>Pay directly at the counter or cashier.</p>
+                    </div>
+                  </label>
+
+                  <label class="payment-method-card">
+                    <input type="radio" name="paymentMethod" value="GCash" onchange="selectPaymentCard(this)" />
+                    <div>
+                      <h3>GCash</h3>
+                      <p>Pay using your GCash mobile wallet.</p>
+                    </div>
+                  </label>
+
+                  <label class="payment-method-card">
+                    <input type="radio" name="paymentMethod" value="Card" onchange="selectPaymentCard(this)" />
+                    <div>
+                      <h3>Card</h3>
+                      <p>Pay using debit or credit card.</p>
+                    </div>
+                  </label>
+                </div>
+
+                <aside class="payment-summary">
+                  <h3>Order Summary</h3>
+
+                  <div id="paymentItems"></div>
+
+                  <div class="payment-total">
+                    <span>Total Amount</span>
+                    <strong>₱<span id="paymentTotal">0.00</span></strong>
+                  </div>
+
+                  <div class="payment-actions">
+                    <button onclick="confirmPaymentAndOrder()">Confirm Payment</button>
+                    <button class="secondary" onclick="backToMenu()">Back to Menu</button>
+                  </div>
+                </aside>
+              </div>
+            </section>
+
+            <section id="receiptSection" class="card receipt-card" style="display: none;">
+              <span class="section-kicker">Order Receipt</span>
+              <h2 id="receiptTitle">DineQueue Receipt QR</h2>
+
+              <p id="receiptIntro" class="muted">
+                Scan this QR code to view the full official receipt.
+              </p>
+
+              <div class="receipt-qr-box">
+                <img id="qrImage" alt="QR Code" />
+
+                <button type="button" onclick="downloadQrCode()">
+                  Download QR Code
+                </button>
+              </div>
+
+              <p id="thankYouMessage"></p>
+
+              <div class="receipt-actions">
+                <button class="secondary" onclick="showChoicePanel()">New Order</button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </main>
+
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/choice.js"></script>
+</body>
+
+</html>

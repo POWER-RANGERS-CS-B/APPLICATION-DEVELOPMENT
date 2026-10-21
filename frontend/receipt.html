@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DineQueue Official Receipt</title>
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+    <main class="page center-page">
+        <section class="card receipt-download-card">
+            <span class="section-kicker">Official Receipt</span>
+            <h1 class="logo-title">DineQueue</h1>
+            <p class="muted">Restaurant Order Receipt Verification</p>
+
+            <div id="receiptContent">
+                <p class="muted">Loading receipt...</p>
+            </div>
+
+            <div class="receipt-actions">
+                <button onclick="window.print()">Download / Print Receipt</button>
+            </div>
+        </section>
+    </main>
+
+    <script src="js/receipt.js"></script>
+</body>
+
+</html>

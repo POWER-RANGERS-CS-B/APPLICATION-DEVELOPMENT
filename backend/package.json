@@ -1,0 +1,21 @@
+{
+  "name": "dinequeue-backend",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "latest",
+    "cors": "latest",
+    "dotenv": "latest",
+    "express": "latest",
+    "jsonwebtoken": "latest",
+    "pg": "latest",
+    "qrcode": "latest"
+  },
+  "devDependencies": {
+    "nodemon": "latest"
+  }
+}
