@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <script src="js/transitions.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DineQueue Staff KDS</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+  <main class="page">
+    <div class="topbar">
+      <div>
+        <span class="section-kicker">Kitchen Display</span>
+        <h1 class="logo-title">Staff KDS</h1>
+      </div>
+      <button class="secondary" onclick="logout()">Logout</button>
+    </div>
+
+    <section class="kds-layout">
+      <div>
+        <div id="kdsOrders" class="kds-scroll"></div>
+      </div>
+
+      <aside class="panel kds-tools">
+        <h2>Table Cleaning</h2>
+        <p class="muted">Enter table ID after cleaning.</p>
+
+        <input id="tableId" type="number" placeholder="Table ID" />
+        <button onclick="markCleaned()">Mark Cleaned</button>
+      </aside>
+    </section>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/staff.js"></script>
+</body>
+
+</html>
