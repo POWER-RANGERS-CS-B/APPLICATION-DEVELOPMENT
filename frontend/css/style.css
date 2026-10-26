@@ -228,6 +228,55 @@ select:focus {
   background: rgba(255, 255, 255, .10);
 }
 
+.password-field {
+  position: relative;
+  width: min(100%, var(--uniform-width));
+  margin: 12px auto;
+}
+
+.password-field input {
+  width: 100%;
+  margin: 0;
+  padding-right: 52px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  width: 36px;
+  min-height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid transparent;
+  color: var(--muted);
+  background: rgba(255, 255, 255, .04);
+  transform: translateY(-50%);
+  box-shadow: none;
+  transition: color .18s ease, border-color .18s ease, background .18s ease, transform .18s ease;
+}
+
+.password-toggle:hover,
+.password-toggle:focus-visible {
+  color: var(--gold);
+  border-color: rgba(214, 168, 63, .35);
+  background: rgba(214, 168, 63, .10);
+  box-shadow: none;
+  transform: translateY(-50%);
+}
+
+.password-toggle svg {
+  display: block;
+  width: 19px;
+  height: 19px;
+  margin: auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
 button,
 .btn {
   min-height: 46px;

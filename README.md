@@ -23,7 +23,7 @@ Open frontend/intro.html or frontend/index.html in your browser.
 SAMPLE LOGIN ACCOUNTS:
 Admin:
 admin@dinequeue.com
-admin123
+password123
 
 Staff:
 staff@dinequeue.com
