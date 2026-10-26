@@ -46,18 +46,26 @@ async function updateOrderStatus(id, status) {
 }
 
 async function markCleaned() {
-  const tableId = document.getElementById("tableId").value;
+  const tableIdInput = document.getElementById("tableId");
+  const tableId = tableIdInput ? tableIdInput.value.trim() : "";
 
   if (!tableId) {
-    alert("Please enter a table ID.");
+    alert("Please enter a Table ID.");
     return;
   }
 
   try {
-    await apiRequest(`/tables/${tableId}/clean`, { method: "PATCH" });
-  } catch (patchError) {
-    await apiRequest(`/tables/${tableId}/clean`, { method: "PUT" });
-  }
+    console.log(`Sending clean request for Table ID: ${tableId}`);
+    
+    // Explicitly send PATCH request to clean the table
+    const response = await apiRequest(`/tables/${tableId}/clean`, { 
+      method: "PATCH" 
+    });
 
-  alert("Table cleaned and reset successfully.");
+    alert(response.message || `Table #${tableId} cleaned and reset successfully.`);
+    tableIdInput.value = ""; // Clear input field
+  } catch (error) {
+    console.error("Table cleaning failed:", error);
+    alert("Failed to clean table: " + error.message);
+  }
 }

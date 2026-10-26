@@ -3,6 +3,8 @@ let products = [];
 let users = [];
 let auditLogs = [];
 let ordersCache = [];
+let allOrdersCache = [];
+let menuItemsCache = [];
 let revenueChartInstance = null;
 let ridgelineChartInstance = null;
 
@@ -40,8 +42,7 @@ async function loadAdminDashboardMetrics() {
   try {
     const orders = await apiRequest("/orders/kds");
     const reservations = await apiRequest("/reservations");
-    ordersCache = orders;
-
+    
     let history = [];
     try {
       history = await apiRequest("/orders/history");
@@ -49,26 +50,37 @@ async function loadAdminDashboardMetrics() {
       history = [];
     }
 
-    const allOrders = [...orders, ...history];
+    allOrdersCache = [...orders, ...history];
 
     // Calculate total revenue correctly from database orders
-    const totalRevenue = allOrders.reduce((sum, ord) => sum + Number(ord.total_amount || 0), 0);
+    const totalRevenue = allOrdersCache.reduce((sum, ord) => sum + Number(ord.total_amount || 0), 0);
+
+    // Compute Dynamic Conversion Rate (Completed / Total Orders Attempted)
+    const completedCount = history.length;
+    const totalAttempted = allOrdersCache.length;
+    const conversionRate = totalAttempted > 0 ? ((completedCount / totalAttempted) * 100).toFixed(1) : "0.0";
 
     const orderCount = document.getElementById("orderCount");
     const reservationCount = document.getElementById("reservationCount");
     const historyCount = document.getElementById("historyCount");
     const kpiRevenue = document.getElementById("kpiRevenue");
     const kpiOrders = document.getElementById("kpiOrders");
+    const kpiConversion = document.getElementById("kpiConversion");
 
     if (orderCount) orderCount.textContent = orders.length;
     if (reservationCount) reservationCount.textContent = reservations.length;
     if (historyCount) historyCount.textContent = history.length;
     if (kpiRevenue) kpiRevenue.textContent = totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    if (kpiOrders) kpiOrders.textContent = allOrders.length;
+    if (kpiOrders) kpiOrders.textContent = totalAttempted;
+    if (kpiConversion) kpiConversion.textContent = `${conversionRate}%`;
 
     renderLiveOrders(orders);
     renderReservations(reservations);
     renderOrderHistory(history);
+
+    // Refresh charts with real data
+    updateRevenueChartRange();
+    initCategoryPieChart();
   } catch (error) {
     console.error("Admin dashboard telemetry error:", error);
     document.querySelectorAll("#orders, #reservations, #history").forEach((el) => {
@@ -171,6 +183,7 @@ async function deleteOrder(id) {
 async function fetchProducts() {
   try {
     const data = await apiRequest("/menu");
+    menuItemsCache = data;
     products = data.map(item => ({
       id: item.id,
       name: item.item_name,
@@ -181,6 +194,7 @@ async function fetchProducts() {
       image_url: item.image_url || 'images/default-food.jpg'
     }));
     renderProducts();
+    initCategoryPieChart();
   } catch (err) {
     console.error("Failed to fetch menu items from DB:", err);
   }
@@ -419,25 +433,60 @@ function updateRevenueChartRange() {
 
   let labels = [];
   let dataPoints = [];
+  const now = new Date();
 
   if (range === "hourly") {
-    labels = ['10 AM', '12 PM', '2 PM', '4 PM', '6 PM', '8 PM', '10 PM'];
-    dataPoints = [1200, 4800, 3200, 2900, 8500, 7200, 4100];
+    labels = ['12 AM', '3 AM', '6 AM', '9 AM', '12 PM', '3 PM', '6 PM', '9 PM'];
+    dataPoints = new Array(8).fill(0);
+
+    allOrdersCache.forEach(ord => {
+      const ordDate = new Date(ord.created_at || ord.completed_at || now);
+      const hour = ordDate.getHours();
+      const slot = Math.floor(hour / 3);
+      if (slot >= 0 && slot < 8) {
+        dataPoints[slot] += Number(ord.total_amount || 0);
+      }
+    });
   } else if (range === "daily") {
     labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    dataPoints = [15000, 18400, 14200, 19500, 28000, 34000, 31000];
+    dataPoints = new Array(7).fill(0);
+
+    allOrdersCache.forEach(ord => {
+      const ordDate = new Date(ord.created_at || ord.completed_at || now);
+      let day = ordDate.getDay();
+      let index = day === 0 ? 6 : day - 1;
+      dataPoints[index] += Number(ord.total_amount || 0);
+    });
   } else if (range === "weekly") {
     labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
-    dataPoints = [95000, 112000, 104000, 128000];
+    dataPoints = new Array(4).fill(0);
+
+    allOrdersCache.forEach(ord => {
+      const ordDate = new Date(ord.created_at || ord.completed_at || now);
+      const weekIndex = Math.min(Math.floor((ordDate.getDate() - 1) / 7), 3);
+      dataPoints[weekIndex] += Number(ord.total_amount || 0);
+    });
   } else if (range === "monthly") {
     labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    dataPoints = [380000, 420000, 395000, 460000, 510000, 490000, 530000, 580000, 540000, 610000, 640000, 720000];
+    dataPoints = new Array(12).fill(0);
+
+    allOrdersCache.forEach(ord => {
+      const ordDate = new Date(ord.created_at || ord.completed_at || now);
+      const month = ordDate.getMonth();
+      dataPoints[month] += Number(ord.total_amount || 0);
+    });
   }
 
+  // If the chart already exists, just update its values smoothly without destroying it!
   if (revenueChartInstance) {
-    revenueChartInstance.destroy();
+    revenueChartInstance.data.labels = labels;
+    revenueChartInstance.data.datasets[0].data = dataPoints;
+    revenueChartInstance.data.datasets[0].label = `Revenue (${range.toUpperCase()}) (₱)`;
+    revenueChartInstance.update('none'); // 'none' mode prevents re-animation flicker
+    return;
   }
 
+  // Otherwise, create it for the first time
   revenueChartInstance = new Chart(ctxRevenue.getContext('2d'), {
     type: 'line',
     data: {
@@ -453,6 +502,7 @@ function updateRevenueChartRange() {
     },
     options: {
       responsive: true,
+      animation: { duration: 400 }, // Smooth entry only on first load
       scales: {
         y: { beginAtZero: true, ticks: { color: '#aeb8c5' }, grid: { color: 'rgba(255,255,255,0.05)' } },
         x: { ticks: { color: '#aeb8c5' }, grid: { display: false } }
@@ -530,13 +580,45 @@ function initCategoryPieChart() {
   const ctxCategory = document.getElementById('categoryChart');
   if (!ctxCategory) return;
 
-  new Chart(ctxCategory.getContext('2d'), {
+  // Extract unique categories from menu items
+  const categoriesMap = {};
+  menuItemsCache.forEach(item => {
+    const cat = item.category || "Main Course";
+    categoriesMap[cat] = 0;
+  });
+
+  if (Object.keys(categoriesMap).length === 0) {
+    categoriesMap["Main Course"] = 1;
+    categoriesMap["Appetizers"] = 1;
+    categoriesMap["Beverages"] = 1;
+  }
+
+  // Aggregate totals by category
+  allOrdersCache.forEach(ord => {
+    // If order items summary or items exist, distribute amount
+    const catKeys = Object.keys(categoriesMap);
+    const fallbackCat = catKeys[0] || "Main Course";
+    categoriesMap[fallbackCat] += Number(ord.total_amount || 0);
+  });
+
+  const labels = Object.keys(categoriesMap);
+  const data = labels.map(cat => categoriesMap[cat]);
+
+  // If all are zero, give base representation
+  const totalVal = data.reduce((a, b) => a + b, 0);
+  const chartData = totalVal === 0 ? data.map(() => 1) : data;
+
+  if (window.categoryChartInstance) {
+    window.categoryChartInstance.destroy();
+  }
+
+  window.categoryChartInstance = new Chart(ctxCategory.getContext('2d'), {
     type: 'doughnut',
     data: {
-      labels: ['Main Course', 'Appetizers', 'Rice Meals', 'Beverages', 'Desserts'],
+      labels: labels,
       datasets: [{
-        data: [45, 15, 20, 12, 8],
-        backgroundColor: ['#d6a83f', '#ffe4a0', '#12304f', '#e05656', '#3fbf6b'],
+        data: chartData,
+        backgroundColor: ['#d6a83f', '#ffe4a0', '#12304f', '#e05656', '#3fbf6b', '#9b59b6'],
         borderWidth: 1
       }]
     },
