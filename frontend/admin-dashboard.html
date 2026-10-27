@@ -46,6 +46,24 @@
       </div>
     </div>
 
+    <section class="admin-panel account-management-panel">
+      <div class="panel-heading-row">
+        <div>
+          <span class="section-kicker">Account Management</span>
+          <h2>Create Staff Account</h2>
+        </div>
+        <span class="status-badge status-active">Admin only</span>
+      </div>
+
+      <form id="staffForm" class="staff-account-form" onsubmit="createStaffAccount(event)">
+        <input id="staffFullName" type="text" placeholder="Staff full name" required />
+        <input id="staffEmail" type="email" placeholder="Staff email" required />
+        <input id="staffPassword" type="password" placeholder="Temporary password" required />
+        <button type="submit">Create Staff Account</button>
+      </form>
+      <p id="staffAccountMessage" class="form-message" aria-live="polite"></p>
+    </section>
+
     <div class="admin-grid admin-grid-fixed">
       <div class="admin-panel">
         <h2>Live Orders</h2>

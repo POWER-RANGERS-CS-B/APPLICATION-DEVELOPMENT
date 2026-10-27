@@ -4,7 +4,33 @@ const authModel = require("../models/authModel");
 
 exports.signup = async (req, res) => {
   try {
-    const user = await authModel.createUser(req.body);
+    const user = await authModel.createUser({
+      ...req.body,
+      role: "customer",
+    });
+    res.status(201).json(user);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+exports.createStaff = async (req, res) => {
+  try {
+    const { fullName, email, password } = req.body;
+
+    if (!fullName || !email || !password) {
+      return res.status(400).json({
+        message: "Full name, email, and password are required.",
+      });
+    }
+
+    const user = await authModel.createUser({
+      fullName,
+      email,
+      password,
+      role: "staff",
+    });
+
     res.status(201).json(user);
   } catch (error) {
     res.status(400).json({ message: error.message });

@@ -862,6 +862,53 @@ button:disabled {
   margin-bottom: 18px;
 }
 
+.account-management-panel {
+  margin-bottom: 18px;
+}
+
+.panel-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.panel-heading-row h2 {
+  margin: 6px 0 0;
+}
+
+.staff-account-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.staff-account-form input {
+  width: 100%;
+  margin: 0;
+}
+
+.staff-account-form button {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.form-message {
+  min-height: 20px;
+  margin: 12px 0 0;
+  color: var(--muted);
+}
+
+.success-message {
+  color: #baffca;
+}
+
+.error-message {
+  color: var(--danger);
+}
+
 .admin-item {
   padding: 16px;
   margin-bottom: 12px;
