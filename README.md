@@ -1,31 +1,29 @@
-DATABASE NAME:
-dinequeue_db
+# DineAri - Cross-Platform Restaurant Management System
 
-IMPORTANT:
-In PostgreSQL, run this first:
-CREATE DATABASE dinequeue_db;
+Team Roles & Responsibilities
+- Team Leader: Gwynyth Edzcharyz Q Gomonit
+- Developer: Guy Magcanta
+           : Glenn Gabriel Sanchez
+- Quality Assurance (QA): Zaira M. Alumbro
+- Project Manager: Kimberly O. Carin
 
-Then connect to dinequeuerestaurant_db
- and run:
-1. database/schema.sql
-2. database/sample_data.sql
+---
 
-BACKEND SETUP:
-1. Open terminal inside backend folder.
-2. Run: npm install
-3. Copy .env.example and rename it to .env
-4. Edit DB_PASSWORD if your PostgreSQL password is different.
-5. Run: npm run dev
+## 🗄️ Database Setup (PostgreSQL)
+1. In PostgreSQL, run: `CREATE DATABASE dinequeue_db;`
+2. Connect to `dinequeue_db` and execute:
+  create schema 'restaurant'
 
-FRONTEND SETUP:
-Open frontend/intro.html or frontend/index.html in your browser.
+---
 
-SAMPLE LOGIN ACCOUNTS:
-Admin:
-admin@dinequeue.com
-password123
+## ⚙️ Backend Setup (Node.js & Express)
+1. Open terminal in `/backend`
+2. Run `npm install`
+3. Copy `.env.example` to `.env` and set your `DB_PASSWORD`
+4. Run `npm run dev` (Server runs on port 3000)
 
-Staff:
-staff@dinequeue.com
-admin123
+---
 
+## 🔑 Sample Login Credentials
+- Admin: `admin@dinequeue.com` | Password: `admin123`
+- Staff: `staff@dinequeue.com` | Password: `admin123`
