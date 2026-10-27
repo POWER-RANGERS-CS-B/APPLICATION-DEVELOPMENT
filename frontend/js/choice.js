@@ -435,19 +435,36 @@ async function confirmReservationOnly() {
       qrBox.style.display = "none";
     }
 
-    document.getElementById("thankYouMessage").innerHTML = `
-      <div class="official-receipt">
-        <h3>Reservation Details</h3>
-        <p><strong>Customer:</strong> ${reservationDetails.name}</p>
-        <p><strong>Contact:</strong> ${reservationDetails.contact}</p>
-        <p><strong>Date:</strong> ${reservationDetails.date}</p>
-        <p><strong>Time:</strong> ${reservationDetails.time}</p>
-        <p><strong>Guests:</strong> ${selectedChairIds.length}</p>
-        <p class="receipt-note">
-          Please arrive on time and present your name to the staff.
-        </p>
-      </div>
-    `;
+    const thankYouMessage = document.getElementById("thankYouMessage");
+    if (thankYouMessage) {
+      const receipt = document.createElement("div");
+      receipt.className = "official-receipt";
+
+      const heading = document.createElement("h3");
+      heading.textContent = "Reservation Details";
+      receipt.append(heading);
+
+      const addReceiptRow = (label, value) => {
+        const row = document.createElement("p");
+        const labelElement = document.createElement("strong");
+        labelElement.textContent = `${label}:`;
+        row.append(labelElement, document.createTextNode(` ${value}`));
+        receipt.append(row);
+      };
+
+      addReceiptRow("Customer", reservationDetails.name);
+      addReceiptRow("Contact", reservationDetails.contact);
+      addReceiptRow("Date", reservationDetails.date);
+      addReceiptRow("Time", reservationDetails.time);
+      addReceiptRow("Guests", selectedChairIds.length);
+
+      const note = document.createElement("p");
+      note.className = "receipt-note";
+      note.textContent = "Please arrive on time and present your name to the staff.";
+      receipt.append(note);
+
+      thankYouMessage.replaceChildren(receipt);
+    }
   } catch (error) {
     alert("Cannot create reservation: " + error.message);
   }
