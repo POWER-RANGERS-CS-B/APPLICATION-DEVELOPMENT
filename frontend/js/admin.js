@@ -42,6 +42,34 @@ async function loadAdminDashboard() {
   }
 }
 
+async function createStaffAccount(event) {
+  event.preventDefault();
+
+  const messageBox = document.getElementById("staffAccountMessage");
+  const fullName = document.getElementById("staffFullName")?.value.trim();
+  const email = document.getElementById("staffEmail")?.value.trim();
+  const password = document.getElementById("staffPassword")?.value;
+
+  if (!messageBox || !fullName || !email || !password) return;
+
+  messageBox.textContent = "Creating staff account...";
+  messageBox.className = "form-message";
+
+  try {
+    await apiRequest("/auth/staff", {
+      method: "POST",
+      body: JSON.stringify({ fullName, email, password }),
+    });
+
+    messageBox.textContent = "Staff account created successfully.";
+    messageBox.className = "form-message success-message";
+    document.getElementById("staffForm")?.reset();
+  } catch (error) {
+    messageBox.textContent = error.message || "Unable to create staff account.";
+    messageBox.className = "form-message error-message";
+  }
+}
+
 function renderLiveOrders(orders) {
   const ordersBox = document.getElementById("orders");
   if (!ordersBox) return;
