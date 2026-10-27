@@ -1037,84 +1037,170 @@ button:disabled {
 
 /* ---------- Admin / Staff ---------- */
 
-.admin-grid {
+/* =========================================================
+   DineQueue Admin Layout Restructure & Workspace Styles
+   ========================================================= */
+
+.admin-workspace-shell {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.admin-navigation-sidebar {
+  width: 260px;
+  background: var(--navy-2);
+  border-right: 1px solid var(--border);
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  flex-shrink: 0;
+}
+
+.sidebar-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sidebar-identity h2 {
+  color: var(--gold-2);
+  font-family: Georgia, serif;
+  margin: 0;
+  font-size: 22px;
+}
+
+.sidebar-nav-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nav-link-item button {
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  padding: 12px 14px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-link-item.active button,
+.nav-link-item button:hover {
+  background: rgba(214, 168, 63, 0.15);
+  color: var(--gold-2);
+  border-color: var(--border);
+}
+
+.main-workspace-content {
+  flex: 1;
+  padding: 30px;
+  max-width: calc(100% - 260px);
+  overflow-y: auto;
+}
+
+.workspace-action-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.metrics-summary-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 18px;
+  margin-bottom: 24px;
 }
 
-.admin-panel {
-  min-height: 340px;
-  padding: 22px;
-  overflow: hidden;
+.kpi-metric-block {
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.05);
 }
 
-.admin-panel h2 {
-  color: var(--gold-2);
-  margin-bottom: 18px;
-}
-
-.admin-item {
-  padding: 16px;
-  margin-bottom: 12px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, .055);
-}
-
-.admin-item h3 {
-  color: var(--gold-2);
-}
-
-.status-badge,
-.badge {
-  display: inline-block;
-  padding: 5px 10px;
-  border-radius: 999px;
+.kpi-title {
   font-size: 12px;
-  font-weight: 800;
   text-transform: uppercase;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
 }
 
-.status-preparing,
-.status-pending {
-  color: #ffdba3;
-  background: rgba(240, 166, 58, .16);
-  border: 1px solid rgba(240, 166, 58, .35);
+.kpi-value-display {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--white);
 }
 
-.status-ready,
-.status-completed,
-.status-reserved,
-.status-active {
-  color: #baffca;
-  background: rgba(63, 191, 107, .16);
-  border: 1px solid rgba(63, 191, 107, .35);
+.workspace-data-table {
+  width: 100%;
+  border-collapse: collapse;
 }
 
-.order-list,
-.table-list,
-.history-list {
-  display: grid;
-  gap: 14px;
+.workspace-data-table th, 
+.workspace-data-table td {
+  padding: 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
 }
 
-.kds-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 18px;
+.workspace-data-table th {
+  color: var(--gold-2);
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.2);
 }
 
-.kds-tools {
-  position: sticky;
-  top: 116px;
-  align-self: start;
+.tab-section {
+  display: none;
 }
 
-#kdsOrders {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 14px;
+.tab-section.active {
+  display: block;
+}
+
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.modal-content {
+  width: min(100%, 540px);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+@media (max-width: 900px) {
+  .admin-workspace-shell {
+    flex-direction: column;
+  }
+  .admin-navigation-sidebar {
+    width: 100%;
+  }
+  .main-workspace-content {
+    max-width: 100%;
+  }
 }
 
 /* ---------- Compatibility with old classes ---------- */
@@ -2680,4 +2766,365 @@ button:disabled {
     gap: 10px;
     padding: 14px 18px 18px;
   }
+}
+
+select {
+  color-scheme: dark;
+}
+
+select option {
+  background-color: #0d2138 !important;
+  color: #ffffff !important;
+}
+
+/* =========================================================
+   DineAri Admin Dashboard & Workspace Layout Styles
+   ========================================================= */
+
+.admin-workspace-shell {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.admin-navigation-sidebar {
+  width: 260px;
+  background: var(--navy-2);
+  border-right: 1px solid var(--border);
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  flex-shrink: 0;
+}
+
+.sidebar-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sidebar-identity h2 {
+  color: var(--gold-2);
+  font-family: Georgia, serif;
+  margin: 0;
+  font-size: 22px;
+}
+
+.sidebar-nav-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nav-link-item button {
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  padding: 12px 14px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-link-item.active button,
+.nav-link-item button:hover {
+  background: rgba(214, 168, 63, 0.15);
+  color: var(--gold-2);
+  border-color: var(--border);
+}
+
+.main-workspace-content {
+  flex: 1;
+  padding: 20px;
+  max-width: 100%;
+  overflow-y: auto;
+}
+
+.workspace-action-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.kpi-metric-block {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.kpi-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.kpi-value-display {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--white);
+}
+
+.workspace-data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.workspace-data-table th, 
+.workspace-data-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.workspace-data-table th {
+  color: var(--gold-2);
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.tab-section {
+  display: none;
+}
+
+.tab-section.active {
+  display: block;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.modal-content {
+  width: min(100%, 500px);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+@media (max-width: 900px) {
+  .admin-workspace-shell {
+    flex-direction: column;
+  }
+  .admin-navigation-sidebar {
+    width: 100%;
+  }
+}
+
+/* =========================================================
+   DineAri Hound-Style Admin Dashboard Layout System
+   ========================================================= */
+
+.admin-dashboard-layout {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  min-height: 100vh;
+  width: 100%;
+}
+
+.admin-sidebar {
+  background: rgba(7, 20, 38, 0.95);
+  border-right: 1px solid var(--border);
+  padding: 24px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.admin-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-left: 6px;
+}
+
+.admin-sidebar-brand h2 {
+  color: var(--gold-2);
+  font-family: Georgia, serif;
+  margin: 0;
+  font-size: 22px;
+}
+
+.admin-sidebar-menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-sidebar-menu li button {
+  width: 100%;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  padding: 11px 14px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: 0.2s ease;
+}
+
+.admin-sidebar-menu li.active button,
+.admin-sidebar-menu li button:hover {
+  background: rgba(214, 168, 63, 0.15);
+  color: var(--gold-2);
+  border-color: var(--border);
+}
+
+.admin-main-content {
+  padding: 24px;
+  overflow-y: auto;
+  max-width: 100%;
+}
+
+/* Hound-style Top Bar */
+.admin-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 12px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: rgba(7, 20, 38, 0.82);
+  backdrop-filter: blur(14px);
+}
+
+.admin-search-input {
+  width: 300px;
+  min-height: 40px;
+  margin: 0;
+  font-size: 13px;
+}
+
+/* 4-Metric Top Row */
+.hound-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.hound-metric-card {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)), var(--card);
+  backdrop-filter: blur(14px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.hound-metric-card .metric-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+
+.hound-metric-card .metric-value {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--gold-2);
+  margin-top: 8px;
+}
+
+/* Reference Layout Grid (Chart + Side Widgets) */
+.hound-analytics-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.hound-side-widgets {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Bottom Row Grid */
+.hound-bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 1100px) {
+  .admin-dashboard-layout {
+    grid-template-columns: 1fr;
+  }
+  .hound-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .hound-analytics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================
+   Side-by-Side Category Chart & Legend Layout
+   ========================================================= */
+.category-card-flex {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.category-chart-side {
+  flex: 0 0 140px;
+  width: 140px;
+}
+
+.category-legend-side {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.category-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--white);
+}
+
+.category-legend-color {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }

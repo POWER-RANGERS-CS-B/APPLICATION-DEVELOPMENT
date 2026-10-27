@@ -51,6 +51,17 @@ app.use("/api/chairs", require("./routes/chairRoutes"));
 app.use("/api/tables", require("./routes/tableRoutes"));
 app.use("/api/staff", require("./routes/staffRoutes"));
 
+// --- ADD THESE ALIAS ROUTES TO PREVENT 404 ERRORS IN ADMIN DASHBOARD ---
+app.get("/api/users", (req, res) => {
+  // Routes staff data to /api/users if admin dashboard expects it
+  req.url = "/";
+  require("./routes/staffRoutes")(req, res);
+});
+
+app.get("/api/audit-logs", (req, res) => {
+  res.json([]); // Returns empty audit log array safely until custom table is created
+});
+
 /* ======================================
    START SERVER
 ====================================== */
