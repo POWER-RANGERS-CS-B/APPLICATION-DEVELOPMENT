@@ -22,6 +22,11 @@ Team Roles & Responsibilities
 3. Copy `.env.example` to `.env` and set your `DB_PASSWORD`
 4. Run `npm run dev` (Server runs on port 3000)
 
+### Security checks
+- Run the backend security tests with `npm test` from `/backend`.
+- Run the dependency audit with `npm run security:check` from `/backend`.
+- GitHub Actions runs both checks and CodeQL analysis on pushes and pull requests. Dependabot checks npm and GitHub Actions dependencies weekly.
+
 ---
 
 ## 🔑 Sample Login Credentials

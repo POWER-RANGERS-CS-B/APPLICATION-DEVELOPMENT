@@ -7,10 +7,14 @@ function authenticate(req, res, next) {
     return res.status(401).json({ message: "No token provided." });
   }
 
-  const token = header.split(" ")[1];
+  const tokenMatch = /^Bearer\s+(\S+)$/i.exec(header);
+
+  if (!tokenMatch) {
+    return res.status(401).json({ message: "Invalid or expired token." });
+  }
 
   try {
-    req.user = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = jwt.verify(tokenMatch[1], process.env.JWT_SECRET);
     next();
   } catch (error) {
     res.status(401).json({ message: "Invalid or expired token." });
