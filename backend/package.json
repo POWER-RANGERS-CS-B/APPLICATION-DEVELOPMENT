@@ -13,6 +13,7 @@
     "cors": "latest",
     "dotenv": "latest",
     "express": "latest",
+    "express-rate-limit": "^8.7.1",
     "jsonwebtoken": "latest",
     "pg": "latest",
     "qrcode": "latest"
