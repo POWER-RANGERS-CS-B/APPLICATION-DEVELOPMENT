@@ -595,7 +595,6 @@ function initCategoryPieChart() {
 
   // Aggregate totals by category
   allOrdersCache.forEach(ord => {
-    // If order items summary or items exist, distribute amount
     const catKeys = Object.keys(categoriesMap);
     const fallbackCat = catKeys[0] || "Main Course";
     categoriesMap[fallbackCat] += Number(ord.total_amount || 0);
@@ -603,15 +602,18 @@ function initCategoryPieChart() {
 
   const labels = Object.keys(categoriesMap);
   const data = labels.map(cat => categoriesMap[cat]);
-
-  // If all are zero, give base representation
   const totalVal = data.reduce((a, b) => a + b, 0);
   const chartData = totalVal === 0 ? data.map(() => 1) : data;
 
+  // If the doughnut chart already exists, update data smoothly without re-rendering/flickering
   if (window.categoryChartInstance) {
-    window.categoryChartInstance.destroy();
+    window.categoryChartInstance.data.labels = labels;
+    window.categoryChartInstance.data.datasets[0].data = chartData;
+    window.categoryChartInstance.update('none'); // 'none' mode stops the flicker animation
+    return;
   }
 
+  // Otherwise, create it for the first time
   window.categoryChartInstance = new Chart(ctxCategory.getContext('2d'), {
     type: 'doughnut',
     data: {
@@ -624,10 +626,10 @@ function initCategoryPieChart() {
     },
     options: {
       responsive: true,
+      animation: { duration: 0 }, // Disables heavy initial animation loops causing visual jitter
       plugins: {
         legend: {
-          position: 'bottom',
-          labels: { color: '#f7f2e8', font: { size: 12 } }
+          display: false // <-- Hides the built-in default chart legend so only your custom right-side labels show
         }
       }
     }

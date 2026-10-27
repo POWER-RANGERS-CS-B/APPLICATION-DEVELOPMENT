@@ -45,8 +45,7 @@ exports.lockTable = async (tableId) => {
     const lockResult = await client.query(
       `UPDATE restaurant.chairs
        SET status = 'reserved',
-           locked_until = NOW() + INTERVAL '2 minutes', // Changed from 10 minutes to 2 minutes
-           updated_at = NOW()
+           locked_until = NOW() + INTERVAL '2 minutes'
        WHERE table_id = $1
          AND deleted_at IS NULL
        RETURNING *`,
