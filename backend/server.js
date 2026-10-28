@@ -14,7 +14,8 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(
   express.static(
-    path.join(__dirname, "../frontend")
+    path.join(__dirname, "../frontend"),
+    { index: false }
   )
 );
 
@@ -33,7 +34,7 @@ app.use(
 
 app.get("/", (req, res) => {
   res.sendFile(
-    path.join(__dirname, "../frontend/index.html")
+    path.join(__dirname, "../frontend/choice.html")
   );
 });
 
@@ -49,14 +50,26 @@ app.use("/api/history", require("./routes/historyRoutes"));
 app.use("/api/chairs", require("./routes/chairRoutes"));
 app.use("/api/tables", require("./routes/tableRoutes"));
 app.use("/api/staff", require("./routes/staffRoutes"));
-app.use("/api/reservations", require("./routes/reservationRoutes"));
+
+// --- ADD THESE ALIAS ROUTES TO PREVENT 404 ERRORS IN ADMIN DASHBOARD ---
+app.get("/api/users", (req, res) => {
+  // Routes staff data to /api/users if admin dashboard expects it
+  req.url = "/";
+  require("./routes/staffRoutes")(req, res);
+});
+
+app.get("/api/audit-logs", (req, res) => {
+  res.json([]); // Returns empty audit log array safely until custom table is created
+});
 
 /* ======================================
    START SERVER
 ====================================== */
 
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
+const HOST = process.env.HOST || "0.0.0.0";
 
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`Server listening on ${HOST}:${PORT}`);
+  console.log(`Open Dine-Ari at http://localhost:${PORT}`);
 });

@@ -4,6 +4,10 @@ let cart = [];
 let menuItems = [];
 let activeCategory = "All";
 let reservationDetails = null;
+let activeFloor = 1;
+let floorChairs = [];
+let floorTables = [];
+let selectedTableId = null;
 
 
 const foodImages = {
@@ -94,6 +98,11 @@ function updateFlowStep(stepNumber) {
 function showSection(sectionId, flowStep = 1, display = "block") {
   hideCustomerSections();
 
+  const cartDialog = document.getElementById("cartDialog");
+  const floatingCartButton = document.getElementById("floatingCartButton");
+  if (cartDialog?.open && sectionId !== "menuSection") cartDialog.close();
+  if (floatingCartButton) floatingCartButton.hidden = sectionId !== "menuSection";
+
   const section = document.getElementById(sectionId);
   if (section) section.style.display = display;
 
@@ -109,6 +118,7 @@ function showSection(sectionId, flowStep = 1, display = "block") {
 function showChoicePanel() {
   orderType = null;
   selectedChairIds = [];
+  selectedTableId = null;
   cart = [];
   reservationDetails = null;
 
@@ -125,17 +135,16 @@ function showChoicePanel() {
   if (thankYouMessage) thankYouMessage.textContent = "";
 
   showSection("choicePanel", 1, "grid");
+  updateChairSelectionUI();
   updateCartTotal();
-}
-
-async function goMenuQuick() {
-  return chooseType("takeout");
 }
 
 function showReservationSection() {
   orderType = "reservation";
   selectedChairIds = [];
+  selectedTableId = null;
   reservationDetails = null;
+  updateChairSelectionUI();
   updateCartTotal();
 
   const today = new Date().toISOString().split("T")[0];
@@ -183,7 +192,9 @@ async function continueReservationToChairs() {
 async function chooseType(type) {
   orderType = type;
   selectedChairIds = [];
+  selectedTableId = null;
   cart = [];
+  updateChairSelectionUI();
   updateCartTotal();
 
   if (type === "dine_in") {
@@ -201,26 +212,26 @@ async function chooseType(type) {
 const restaurantBlueprint = {
   tables: [
     // ===== TOP ROW =====
-    { id: 1, x: 12, y: 15, chairs: 4, shape: "circle" },
-    { id: 2, x: 35, y: 15, chairs: 4, shape: "circle" },
-    { id: 5, x: 58, y: 15, chairs: 4, shape: "circle" },
-    { id: 9, x: 82, y: 15, chairs: 8, shape: "rect-large" },
+    { id: 1, x: 14, y: 30, chairs: 4, shape: "circle", floor: 1 },
+    { id: 2, x: 50, y: 30, chairs: 4, shape: "circle", floor: 1 },
+    { id: 3, x: 86, y: 30, chairs: 4, shape: "circle", floor: 1 },
 
     // ===== MIDDLE ROW =====
-    { id: 3, x: 12, y: 40, chairs: 4, shape: "circle" },
-    { id: 4, x: 35, y: 40, chairs: 4, shape: "circle" },
-    { id: 6, x: 58, y: 40, chairs: 4, shape: "circle" },
-    { id: 10, x: 82, y: 40, chairs: 8, shape: "rect-large" },
+    { id: 4, x: 24, y: 70, chairs: 4, shape: "circle", floor: 1 },
+    { id: 5, x: 58, y: 70, chairs: 4, shape: "circle", floor: 1 },
+    { id: 6, x: 86, y: 70, chairs: 4, shape: "circle", floor: 1 },
 
-    // ===== LOWER MIDDLE =====
-    { id: 7, x: 25, y: 65, chairs: 6, shape: "rect-medium" },
-    { id: 8, x: 58, y: 65, chairs: 8, shape: "rect-large" },
+    // ===== TWO-SEAT TABLES ON FLOOR 1 =====
+    { id: 11, x: 14, y: 90, chairs: 2, shape: "small", floor: 1 },
+    { id: 12, x: 38, y: 90, chairs: 2, shape: "small", floor: 1 },
+    { id: 13, x: 62, y: 90, chairs: 2, shape: "small", floor: 1 },
+    { id: 14, x: 86, y: 90, chairs: 2, shape: "small", floor: 1 },
 
-    // ===== BOTTOM =====
-    { id: 11, x: 12, y: 87, chairs: 2, shape: "small" },
-    { id: 12, x: 35, y: 87, chairs: 2, shape: "small" },
-    { id: 13, x: 58, y: 87, chairs: 2, shape: "small" },
-    { id: 14, x: 82, y: 87, chairs: 2, shape: "small" }
+    // ===== FLOOR 2 GROUP TABLES =====
+    { id: 7, x: 22, y: 32, chairs: 8, shape: "rect-medium", floor: 2 },
+    { id: 8, x: 78, y: 32, chairs: 8, shape: "rect-medium", floor: 2 },
+    { id: 9, x: 22, y: 72, chairs: 10, shape: "rect-large", floor: 2 },
+    { id: 10, x: 78, y: 72, chairs: 10, shape: "rect-large", floor: 2 }
   ]
 };
 
@@ -256,6 +267,19 @@ function getChairPosition(chairCount, index) {
       { x: -28, y: 55 },
       { x: 28, y: 55 },
       { x: 85, y: 55 }
+    ],
+
+    10: [
+      { x: -48, y: -65 },
+      { x: 0, y: -65 },
+      { x: 48, y: -65 },
+      { x: -48, y: 65 },
+      { x: 0, y: 65 },
+      { x: 48, y: 65 },
+      { x: -105, y: 0 },
+      { x: 105, y: 0 },
+      { x: -85, y: -65 },
+      { x: 85, y: 65 }
     ]
   };
 
@@ -273,28 +297,51 @@ async function loadFloorPlan() {
       request("/tables")
     ]);
 
-    chairs = Array.isArray(chairData) ? chairData : [];
-    tables = Array.isArray(tableData) ? tableData : [];
+    floorChairs = Array.isArray(chairData) ? chairData : [];
+    floorTables = Array.isArray(tableData) ? tableData : [];
   } catch (error) {
     console.warn("Using local floor layout because backend chairs/tables failed:", error.message);
-    chairs = [];
-    tables = [];
+    floorChairs = [];
+    floorTables = [];
   }
 
+  renderFloorPlan();
+}
+
+function switchFloor(floor) {
+  activeFloor = Number(floor) === 2 ? 2 : 1;
+
+  [1, 2].forEach((floorNumber) => {
+    const tab = document.getElementById(`floor${floorNumber}Tab`);
+    if (!tab) return;
+    const isActive = floorNumber === activeFloor;
+    tab.classList.toggle("active", isActive);
+    tab.setAttribute("aria-selected", String(isActive));
+  });
+
+  renderFloorPlan();
+}
+
+function renderFloorPlan() {
   const floorPlan = document.getElementById("floorPlan");
   if (!floorPlan) return;
 
+  floorPlan.dataset.floor = String(activeFloor);
   floorPlan.innerHTML = "";
 
-  restaurantBlueprint.tables.forEach((blueprintTable) => {
+  const tablesOnFloor = restaurantBlueprint.tables.filter(
+    (table) => table.floor === activeFloor
+  );
+
+  tablesOnFloor.forEach((blueprintTable) => {
     const realTable =
-      tables.find((t) => Number(t.id ?? t.table_id) === Number(blueprintTable.id)) || {
+      floorTables.find((t) => Number(t.id ?? t.table_id) === Number(blueprintTable.id)) || {
         id: blueprintTable.id,
         table_id: blueprintTable.id,
         table_name: `T${blueprintTable.id}`
       };
 
-    const tableChairs = chairs.filter(
+    const tableChairs = floorChairs.filter(
       (c) => Number(c.table_id ?? c.tableId) === Number(blueprintTable.id)
     );
 
@@ -306,82 +353,109 @@ async function loadFloorPlan() {
         status: "vacant"
       }));
 
+    const isAvailable =
+      String(realTable.status || "vacant").toLowerCase() === "vacant" &&
+      chairSource.length > 0 &&
+      chairSource.every((chair) => String(chair.status || "vacant").toLowerCase() === "vacant");
+
     const tableGroup = document.createElement("div");
     tableGroup.className = "table-group";
     tableGroup.style.left = `${blueprintTable.x}%`;
     tableGroup.style.top = `${blueprintTable.y}%`;
 
-    const tableBox = document.createElement("div");
-    tableBox.className = `table-box ${blueprintTable.shape}`;
+    const tableBox = document.createElement("button");
+    tableBox.type = "button";
+    tableBox.className = `table-box ${blueprintTable.shape} table-select`;
     tableBox.dataset.tableId = blueprintTable.id;
-    tableBox.innerHTML = `<span>${realTable.table_name || realTable.name || `T${blueprintTable.id}`}</span>`;
+    tableBox.classList.toggle("selected", selectedTableId === Number(blueprintTable.id));
+    tableBox.classList.toggle("unavailable", !isAvailable);
+    tableBox.disabled = !isAvailable;
+    tableBox.setAttribute("aria-pressed", String(selectedTableId === Number(blueprintTable.id)));
+    tableBox.title = isAvailable
+      ? `Select ${realTable.table_name || realTable.name || `Table ${blueprintTable.id}`} with ${chairSource.length} seats`
+      : `${realTable.table_name || realTable.name || `Table ${blueprintTable.id}`} is unavailable`;
+    tableBox.innerHTML = `<span>${realTable.table_name || realTable.name || `Table ${blueprintTable.id}`}</span><small>${chairSource.length} seats</small>`;
+    if (isAvailable) {
+      tableBox.addEventListener("click", () => selectTable(blueprintTable, chairSource));
+    }
 
     tableGroup.appendChild(tableBox);
 
     chairSource.forEach((chair, index) => {
       const status = String(chair.status || "vacant").toLowerCase();
 
-      const pos = getChairPosition(blueprintTable.chairs, index);
+      const pos = getChairPosition(chairSource.length, index);
 
-      const chairEl = document.createElement("button");
+      const chairEl = document.createElement("span");
       chairEl.type = "button";
       chairEl.className = `chair ${status}`;
+      if (selectedTableId === Number(blueprintTable.id)) chairEl.classList.add("selected");
       chairEl.textContent = `C${index + 1}`;
-      chairEl.style.left = `${pos.x}px`;
-      chairEl.style.top = `${pos.y}px`;
+      chairEl.style.left = `calc(50% + ${pos.x}px)`;
+      chairEl.style.top = `calc(50% + ${pos.y}px)`;
       chairEl.title = `Table ${blueprintTable.id} - Chair ${index + 1}`;
       chairEl.dataset.tableId = blueprintTable.id;
-
-      if (status === "vacant" || status === "available") {
-        chairEl.addEventListener("click", () =>
-          toggleChair(chair.id, chairEl, blueprintTable.id)
-        );
-      } else {
-        chairEl.disabled = true;
-      }
+      chairEl.setAttribute("aria-hidden", "true");
 
       tableGroup.appendChild(chairEl);
     });
 
     floorPlan.appendChild(tableGroup);
   });
+
+  if (!tablesOnFloor.length) {
+    floorPlan.innerHTML = `<p class="floor-empty-message">No tables are configured on Floor ${activeFloor} yet.</p>`;
+  }
 }
 
-function toggleChair(chairId, button, tableId) {
-  if (selectedChairIds.includes(chairId)) {
-    selectedChairIds = selectedChairIds.filter((id) => id !== chairId);
-    button.classList.remove("selected");
-  } else {
-    selectedChairIds.push(chairId);
-    button.classList.add("selected");
+function selectTable(table, chairs) {
+  selectedTableId = Number(table.id);
+  selectedChairIds = chairs.map((chair) => chair.id);
+  renderFloorPlan();
+  updateChairSelectionUI();
+}
+
+function updateChairSelectionUI() {
+  const selectedTable = restaurantBlueprint.tables.find(
+    (table) => Number(table.id) === Number(selectedTableId)
+  );
+  const realTable = selectedTable && floorTables.find(
+    (table) => Number(table.id ?? table.table_id) === Number(selectedTableId)
+  );
+  const selectedTableLabel = document.getElementById("selectedTableLabel");
+  const lockButton = document.getElementById("lockChairsButton");
+
+  if (selectedTableLabel) {
+    selectedTableLabel.textContent = selectedTable
+      ? `${realTable?.table_name || realTable?.name || `Table ${selectedTable.id}`} · ${selectedChairIds.length} seats`
+      : "None";
   }
-
-  const selectedTables = new Set();
-  document.querySelectorAll(".chair.selected").forEach((chairEl) => {
-    const table = chairEl.title.match(/Table (\d+)/)?.[1];
-    if (table) selectedTables.add(table);
-  });
-  document.querySelectorAll(".table-box").forEach((box) => {
-    box.classList.toggle("selected", selectedTables.has(String(box.dataset.tableId)));
-  });
-
-  const guestCount = document.getElementById("guestCount");
-  if (guestCount) guestCount.textContent = selectedChairIds.length;
+  if (lockButton) {
+    lockButton.textContent = selectedTable
+      ? `Reserve Table ${selectedTable.id} & continue`
+      : "Select a table to continue";
+    lockButton.disabled = !selectedTable;
+  }
 }
 
 async function lockSelectedChairs() {
-  if (!selectedChairIds.length) {
-    alert("Please select at least one chair.");
+  if (!selectedTableId) {
+    alert("Please select an available table.");
     return;
   }
 
   try {
-    await request("/chairs/lock", {
+    const lockedChairs = await request("/chairs/lock", {
       method: "POST",
-      body: JSON.stringify({ chairIds: selectedChairIds })
+      body: JSON.stringify({ tableId: selectedTableId })
     });
+    selectedChairIds = lockedChairs.map((chair) => chair.id);
   } catch (error) {
-    alert("Cannot lock chairs: " + error.message);
+    alert("Cannot reserve table: " + error.message);
+    selectedTableId = null;
+    selectedChairIds = [];
+    updateChairSelectionUI();
+    await loadFloorPlan();
     return;
   }
 
@@ -530,9 +604,15 @@ function filterMenuCategory(category, button) {
 
   document
     .querySelectorAll(".category-tabs button, .category-list button")
-    .forEach((btn) => btn.classList.remove("active"));
+    .forEach((btn) => {
+      btn.classList.remove("active");
+      btn.setAttribute("aria-selected", "false");
+    });
 
-  if (button) button.classList.add("active");
+  if (button) {
+    button.classList.add("active");
+    button.setAttribute("aria-selected", "true");
+  }
 
   renderMenu(menuItems);
 }
@@ -575,8 +655,15 @@ function changeQuantity(menuItemId, delta) {
 
 function updateCartTotal() {
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalEl = document.getElementById("cartTotal");
   if (totalEl) totalEl.textContent = total.toFixed(2);
+
+  const cartCount = document.getElementById("floatingCartCount");
+  if (cartCount) cartCount.textContent = itemCount > 99 ? "99+" : String(itemCount);
+
+  const proceedButton = document.getElementById("cartProceedButton");
+  if (proceedButton) proceedButton.disabled = cart.length === 0;
 
   const cartItems = document.getElementById("cartItems");
   if (!cartItems) return;
@@ -597,6 +684,23 @@ function updateCartTotal() {
       </div>
     </div>
   `).join("") : `<p>No items added yet.</p>`;
+}
+
+function openCartDialog() {
+  const dialog = document.getElementById("cartDialog");
+  if (!dialog || dialog.open) return;
+  dialog.showModal();
+  document.getElementById("floatingCartButton")?.setAttribute("aria-expanded", "true");
+}
+
+function closeCartDialog() {
+  const dialog = document.getElementById("cartDialog");
+  if (dialog?.open) dialog.close();
+  document.getElementById("floatingCartButton")?.setAttribute("aria-expanded", "false");
+}
+
+function closeCartDialogOnBackdrop(event) {
+  if (event.target === event.currentTarget) closeCartDialog();
 }
 
 function openPaymentPanel() {
@@ -626,6 +730,7 @@ function openPaymentPanel() {
     paymentTotal.textContent = total.toFixed(2);
   }
 
+  closeCartDialog();
   showSection("paymentSection", 4);
 }
 
@@ -643,7 +748,12 @@ function selectPaymentCard(input) {
 
 function confirmPaymentAndOrder() {
   const selectedPayment =
-    document.querySelector('input[name="paymentMethod"]:checked')?.value || "Cash";
+    document.querySelector('input[name="paymentMethod"]:checked')?.value || "GCash";
+
+  if (selectedPayment === "Cash") {
+    alert("Cash payment is no longer available. Please choose GCash or Card.");
+    return;
+  }
 
   const confirmMessage =
     `Payment Method: ${selectedPayment}\n\nAre you sure you want to place this order?`;
@@ -671,7 +781,7 @@ function downloadQrCode() {
   document.body.removeChild(link);
 }
 
-async function placeOrder() {
+function placeOrder() {
   if (!cart.length) {
     alert("Please add at least one item.");
     return;
@@ -682,54 +792,74 @@ async function placeOrder() {
   const selectedPayment =
     document.querySelector('input[name="paymentMethod"]:checked')?.value || "Cash";
 
-  try {
-    order = await request("/orders", {
-      method: "POST",
-      body: JSON.stringify({
-        type: orderType,
-        chairIds: selectedChairIds,
-        payment_method: selectedPayment,
-        items: cart.map((item) => ({
-          menu_item_id: item.menu_item_id,
-          quantity: item.quantity
-        }))
-      })
-    });
-  } catch (error) {
-    alert("Cannot place order: " + error.message);
-    return;
-  }
+  // Gigamit nato ang anonymous async function module aron ma-process ang await nga walay error 🌟
+  (async () => {
+    try {
+      order = await request("/orders", {
+        method: "POST",
+        body: JSON.stringify({
+          type: orderType || (selectedChairIds.length ? "dine_in" : null),
+          chairIds: selectedChairIds,
+          payment_method: selectedPayment,
+          
+          // MAP RES DETAILS APIL ARON DILI MAG-NULL SA DATABASE 🌟
+          reservation_date: reservationDetails ? reservationDetails.date : null,
+          reservation_time: reservationDetails ? reservationDetails.time : null,
+          customer_name: reservationDetails ? reservationDetails.name : null,
+          contact_number: reservationDetails ? reservationDetails.contact : null,
+          num_guests: selectedChairIds.length || 1,
 
-  const receiptTitle = document.getElementById("receiptTitle");
-  if (receiptTitle) {
-    receiptTitle.textContent = "DineQueue Receipt QR";
-  }
+          items: cart.map((item) => ({
+            menu_item_id: item.menu_item_id,
+            quantity: item.quantity
+          }))
+        })
+      });
 
-  const receiptIntro = document.getElementById("receiptIntro");
-  if (receiptIntro) {
-    receiptIntro.textContent = "Scan this QR code to view the full official receipt.";
-  }
+      // Human malampuson ang request, ipadayon ang UI workflow
+      const receiptTitle = document.getElementById("receiptTitle");
+      if (receiptTitle) {
+        receiptTitle.textContent = "Dine-Ari Receipt QR";
+      }
 
-  showSection("receiptSection", 4);
+      const receiptIntro = document.getElementById("receiptIntro");
+      if (receiptIntro) {
+        receiptIntro.textContent = "Show this QR code to the staff to view the official receipt.";
+      }
 
-  const qrBox = document.querySelector(".receipt-qr-box");
-  if (qrBox) {
-    qrBox.style.display = "block";
-  }
+      showSection("receiptSection", 4);
 
-  const qrImage = document.getElementById("qrImage");
+      const qrBox = document.querySelector(".receipt-qr-box");
+      if (qrBox) {
+        qrBox.style.display = "block";
+      }
 
-  if (order.qr_code && qrImage) {
-    qrImage.style.display = "block";
-    qrImage.src = order.qr_code;
-    qrImage.dataset.qr = order.qr_code;
-  }
+      const qrImage = document.getElementById("qrImage");
 
-  document.getElementById("thankYouMessage").textContent =
-    `Thank you! Your order has been placed successfully using ${selectedPayment}. Scan the QR code to view the full official receipt.`;
+      if (order.qr_code && qrImage) {
+        qrImage.style.display = "block";
+        qrImage.src = order.qr_code;
+        qrImage.dataset.qr = order.qr_code;
+      }
+
+      document.getElementById("thankYouMessage").textContent =
+        `Thank you for dining with Dine-Ari! Your order has been placed successfully using ${selectedPayment}. Please show the QR code to the staff to view your receipt.`;
+
+    } catch (error) {
+      alert("Cannot place order: " + error.message);
+    }
+  })();
 }
 
+
 document.addEventListener("DOMContentLoaded", () => {
+  const cartDialog = document.getElementById("cartDialog");
+  cartDialog?.addEventListener("close", () => {
+    document.getElementById("floatingCartButton")?.setAttribute("aria-expanded", "false");
+  });
+
+  updateCartTotal();
+
   if (
     !localStorage.getItem("token") &&
     !localStorage.getItem("dinequeue_token") &&
