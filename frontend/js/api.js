@@ -6,6 +6,16 @@ function getToken() {
   return token;
 }
 
+function redirectForAuthorizationFailure(status) {
+  if (!window.location.pathname.endsWith("/admin-dashboard.html")) return;
+
+  if (status === 401) {
+    window.location.replace("/login.html");
+  } else if (status === 403) {
+    window.location.replace("/choice.html");
+  }
+}
+
 async function apiRequest(path, options = {}) {
   const headers = {
     "Content-Type": "application/json",
@@ -41,9 +51,12 @@ async function apiRequest(path, options = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(
+    redirectForAuthorizationFailure(response.status);
+    const error = new Error(
       data?.message || `Request failed with status ${response.status}`
     );
+    error.status = response.status;
+    throw error;
   }
 
   return data;
