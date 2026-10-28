@@ -297,8 +297,15 @@ async function saveProduct() {
       body: formData
     });
 
+    if (res.status === 401 || res.status === 403) {
+      redirectForAuthorizationFailure(res.status);
+      throw new Error(`Request failed with status ${res.status}`);
+    }
+
     const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Failed to save menu item");
+    if (!res.ok) {
+      throw new Error(data.message || "Failed to save menu item");
+    }
 
     closeProductModal();
     await fetchProducts();
@@ -357,7 +364,9 @@ function renderUsers() {
       <td><small>${u.permissions}</small></td>
       <td><span class="status-badge ${u.status === 'Active' ? 'status-active' : ''}">${u.status}</span></td>
       <td>
-        <button class="secondary" style="padding: 4px 8px; margin:0;" onclick="toggleUserStatus(${u.id})">Toggle Status</button>
+        ${u.role === "staff"
+          ? `<button class="secondary" style="padding: 4px 8px; margin:0;" onclick="toggleUserStatus('${u.id}')">Toggle Status</button>`
+          : "<small>Protected admin account</small>"}
       </td>
     </tr>
   `).join('');

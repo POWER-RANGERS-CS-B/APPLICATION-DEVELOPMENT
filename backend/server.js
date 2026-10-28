@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const { authenticate, allowRoles } = require("./middleware/auth");
 
 const app = express();
 
@@ -50,17 +51,14 @@ app.use("/api/history", require("./routes/historyRoutes"));
 app.use("/api/chairs", require("./routes/chairRoutes"));
 app.use("/api/tables", require("./routes/tableRoutes"));
 app.use("/api/staff", require("./routes/staffRoutes"));
+app.use("/api/users", require("./routes/userRoutes"));
 
-// --- ADD THESE ALIAS ROUTES TO PREVENT 404 ERRORS IN ADMIN DASHBOARD ---
-app.get("/api/users", (req, res) => {
-  // Routes staff data to /api/users if admin dashboard expects it
-  req.url = "/";
-  require("./routes/staffRoutes")(req, res);
-});
-
-app.get("/api/audit-logs", (req, res) => {
-  res.json([]); // Returns empty audit log array safely until custom table is created
-});
+app.get(
+  "/api/audit-logs",
+  authenticate,
+  allowRoles("admin"),
+  (req, res) => res.json([])
+);
 
 /* ======================================
    START SERVER
