@@ -3,7 +3,7 @@ const reservationModel = require("../models/reservationModel");
 exports.createReservation = async (req, res) => {
   try {
     const reservation = await reservationModel.create({
-      userId: req.user.id,
+      userId: req.user?.id || null,
       chairIds: req.body.chairIds || [],
       reservationDate: req.body.reservation_date,
       reservationTime: req.body.reservation_time,

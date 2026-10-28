@@ -5,8 +5,8 @@
   <script src="js/transitions.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DineQueue Customer</title>
-  <link rel="stylesheet" href="css/style.css" />
+  <title>Dine-Ari | Home</title>
+  <link rel="stylesheet" href="css/style.css?v=floating-cart-dialog" />
 </head>
 
 <body>
@@ -14,30 +14,26 @@
     <div class="content-wrapper">
 
       <main class="page">
-        <div class="topbar">
-          <div>
+        <div class="topbar home-topbar">
+          <div class="home-brand">
             <span class="section-kicker">Customer Workspace</span>
-            <h1 class="logo-title">DineQueue</h1>
-          </div>
-          <div class="topbar-actions">
-            <button class="secondary" onclick="showChoicePanel()">Home</button>
-            <button class="secondary" onclick="logout()">Logout</button>
+            <h1 class="logo-title">Dine-Ari</h1>
           </div>
         </div>
 
-        <div class="customer-layout">
+        <div class="customer-layout home-choice-layout">
           <aside class="customer-sidebar card">
             <h2>Order Flow</h2>
-            <p class="page-subtitle">Follow the simple DineQueue process.</p>
+            <p class="page-subtitle">Follow the simple Dine-Ari dining journey.</p>
 
             <div class="flow-steps">
               <div class="flow-step active">
                 <strong>1</strong>
-                <span>Choose Type</span>
+                <span>Choose Mode</span>
               </div>
               <div class="flow-step">
                 <strong>2</strong>
-                <span>Select Chairs</span>
+                <span>Select Table</span>
               </div>
               <div class="flow-step">
                 <strong>3</strong>
@@ -45,6 +41,10 @@
               </div>
               <div class="flow-step">
                 <strong>4</strong>
+                <span>Payment</span>
+              </div>
+              <div class="flow-step">
+                <strong>5</strong>
                 <span>Receipt</span>
               </div>
             </div>
@@ -54,27 +54,22 @@
             <section id="choicePanel" class="card">
               <div class="choice-hero">
                 <div class="choice-copy">
-                  <span class="section-kicker">Start Order</span>
-                  <h2>How would you like to dine?</h2>
+                  <span class="section-kicker">Start Your Order</span>
+                  <h2>Welcome to Dine-Ari</h2>
                   <p class="page-subtitle">
-                    Choose dine-in to select chairs, or takeout to go directly to the menu.
+                    Choose dine-in to select a table, or make a reservation for your preferred seating.
                   </p>
                 </div>
 
                 <div class="choice-buttons">
                   <button class="choice-card-btn" onclick="chooseType('dine_in')">
                     <span>Dine-In</span>
-                    <small>Select available chairs before ordering.</small>
-                  </button>
-
-                  <button class="choice-card-btn" onclick="chooseType('takeout')">
-                    <span>Takeout</span>
-                    <small>Skip chair selection and order food for pickup.</small>
+                    <small>Select your preferred table and start ordering.</small>
                   </button>
 
                   <button class="choice-card-btn reservation-choice" onclick="showReservationSection()">
                     <span>Reservation</span>
-                    <small>Book a table by choosing your date, time, and chairs.</small>
+                    <small>Book your table by choosing a date, time, and seating.</small>
                   </button>
                 </div>
               </div>
@@ -133,27 +128,36 @@
               <div class="card-header">
                 <div>
                   <span class="section-kicker">Seat Selection</span>
-                  <h2>Choose Chairs</h2>
-                  <p>Select vacant chairs from the floor plan.</p>
+                  <h2>Choose a Table</h2>
+                  <p>Select an available table. The chair markers show its seating capacity.</p>
                 </div>
 
                 <div class="guest-pill">
-                  Guests selected:
-                  <strong id="guestCount">0</strong>
+                  Table selected:
+                  <strong id="selectedTableLabel">None</strong>
                 </div>
               </div>
 
-              <div class="floor-toolbar">
-                <span class="status-pill">Gold = selected</span>
-                <span class="status-pill">Dim red/gray = unavailable</span>
+              <div class="floor-tabs" role="tablist" aria-label="Restaurant floor">
+                <button id="floor1Tab" class="floor-tab active" type="button" role="tab" aria-selected="true" aria-controls="floorPlan" onclick="switchFloor(1)">
+                  Floor 1 <small>Standard tables</small>
+                </button>
+                <button id="floor2Tab" class="floor-tab" type="button" role="tab" aria-selected="false" aria-controls="floorPlan" onclick="switchFloor(2)">
+                  Floor 2 <small>Group tables</small>
+                </button>
               </div>
 
               <div class="floor-scroll-wrapper">
                 <div id="floorPlan" class="floor-plan"></div>
               </div>
 
-              <div class="cart-actions">
-                <button onclick="lockSelectedChairs()">Confirm Chairs</button>
+              <div class="cart-actions floor-selection-actions">
+                <div class="chair-legend" aria-label="Chair status legend">
+                  <span><i class="legend-swatch available"></i>Available</span>
+                  <span><i class="legend-swatch selected"></i>Selected</span>
+                  <span><i class="legend-swatch unavailable"></i>Unavailable</span>
+                </div>
+                <button id="lockChairsButton" onclick="lockSelectedChairs()" disabled>Select a table to continue</button>
                 <button class="secondary" onclick="showChoicePanel()">Back</button>
               </div>
             </section>
@@ -167,15 +171,15 @@
                 </div>
               </div>
 
-              <div class="menu-shell">
+              <div class="menu-shell menu-only-shell">
                 <main class="menu-main-area">
-                  <div class="category-tabs">
-                    <button class="active" onclick="filterMenuCategory('All', this)">All</button>
-                    <button onclick="filterMenuCategory('Appetizers', this)">Appetizers</button>
-                    <button onclick="filterMenuCategory('Main Course', this)">Main Course</button>
-                    <button onclick="filterMenuCategory('Rice Meals', this)">Rice Meals</button>
-                    <button onclick="filterMenuCategory('Beverages', this)">Drinks</button>
-                    <button onclick="filterMenuCategory('Desserts', this)">Desserts</button>
+                  <div class="category-tabs" role="tablist" aria-label="Menu categories">
+                    <button type="button" role="tab" aria-selected="false" onclick="filterMenuCategory('All', this)">All</button>
+                    <button type="button" role="tab" aria-selected="false" onclick="filterMenuCategory('Appetizers', this)">Appetizers</button>
+                    <button type="button" role="tab" aria-selected="false" onclick="filterMenuCategory('Main Course', this)">Main Course</button>
+                    <button type="button" role="tab" aria-selected="false" onclick="filterMenuCategory('Rice Meals', this)">Rice Meals</button>
+                    <button type="button" role="tab" aria-selected="false" onclick="filterMenuCategory('Beverages', this)">Drinks</button>
+                    <button type="button" role="tab" aria-selected="false" onclick="filterMenuCategory('Desserts', this)">Desserts</button>
                   </div>
 
                   <div class="menu-search-row">
@@ -186,16 +190,6 @@
                     <div id="menuGrid"></div>
                   </div>
                 </main>
-
-                <aside class="cart">
-                  <h3>Your Cart</h3>
-                  <div id="cartItems"></div>
-
-                  <div class="cart-actions">
-                    <h3>Total: ₱<span id="cartTotal">0.00</span></h3>
-                    <button onclick="openPaymentPanel()">Proceed to Payment</button>
-                  </div>
-                </aside>
               </div>
             </section>
 
@@ -211,15 +205,7 @@
               <div class="payment-layout">
                 <div class="payment-methods">
                   <label class="payment-method-card active">
-                    <input type="radio" name="paymentMethod" value="Cash" checked onchange="selectPaymentCard(this)" />
-                    <div>
-                      <h3>Cash</h3>
-                      <p>Pay directly at the counter or cashier.</p>
-                    </div>
-                  </label>
-
-                  <label class="payment-method-card">
-                    <input type="radio" name="paymentMethod" value="GCash" onchange="selectPaymentCard(this)" />
+                    <input type="radio" name="paymentMethod" value="GCash" checked onchange="selectPaymentCard(this)" />
                     <div>
                       <h3>GCash</h3>
                       <p>Pay using your GCash mobile wallet.</p>
@@ -255,10 +241,10 @@
 
             <section id="receiptSection" class="card receipt-card" style="display: none;">
               <span class="section-kicker">Order Receipt</span>
-              <h2 id="receiptTitle">DineQueue Receipt QR</h2>
+              <h2 id="receiptTitle">Dine-Ari Receipt QR</h2>
 
               <p id="receiptIntro" class="muted">
-                Scan this QR code to view the full official receipt.
+                Show this QR code to the staff to view your official receipt.
               </p>
 
               <div class="receipt-qr-box">
@@ -282,8 +268,43 @@
     </div>
   </div>
 
+  <button class="floating-login-btn" type="button" aria-label="Staff and admin login" title="Staff and admin login" onclick="window.location.href='login.html'">
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2" />
+      <path d="M4 21c0-4.1 3.6-7 8-7s8 2.9 8 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+    </svg>
+  </button>
+
+  <button id="floatingCartButton" class="floating-cart-btn" type="button" aria-label="Open your cart" aria-controls="cartDialog" aria-expanded="false" title="Open your cart" hidden onclick="openCartDialog()">
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 4h2l2.1 10.1a2 2 0 0 0 2 1.6h8.7a2 2 0 0 0 1.9-1.4L22 8H6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+      <circle cx="10" cy="20" r="1.4" fill="currentColor" />
+      <circle cx="18" cy="20" r="1.4" fill="currentColor" />
+    </svg>
+    <span id="floatingCartCount" class="floating-cart-count" aria-live="polite">0</span>
+  </button>
+
+  <dialog id="cartDialog" class="cart-dialog" aria-labelledby="cartDialogTitle" onclick="closeCartDialogOnBackdrop(event)">
+    <section class="cart-dialog-panel">
+      <header class="cart-dialog-header">
+        <div>
+          <span class="section-kicker">Your Selection</span>
+          <h2 id="cartDialogTitle">Your Cart</h2>
+        </div>
+        <button class="cart-dialog-close" type="button" aria-label="Close cart and return to menu" title="Close cart" onclick="closeCartDialog()">×</button>
+      </header>
+
+      <div id="cartItems" class="cart-dialog-items"></div>
+
+      <div class="cart-dialog-footer">
+        <h3>Total: ₱<span id="cartTotal">0.00</span></h3>
+        <button id="cartProceedButton" type="button" onclick="openPaymentPanel()" disabled>Proceed to Payment</button>
+      </div>
+    </section>
+  </dialog>
+
   <script src="js/api.js"></script>
-  <script src="js/choice.js"></script>
+  <script src="js/choice.js?v=dine-in-order-type-fallback"></script>
 </body>
 
 </html>

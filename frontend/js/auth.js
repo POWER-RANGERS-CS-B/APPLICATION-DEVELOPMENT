@@ -1,5 +1,5 @@
-function showAuthMessage(message, isError = false) {
-  const messageBox = document.getElementById("authMessage");
+function showAuthMessage(message, isError = false, messageId = "authMessage") {
+  const messageBox = document.getElementById(messageId);
 
   if (!messageBox) return;
 
@@ -9,25 +9,29 @@ function showAuthMessage(message, isError = false) {
     : "var(--gold-2)";
 }
 
-async function login() {
+async function login(accountType = "admin") {
+
+  const inputPrefix = accountType === "staff" ? "staff" : "admin";
+  const messageId = `${inputPrefix}AuthMessage`;
 
   const email =
-    document.getElementById("email")?.value.trim();
+    document.getElementById(`${inputPrefix}Email`)?.value.trim();
 
   const password =
-    document.getElementById("password")?.value;
+    document.getElementById(`${inputPrefix}Password`)?.value;
 
   if (!email || !password) {
     showAuthMessage(
       "Please enter your email and password.",
-      true
+      true,
+      messageId
     );
     return;
   }
 
   try {
 
-    showAuthMessage("Logging in...");
+    showAuthMessage("Logging in...", false, messageId);
 
     const data = await apiRequest("/auth/login", {
       method: "POST",
@@ -37,38 +41,34 @@ async function login() {
       }),
     });
 
-    console.log("LOGIN RESPONSE:", data);
-
-    const user = saveSession(data);
-
-    console.log("SAVED USER:", user);
-
-    if (!getToken()) {
-
-      showAuthMessage(
-        "Login response has no token.",
-        true
-      );
-
-      return;
-    }
-
     const role = String(
-      user.role ||
-      user.user_role ||
-      user.account_type ||
-      user.type ||
-      localStorage.getItem("role") ||
-      "customer"
+      data.user?.role ||
+      data.user?.user_role ||
+      data.user?.account_type ||
+      data.user?.type ||
+      data.role ||
+      ""
     )
       .trim()
       .toLowerCase();
 
-    console.log("FINAL ROLE:", role);
+    const isAdmin = role === "admin" || role.includes("admin");
+    const isStaff = role === "staff" || role.includes("staff") ||
+      role.includes("kitchen") || role.includes("employee") || role.includes("crew");
 
-    showAuthMessage(
-      `Login successful as ${role}. Redirecting...`
-    );
+    if ((accountType === "admin" && !isAdmin) || (accountType === "staff" && !isStaff)) {
+      showAuthMessage(`This account is not registered as ${accountType}. Use the ${isAdmin ? "Admin" : "Staff"} folder.`, true, messageId);
+      return;
+    }
+
+    const user = saveSession(data);
+
+    if (!getToken()) {
+      showAuthMessage("Login response has no token.", true, messageId);
+      return;
+    }
+
+    showAuthMessage(`Login successful as ${role}. Redirecting...`, false, messageId);
 
     setTimeout(() => {
 
@@ -101,7 +101,7 @@ async function login() {
 
       // ===== CUSTOMER =====
       window.location.href =
-        "./choice.html";
+        "/";
 
     }, 400);
 
@@ -109,10 +109,11 @@ async function login() {
 
     console.error("LOGIN ERROR:", error);
 
-    showAuthMessage(
-      error.message || "Login failed.",
-      true
-    );
+      showAuthMessage(
+        error.message || "Login failed.",
+        true,
+        messageId
+      );
   }
 }
 

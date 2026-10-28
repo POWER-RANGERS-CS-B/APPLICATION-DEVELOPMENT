@@ -7,7 +7,7 @@ async function generateOrderCode(client) {
     const code = String(Math.floor(Math.random() * 900) + 100);
 
     const existing = await client.query(
-      "SELECT 1 FROM orders WHERE order_code = $1",
+      "SELECT 1 FROM restaurant.orders WHERE order_code = $1",
       [code]
     );
 
@@ -19,11 +19,30 @@ async function generateOrderCode(client) {
   throw new Error("Cannot generate a unique order code.");
 }
 
-exports.create = async ({ userId, type, chairIds = [], items = [], paymentMethod = "Cash" }) => {
+exports.create = async ({
+  userId,
+  type,
+  chairIds = [],
+  items = [],
+  paymentMethod = "GCash",
+  reservationDate = null,
+  reservationTime = null,
+  customerName = null,
+  contactNumber = null,
+  receiptBaseUrl = null,
+}) => {
   const client = await db.connect();
 
   try {
     await client.query("BEGIN");
+
+    if (!["GCash", "Card"].includes(paymentMethod)) {
+      throw new Error("Unavailable payment method. Please choose GCash or Card.");
+    }
+
+    if (!["dine_in", "takeout"].includes(type)) {
+      throw new Error("A valid order type is required. Select a table for dine-in before ordering.");
+    }
 
     let total = 0;
     let reservationId = null;
@@ -35,7 +54,7 @@ exports.create = async ({ userId, type, chairIds = [], items = [], paymentMethod
 
       const chairResult = await client.query(
         `SELECT table_id
-         FROM chairs
+         FROM restaurant.chairs
          WHERE id = $1
            AND deleted_at IS NULL`,
         [chairIds[0]]
@@ -47,24 +66,67 @@ exports.create = async ({ userId, type, chairIds = [], items = [], paymentMethod
         throw new Error("Selected chair does not exist.");
       }
 
+      const tableResult = await client.query(
+        `SELECT id, status
+         FROM restaurant.restaurant_tables
+         WHERE id = $1 AND deleted_at IS NULL
+         FOR UPDATE`,
+        [tableId]
+      );
+      
+      // CHANGE THIS LINE: Allow both 'vacant' and 'reserved' tables
+      if (!tableResult.rows[0] || !["vacant", "reserved"].includes(tableResult.rows[0].status)) {
+        throw new Error("The selected table is no longer available. Please choose another table.");
+      }
+
+      const tableChairsResult = await client.query(
+        `SELECT id, status
+         FROM restaurant.chairs
+         WHERE table_id = $1 AND deleted_at IS NULL
+         ORDER BY id
+         FOR UPDATE`,
+        [tableId]
+      );
+
+      const requestedChairIds = [...new Set(chairIds.map(Number))].sort((a, b) => a - b);
+      const activeTableChairIds = tableChairsResult.rows.map((chair) => Number(chair.id)).sort((a, b) => a - b);
+      
+      const ownsWholeTable =
+        requestedChairIds.length === activeTableChairIds.length &&
+        requestedChairIds.every((id, index) => id === activeTableChairIds[index]);
+
+      if (!ownsWholeTable || !tableChairsResult.rows.length) {
+        throw new Error("Your table hold expired or is no longer available. Please choose a table again.");
+      }
+
+      if (!ownsWholeTable) {
+        throw new Error("Your table hold expired or is no longer available. Please choose a table again.");
+      }
+
+      const dateValue = reservationDate || new Date().toISOString().split("T")[0];
+      const timeValue = reservationTime || new Date().toTimeString().split(" ")[0];
+      const resolvedName = customerName || "Customer";
+      const resolvedContact = contactNumber || "N/A";
+
       const reservationResult = await client.query(
-        `INSERT INTO reservations (user_id, table_id, num_guests)
-         VALUES ($1, $2, $3)
+        `INSERT INTO restaurant.reservations
+         (user_id, table_id, num_guests, status, reservation_date, reservation_time, customer_name, contact_number)
+         VALUES ($1, $2, $3, 'active', $4, $5, $6, $7)
          RETURNING id`,
-        [userId, tableId, chairIds.length]
+        [userId, tableId, chairIds.length, dateValue, timeValue, resolvedName, resolvedContact]
       );
 
       reservationId = reservationResult.rows[0].id;
 
       await client.query(
-        `UPDATE chairs
-         SET status = 'occupied', locked_until = NULL, updated_at = NOW()
-         WHERE id = ANY($1::int[])`,
-        [chairIds]
+        `UPDATE restaurant.chairs
+        SET status = 'occupied', locked_until = NULL, updated_at = NOW()
+        WHERE table_id = $1 AND deleted_at IS NULL`,
+        [tableId]
       );
 
       await client.query(
-        `UPDATE restaurant_tables
+        `UPDATE restaurant.restaurant_tables
          SET status = 'occupied', updated_at = NOW()
          WHERE id = $1`,
         [tableId]
@@ -74,7 +136,7 @@ exports.create = async ({ userId, type, chairIds = [], items = [], paymentMethod
     for (const item of items) {
       const menuResult = await client.query(
         `SELECT *
-         FROM menu_items
+         FROM restaurant.menu_items
          WHERE id = $1
            AND deleted_at IS NULL
          FOR UPDATE`,
@@ -90,7 +152,7 @@ exports.create = async ({ userId, type, chairIds = [], items = [], paymentMethod
       total += Number(menuItem.price) * item.quantity;
 
       await client.query(
-        `UPDATE menu_items
+        `UPDATE restaurant.menu_items
          SET stock_count = stock_count - $2,
              updated_at = NOW()
          WHERE id = $1`,
@@ -102,13 +164,21 @@ exports.create = async ({ userId, type, chairIds = [], items = [], paymentMethod
 
     const receiptToken = crypto.randomBytes(32).toString("hex");
 
-    const receiptUrl =
-      `http://192.168.43.118:3000/receipt.html?code=${orderCode}&token=${receiptToken}`;
+    const baseUrl =
+      receiptBaseUrl ||
+      process.env.PUBLIC_BASE_URL ||
+      process.env.BASE_URL ||
+      process.env.FRONTEND_URL ||
+      `http://localhost:${process.env.PORT || 3000}`;
 
-    const qrCode = await QRCode.toDataURL(receiptUrl);
+    const receiptUrl = new URL("/receipt.html", baseUrl);
+    receiptUrl.searchParams.set("code", orderCode);
+    receiptUrl.searchParams.set("token", receiptToken);
+
+    const qrCode = await QRCode.toDataURL(receiptUrl.toString());
 
     const orderResult = await client.query(
-      `INSERT INTO orders
+      `INSERT INTO restaurant.orders
    (
      order_code,
      user_id,
@@ -150,14 +220,14 @@ exports.create = async ({ userId, type, chairIds = [], items = [], paymentMethod
 
     for (const item of items) {
       const priceResult = await client.query(
-        "SELECT price FROM menu_items WHERE id = $1",
+        "SELECT price FROM restaurant.menu_items WHERE id = $1",
         [item.menu_item_id]
       );
 
       const price = Number(priceResult.rows[0].price);
 
       await client.query(
-        `INSERT INTO order_items
+        `INSERT INTO restaurant.order_items
          (order_id, menu_item_id, quantity, unit_price, subtotal)
          VALUES ($1, $2, $3, $4, $5)`,
         [order.id, item.menu_item_id, item.quantity, price, price * item.quantity]
@@ -177,7 +247,7 @@ exports.create = async ({ userId, type, chairIds = [], items = [], paymentMethod
 exports.findKdsOrders = async () => {
   const result = await db.query(
     `SELECT *
-     FROM orders
+     FROM restaurant.orders
      WHERE deleted_at IS NULL
        AND status IN ('pending', 'preparing', 'ready')
      ORDER BY created_at DESC`
@@ -193,7 +263,7 @@ exports.updateStatus = async (id, status) => {
     await client.query("BEGIN");
 
     const result = await client.query(
-      `UPDATE orders
+      `UPDATE rrestaurant.orders
        SET status = $2, updated_at = NOW()
        WHERE id = $1
        RETURNING *`,
@@ -209,7 +279,7 @@ exports.updateStatus = async (id, status) => {
     if (status === "completed") {
       const existingHistory = await client.query(
         `SELECT id
-         FROM order_history
+         FROM restaurant.order_history
          WHERE order_id = $1`,
         [id]
       );
@@ -217,7 +287,7 @@ exports.updateStatus = async (id, status) => {
       if (!existingHistory.rowCount) {
         const userResult = await client.query(
           `SELECT full_name, email
-           FROM users
+           FROM restaurant.users
            WHERE id = $1`,
           [order.user_id]
         );
@@ -230,8 +300,8 @@ exports.updateStatus = async (id, status) => {
              oi.quantity,
              oi.unit_price,
              oi.subtotal
-           FROM order_items oi
-           LEFT JOIN menu_items mi ON mi.id = oi.menu_item_id
+           FROM restaurant.order_items oi
+           LEFT JOIN restaurant.menu_items mi ON mi.id = oi.menu_item_id
            WHERE oi.order_id = $1`,
           [id]
         );
@@ -243,7 +313,7 @@ exports.updateStatus = async (id, status) => {
           .join(", ");
 
         await client.query(
-          `INSERT INTO order_history
+          `INSERT INTO restaurant.order_history
            (
              order_id,
              order_code,
@@ -263,7 +333,7 @@ exports.updateStatus = async (id, status) => {
             user.full_name || "Customer",
             user.email || "N/A",
             order.type,
-            order.payment_method || "Cash",
+            order.payment_method || "GCash",
             order.payment_status || "paid",
             order.total_amount,
             orderedItems
@@ -285,7 +355,7 @@ exports.updateStatus = async (id, status) => {
 
 exports.softDelete = async (id) => {
   const result = await db.query(
-    `UPDATE orders
+    `UPDATE restaurant.orders
      SET deleted_at = NOW(), updated_at = NOW()
      WHERE id = $1
      RETURNING *`,
@@ -307,8 +377,8 @@ exports.findReceiptByCodeAndToken = async (code, token) => {
        o.total_amount,
        o.created_at,
        u.full_name
-     FROM orders o
-     LEFT JOIN users u ON u.id = o.user_id
+     FROM restaurant.orders o
+     LEFT JOIN restaurant.users u ON u.id = o.user_id
      WHERE o.order_code = $1
        AND o.receipt_token = $2
        AND o.deleted_at IS NULL`,
@@ -327,8 +397,8 @@ exports.findReceiptByCodeAndToken = async (code, token) => {
        oi.quantity,
        oi.unit_price,
        oi.subtotal
-     FROM order_items oi
-     LEFT JOIN menu_items mi ON mi.id = oi.menu_item_id
+     FROM restaurant.order_items oi
+     LEFT JOIN restaurant.menu_items mi ON mi.id = oi.menu_item_id
      WHERE oi.order_id = $1`,
     [order.id]
   );
@@ -342,7 +412,7 @@ exports.findReceiptByCodeAndToken = async (code, token) => {
 exports.findOrderHistory = async () => {
   const result = await db.query(
     `SELECT *
-     FROM order_history
+     FROM restaurant.order_history
      ORDER BY completed_at DESC`
   );
 
@@ -352,7 +422,7 @@ exports.findOrderHistory = async () => {
 exports.getTodayIncome = async () => {
   const result = await db.query(
     `SELECT COALESCE(SUM(total_amount), 0) AS total_income
-     FROM order_history
+     FROM restaurant.order_history
      WHERE DATE(completed_at) = CURRENT_DATE`
   );
 

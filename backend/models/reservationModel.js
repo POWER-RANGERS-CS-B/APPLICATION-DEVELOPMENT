@@ -24,7 +24,7 @@ exports.create = async ({
 
     const chairResult = await client.query(
       `SELECT table_id
-       FROM chairs
+       FROM restaurant.chairs
        WHERE id = $1
          AND deleted_at IS NULL`,
       [chairIds[0]]
@@ -36,8 +36,41 @@ exports.create = async ({
       throw new Error("Selected chair does not exist.");
     }
 
+    const tableStateResult = await client.query(
+      `SELECT id, status
+       FROM restaurant.restaurant_tables
+       WHERE id = $1 AND deleted_at IS NULL
+       FOR UPDATE`,
+      [tableId]
+    );
+
+    // Allow both vacant and reserved tables
+    if (!tableStateResult.rows[0] || !["vacant", "reserved", "locked"].includes(tableStateResult.rows[0].status)) {
+      throw new Error("The selected table is no longer available. Please choose another table.");
+    }
+
+    const tableChairsResult = await client.query(
+      `SELECT id, status
+       FROM restaurant.chairs
+       WHERE table_id = $1 AND deleted_at IS NULL
+       ORDER BY id
+       FOR UPDATE`,
+      [tableId]
+    );
+
+    const requestedChairIds = [...new Set(chairIds.map(Number))].sort((a, b) => a - b);
+    const activeTableChairIds = tableChairsResult.rows.map((chair) => Number(chair.id)).sort((a, b) => a - b);
+    
+    const ownsWholeTable =
+      requestedChairIds.length === activeTableChairIds.length &&
+      requestedChairIds.every((id, index) => id === activeTableChairIds[index]);
+
+    if (!ownsWholeTable || !tableChairsResult.rows.length) {
+      throw new Error("Your table hold expired or is no longer available. Please choose a table again.");
+    }
+
     const reservationResult = await client.query(
-      `INSERT INTO reservations
+      `INSERT INTO restaurant.reservations
        (
          user_id,
          table_id,
@@ -62,16 +95,16 @@ exports.create = async ({
     );
 
     await client.query(
-      `UPDATE chairs
+      `UPDATE restaurant.chairs
        SET status = 'occupied',
            locked_until = NULL,
            updated_at = NOW()
-       WHERE id = ANY($1::int[])`,
-      [chairIds]
+       WHERE table_id = $1 AND deleted_at IS NULL`,
+      [tableId]
     );
 
     await client.query(
-      `UPDATE restaurant_tables
+      `UPDATE restaurant.restaurant_tables
        SET status = 'occupied',
            updated_at = NOW()
        WHERE id = $1`,
@@ -96,9 +129,9 @@ exports.findAll = async () => {
        u.full_name,
        u.email,
        rt.table_name
-     FROM reservations r
-     LEFT JOIN users u ON u.id = r.user_id
-     LEFT JOIN restaurant_tables rt ON rt.id = r.table_id
+     FROM restaurant.reservations r
+     LEFT JOIN restaurant.users u ON u.id = r.user_id
+     LEFT JOIN restaurant.restaurant_tables rt ON rt.id = r.table_id
      WHERE r.deleted_at IS NULL
      ORDER BY r.created_at DESC`
   );

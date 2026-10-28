@@ -9,9 +9,14 @@ exports.getChairs = async (req, res) => {
   }
 };
 
-exports.lockChairs = async (req, res) => {
+exports.lockTable = async (req, res) => {
   try {
-    res.json(await chairModel.lockChairs(req.body.chairIds));
+    const tableId = Number(req.body.tableId);
+    if (!Number.isInteger(tableId) || tableId <= 0) {
+      return res.status(400).json({ message: "A valid tableId is required." });
+    }
+
+    res.json(await chairModel.lockTable(tableId));
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
