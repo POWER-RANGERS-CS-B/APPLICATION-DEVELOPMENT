@@ -17,11 +17,4 @@ router.get(
     reservationController.getReservations
 );
 
-router.patch(
-    "/:id/status",
-    authenticate,
-    allowRoles("admin", "staff"),
-    reservationController.updateReservationStatus
-);
-
 module.exports = router;

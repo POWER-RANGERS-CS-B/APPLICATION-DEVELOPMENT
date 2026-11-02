@@ -26,15 +26,3 @@ exports.getReservations = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
-exports.updateReservationStatus = async (req, res) => {
-  try {
-    const reservation = await reservationModel.updateStatus(
-      req.params.id,
-      String(req.body.status || "").toLowerCase()
-    );
-    res.json(reservation);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-};
