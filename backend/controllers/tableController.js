@@ -27,7 +27,8 @@ exports.getTables = async (req, res) => {
 
 exports.cleanTable = async (req, res) => {
   try {
-    res.json(await tableModel.markCleaned(req.params.id));
+    const result = await tableModel.markCleaned(req.params.id);
+    res.json(result);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }

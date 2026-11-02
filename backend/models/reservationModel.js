@@ -24,7 +24,7 @@ exports.create = async ({
 
     const chairResult = await client.query(
       `SELECT table_id
-       FROM chairs
+       FROM restaurant.chairs
        WHERE id = $1
          AND deleted_at IS NULL`,
       [chairIds[0]]
@@ -90,7 +90,7 @@ exports.create = async ({
     }
 
     const reservationResult = await client.query(
-      `INSERT INTO reservations
+      `INSERT INTO restaurant.reservations
        (
          user_id,
          table_id,
@@ -119,8 +119,8 @@ exports.create = async ({
        SET status = 'vacant',
            locked_until = NULL,
            updated_at = NOW()
-       WHERE id = ANY($1::int[])`,
-      [chairIds]
+       WHERE table_id = $1 AND deleted_at IS NULL`,
+      [tableId]
     );
 
     await client.query(
@@ -148,9 +148,9 @@ exports.findAll = async () => {
        u.full_name,
        u.email,
        rt.table_name
-     FROM reservations r
-     LEFT JOIN users u ON u.id = r.user_id
-     LEFT JOIN restaurant_tables rt ON rt.id = r.table_id
+     FROM restaurant.reservations r
+     LEFT JOIN restaurant.users u ON u.id = r.user_id
+     LEFT JOIN restaurant.restaurant_tables rt ON rt.id = r.table_id
      WHERE r.deleted_at IS NULL
      ORDER BY r.reservation_date ASC, r.reservation_time ASC, r.created_at DESC`
   );

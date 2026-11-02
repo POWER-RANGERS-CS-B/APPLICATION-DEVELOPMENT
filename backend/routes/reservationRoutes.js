@@ -5,8 +5,6 @@ const { authenticate, allowRoles } = require("../middleware/auth");
 
 router.post(
     "/",
-    authenticate,
-    allowRoles("customer", "admin"),
     reservationController.createReservation
 );
 

@@ -61,7 +61,6 @@ exports.findAll = async ({ reservationDate = null, reservationTime = null } = {}
      ORDER BY t.id`,
     [reservationDate, reservationTime]
   );
-
   return result.rows;
 };
 
@@ -91,15 +90,16 @@ exports.markCleaned = async (tableId) => {
 
     // Reset all chairs belonging to this table to vacant
     await client.query(
-      `UPDATE chairs
+      `UPDATE restaurant.chairs
        SET status = 'vacant', locked_until = NULL, updated_at = NOW()
        WHERE table_id = $1`,
       [parsedTableId]
     );
 
+    // Complete active reservations for this table using a valid constraint status ('completed')
     await client.query(
-      `UPDATE reservations
-       SET status = 'finished', updated_at = NOW()
+      `UPDATE restaurant.reservations
+       SET status = 'completed', updated_at = NOW()
        WHERE table_id = $1
          AND status = 'active'`,
       [parsedTableId]

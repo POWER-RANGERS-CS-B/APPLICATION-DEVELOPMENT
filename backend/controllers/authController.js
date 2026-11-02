@@ -2,35 +2,28 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const authModel = require("../models/authModel");
 
-exports.signup = async (req, res) => {
-  try {
-    const user = await authModel.createUser({
-      ...req.body,
-      role: "customer",
-    });
-    res.status(201).json(user);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
+// Helper function to validate allowed email domains
+const isValidEmailDomain = (email) => {
+  if (!email) return false;
+  
+  // PASTED HERE: Allows ANY domain as long as it has a valid format (e.g., text@domain.suffix)
+  const domainRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  
+  return domainRegex.test(email.trim());
 };
 
-exports.createStaff = async (req, res) => {
+exports.signup = async (req, res) => {
   try {
-    const { fullName, email, password } = req.body;
+    const { email } = req.body;
 
-    if (!fullName || !email || !password) {
-      return res.status(400).json({
-        message: "Full name, email, and password are required.",
+    // Reject signup if email is completely missing or lacks a valid @domain.suffix structure
+    if (!isValidEmailDomain(email)) {
+      return res.status(400).json({ 
+        message: "Invalid email format. Please provide a complete email address (e.g., user@example.com)." 
       });
     }
 
-    const user = await authModel.createUser({
-      fullName,
-      email,
-      password,
-      role: "staff",
-    });
-
+    const user = await authModel.createUser(req.body);
     res.status(201).json(user);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -40,7 +33,15 @@ exports.createStaff = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await authModel.findByEmail(email);
+
+    // Reject login if email lacks a valid @domain.suffix structure
+    if (!isValidEmailDomain(email)) {
+      return res.status(400).json({ 
+        message: "Invalid email format. Please log in using a complete email address (e.g., user@example.com)." 
+      });
+    }
+
+    const user = await authModel.findByEmail(email.trim());
 
     if (!user) {
       return res.status(401).json({ message: "Invalid email or password." });

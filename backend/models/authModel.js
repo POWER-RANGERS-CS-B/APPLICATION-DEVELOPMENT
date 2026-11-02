@@ -5,7 +5,7 @@ exports.createUser = async ({ fullName, email, password, role = "customer" }) =>
   const passwordHash = await bcrypt.hash(password, 10);
 
   const result = await db.query(
-    `INSERT INTO users (full_name, email, password_hash, role)
+    `INSERT INTO restaurant.users (full_name, email, password_hash, role)
      VALUES ($1, $2, $3, $4)
      RETURNING id, full_name, email, role`,
     [fullName, email, passwordHash, role]
@@ -17,7 +17,7 @@ exports.createUser = async ({ fullName, email, password, role = "customer" }) =>
 exports.findByEmail = async (email) => {
   const result = await db.query(
     `SELECT *
-     FROM users
+     FROM restaurant.users
      WHERE email = $1
        AND deleted_at IS NULL`,
     [email]

@@ -1,4 +1,4 @@
-const API_BASE = "http://192.168.43.118:3000/api";
+const API_BASE = `${window.location.origin}/api`;
 
 async function loadReceipt() {
     const params = new URLSearchParams(window.location.search);

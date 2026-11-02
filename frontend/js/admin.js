@@ -1,72 +1,91 @@
-async function loadAdminDashboard() {
+// State Arrays for Database-backed Dashboard
+let products = [];
+let users = [];
+let auditLogs = [];
+let ordersCache = [];
+let allOrdersCache = [];
+let menuItemsCache = [];
+let revenueChartInstance = null;
+let ridgelineChartInstance = null;
+
+document.addEventListener("DOMContentLoaded", async () => {
+  if (
+    !getToken() &&
+    !location.pathname.includes("index.html") &&
+    !location.pathname.includes("intro.html")
+  ) {
+    console.warn("No token found. Proceeding with admin initialization.");
+  }
+
+  await loadAdminWorkspace();
+  initCharts();
+  setInterval(loadAdminWorkspace, 10000); // Live refresh every 10 seconds
+});
+
+// Main orchestrator to load all workspace sections from PostgreSQL backend
+async function loadAdminWorkspace() {
+  try {
+    await Promise.all([
+      fetchProducts(),
+      fetchUsers(),
+      fetchAuditLogs(),
+      loadAdminDashboardMetrics()
+    ]);
+    renderAlerts();
+  } catch (error) {
+    console.error("Error synchronizing with PostgreSQL backend:", error);
+  }
+}
+
+// --- 1. DASHBOARD, LIVE ORDERS & TELEMETRY ---
+async function loadAdminDashboardMetrics() {
   try {
     const orders = await apiRequest("/orders/kds");
     const reservations = await apiRequest("/reservations");
-
+    
     let history = [];
-    let income = { total_income: 0 };
-
     try {
       history = await apiRequest("/orders/history");
     } catch (error) {
-      console.warn("Order history endpoint failed:", error.message);
       history = [];
     }
 
-    try {
-      income = await apiRequest("/orders/income/today");
-    } catch (error) {
-      console.warn("Today income endpoint failed:", error.message);
-      income = { total_income: 0 };
-    }
+    allOrdersCache = [...orders, ...history];
+
+    // Calculate total revenue correctly from database orders
+    const totalRevenue = allOrdersCache.reduce((sum, ord) => sum + Number(ord.total_amount || 0), 0);
+
+    // Compute Dynamic Conversion Rate (Completed / Total Orders Attempted)
+    const completedCount = history.length;
+    const totalAttempted = allOrdersCache.length;
+    const conversionRate = totalAttempted > 0 ? ((completedCount / totalAttempted) * 100).toFixed(1) : "0.0";
 
     const orderCount = document.getElementById("orderCount");
     const reservationCount = document.getElementById("reservationCount");
     const historyCount = document.getElementById("historyCount");
-    const todayIncome = document.getElementById("todayIncome");
+    const kpiRevenue = document.getElementById("kpiRevenue");
+    const kpiOrders = document.getElementById("kpiOrders");
+    const kpiConversion = document.getElementById("kpiConversion");
 
     if (orderCount) orderCount.textContent = orders.length;
     if (reservationCount) reservationCount.textContent = reservations.length;
     if (historyCount) historyCount.textContent = history.length;
-    if (todayIncome) todayIncome.textContent = Number(income.total_income || 0).toFixed(2);
+    if (kpiRevenue) kpiRevenue.textContent = totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (kpiOrders) kpiOrders.textContent = totalAttempted;
+    if (kpiConversion) kpiConversion.textContent = `${conversionRate}%`;
 
     renderLiveOrders(orders);
     renderReservations(reservations);
     renderOrderHistory(history);
-  } catch (error) {
-    console.error("Admin dashboard error:", error);
 
+    // Refresh charts with real data
+    updateRevenueChartRange();
+    initCategoryPieChart();
+  } catch (error) {
+    console.error("Admin dashboard telemetry error:", error);
     document.querySelectorAll("#orders, #reservations, #history").forEach((el) => {
-      el.innerHTML = `<p class="muted">Unable to load data. ${error.message}</p>`;
+      if (el) el.innerHTML = `<p class="muted">Unable to load telemetry data. ${error.message}</p>`;
     });
-  }
-}
-
-async function createStaffAccount(event) {
-  event.preventDefault();
-
-  const messageBox = document.getElementById("staffAccountMessage");
-  const fullName = document.getElementById("staffFullName")?.value.trim();
-  const email = document.getElementById("staffEmail")?.value.trim();
-  const password = document.getElementById("staffPassword")?.value;
-
-  if (!messageBox || !fullName || !email || !password) return;
-
-  messageBox.textContent = "Creating staff account...";
-  messageBox.className = "form-message";
-
-  try {
-    await apiRequest("/auth/staff", {
-      method: "POST",
-      body: JSON.stringify({ fullName, email, password }),
-    });
-
-    messageBox.textContent = "Staff account created successfully.";
-    messageBox.className = "form-message success-message";
-    document.getElementById("staffForm")?.reset();
-  } catch (error) {
-    messageBox.textContent = error.message || "Unable to create staff account.";
-    messageBox.className = "form-message error-message";
   }
 }
 
@@ -92,7 +111,7 @@ function renderLiveOrders(orders) {
           <button class="danger" onclick="deleteOrder(${order.id})">Soft Delete</button>
         </div>
       `).join("")
-    : `<p class="muted empty-state">No active orders.</p>`;
+    : `<p class="muted empty-state">No active orders found in database.</p>`;
 }
 
 function renderReservations(reservations) {
@@ -174,15 +193,22 @@ function renderOrderHistory(history) {
 
           <div class="ordered-items-box">
             <strong>Ordered Items:</strong>
-            <p>${record.ordered_items || "No ordered item list saved."}</p>
+            <p>${record.ordered_items || "No item list saved."}</p>
           </div>
         </div>
       `).join("")
-    : `<p class="muted empty-state">No completed order history yet.</p>`;
+    : `<p class="muted empty-state">No completed order history records found.</p>`;
 }
 
 async function deleteOrder(id) {
-  if (!confirm("Soft delete this order?")) return;
+  if (!confirm("Soft delete this order from the database?")) return;
+  try {
+    await apiRequest(`/orders/${id}`, { method: "DELETE" });
+    await loadAdminDashboardMetrics();
+  } catch (err) {
+    console.error("Failed to delete order:", err);
+  }
+}
 
 // --- 2. MENU ITEMS & RECIPES CRUD ---
 async function fetchProducts() {
@@ -595,16 +621,10 @@ function initCategoryPieChart() {
     categoriesMap[cat] = 0;
   });
 
-  await loadAdminDashboard();
-}
-
-document.addEventListener("DOMContentLoaded", async () => {
-  if (
-    !getToken() &&
-    !location.pathname.includes("index.html") &&
-    !location.pathname.includes("intro.html")
-  ) {
-    console.warn("No token found. If auth redirects are handled somewhere else, ignore this warning.");
+  if (Object.keys(categoriesMap).length === 0) {
+    categoriesMap["Main Course"] = 1;
+    categoriesMap["Appetizers"] = 1;
+    categoriesMap["Beverages"] = 1;
   }
 
   // Aggregate totals by category

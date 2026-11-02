@@ -3,26 +3,15 @@ const db = require("../config/db");
 exports.findAll = async () => {
   const result = await db.query(
     `SELECT *
-     FROM chairs
+     FROM restaurant.chairs
      WHERE deleted_at IS NULL
      ORDER BY id`
   );
-
   return result.rows;
 };
 
-exports.lockChairs = async (chairIds) => {
-  const result = await db.query(
-    `UPDATE chairs
-     SET status = 'locked',
-         locked_until = NOW() + INTERVAL '10 minutes',
-         updated_at = NOW()
-     WHERE id = ANY($1::int[])
-       AND status = 'vacant'
-       AND deleted_at IS NULL
-     RETURNING *`,
-    [chairIds]
-  );
+exports.lockTable = async (tableId) => {
+  const client = await db.connect();
 
   try {
     await client.query("BEGIN");
@@ -79,20 +68,12 @@ exports.lockChairs = async (chairIds) => {
   } finally {
     client.release();
   }
-
-  return result.rows;
 };
 
 exports.releaseExpiredLocks = async () => {
-  const result = await db.query(
-    `UPDATE chairs
-     SET status = 'vacant',
-         locked_until = NULL,
-         updated_at = NOW()
-     WHERE status = 'locked'
-       AND locked_until < NOW()
-     RETURNING *`
-  );
+  const client = await db.connect();
+  try {
+    await client.query("BEGIN");
 
     await client.query(
       `UPDATE restaurant.chairs c

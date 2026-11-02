@@ -1,13 +1,28 @@
 const orderModel = require("../models/orderModel");
+const { getPublicBaseUrl } = require("../config/publicUrl");
 
 exports.createOrder = async (req, res) => {
   try {
+    const chairIds = Array.isArray(req.body.chairIds) ? req.body.chairIds : [];
+    const type = req.body.type || (chairIds.length ? "dine_in" : null);
+
+    if (!type || !["dine_in", "takeout"].includes(type)) {
+      return res.status(400).json({
+        message: "A valid order type is required. Select a table for dine-in before ordering."
+      });
+    }
+
     const order = await orderModel.create({
-      userId: req.user.id,
-      type: req.body.type,
-      chairIds: req.body.chairIds,
+      userId: req.user?.id || null,
+      type,
+      chairIds,
       items: req.body.items,
-      paymentMethod: req.body.payment_method || "Cash",
+      paymentMethod: req.body.payment_method || "GCash",
+      reservationDate: req.body.reservation_date,
+      reservationTime: req.body.reservation_time,
+      customerName: req.body.customer_name || req.body.customerName,
+      contactNumber: req.body.contact_number || req.body.contactNumber,
+      receiptBaseUrl: getPublicBaseUrl(req),
     });
 
     res.status(201).json(order);
