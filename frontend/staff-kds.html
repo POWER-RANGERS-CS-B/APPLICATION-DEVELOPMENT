@@ -6,10 +6,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DineQueue Staff KDS</title>
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/style.css?v=staff-glass-structure-20261103" />
 </head>
 
-<body>
+<body class="staff-kds-page">
   <main class="page">
     <div class="topbar">
       <div>
@@ -23,19 +23,39 @@
       <div>
         <div id="kdsOrders" class="kds-scroll"></div>
       </div>
-
-      <aside class="panel kds-tools">
-        <h2>Table Cleaning</h2>
-        <p class="muted">Enter table ID after cleaning.</p>
-
-        <input id="tableId" type="number" placeholder="Table ID" />
-        <button onclick="markCleaned()">Mark Cleaned</button>
-      </aside>
     </section>
+
+    <section id="staffReservationsPanel" class="panel staff-reservations-panel" hidden>
+      <div class="card-header">
+        <div>
+          <h2>Table Reservations</h2>
+          <p class="muted">Check in guests when they arrive. Complete or cancel reservations from this list.</p>
+        </div>
+      </div>
+      <div class="staff-reservations-scroll">
+        <table class="staff-reservations-table">
+          <thead>
+            <tr>
+              <th>Table</th>
+              <th>Customer</th>
+              <th>Contact</th>
+              <th>Guests</th>
+              <th>Date &amp; Time</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="staffReservations">
+            <tr><td colspan="7" class="muted">Loading reservations...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
   </main>
 
   <script src="js/api.js"></script>
-  <script src="js/staff.js"></script>
+  <script src="js/staff.js?v=staff-glass-structure-20261103"></script>
 </body>
 
 </html>

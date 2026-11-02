@@ -156,14 +156,21 @@ async function continueReservationToChairs() {
     document.getElementById("reservationName")?.value.trim() ||
     localStorage.getItem("full_name") ||
     "Customer";
-  const contact =
-    document.getElementById("reservationContact")?.value.trim() ||
-    "N/A";
+  const contactInput = document.getElementById("reservationContact");
+  const localMobileNumber = contactInput?.value.trim() || "";
 
   if (!date || !time) {
     alert("Please select reservation date and time.");
     return;
   }
+
+  if (!/^9\d{9}$/.test(localMobileNumber)) {
+    alert("Enter a valid 10-digit Philippine mobile number starting with 9.");
+    contactInput?.focus();
+    return;
+  }
+
+  const contact = `+63${localMobileNumber}`;
 
   reservationDetails = {
     date,
@@ -268,10 +275,15 @@ async function loadFloorPlan() {
   let tables = [];
 
   try {
-    const [chairData, tableData] = await Promise.all([
-      request("/chairs"),
-      request("/tables")
-    ]);
+    const tableQuery = new URLSearchParams();
+    if (orderType === "reservation" && reservationDetails?.date && reservationDetails?.time) {
+      tableQuery.set("reservation_date", reservationDetails.date);
+      tableQuery.set("reservation_time", reservationDetails.time);
+    }
+    const tableQueryString = tableQuery.toString();
+    const tablePath = tableQueryString ? `/tables?${tableQueryString}` : "/tables";
+    const chairData = await request("/chairs");
+    const tableData = await request(tablePath);
 
     chairs = Array.isArray(chairData) ? chairData : [];
     tables = Array.isArray(tableData) ? tableData : [];
@@ -305,6 +317,11 @@ async function loadFloorPlan() {
         table_id: blueprintTable.id,
         status: "vacant"
       }));
+
+    const isAvailable =
+      String(realTable.effective_status || realTable.status || "vacant").toLowerCase() === "vacant" &&
+      chairSource.length > 0 &&
+      chairSource.every((chair) => String(chair.status || "vacant").toLowerCase() === "vacant");
 
     const tableGroup = document.createElement("div");
     tableGroup.className = "table-group";
@@ -502,7 +519,13 @@ function renderMenu(items) {
 
   menuGrid.innerHTML = filtered.map((item, index) => {
     const name = getItemName(item);
-    const imageUrl = foodImages[name] || "images/menu-images/default-food.png";
+    // Existing catalog images use local filename mappings; admin uploads use
+    // backend-relative paths, so resolve those against the API server origin.
+    const backendOrigin = `${window.location.protocol === "https:" ? "https:" : "http:"}//${window.location.hostname || "localhost"}:3000/`;
+    const uploadedImageUrl = item.image_url
+      ? new URL(item.image_url, backendOrigin).href
+      : "";
+    const imageUrl = foodImages[name] || uploadedImageUrl || "images/menu-images/default-food.png";
     const stock = Number(item.stock_count ?? item.stock ?? 99);
     const price = Number(item.price || 0);
 
@@ -730,6 +753,20 @@ async function placeOrder() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  const cartDialog = document.getElementById("cartDialog");
+  cartDialog?.addEventListener("close", () => {
+    document.getElementById("floatingCartButton")?.setAttribute("aria-expanded", "false");
+  });
+
+  updateCartTotal();
+
+  setInterval(() => {
+    const floorSection = document.getElementById("floorSection");
+    if (floorSection && floorSection.style.display !== "none") {
+      loadFloorPlan();
+    }
+  }, 5000);
+
   if (
     !localStorage.getItem("token") &&
     !localStorage.getItem("dinequeue_token") &&
