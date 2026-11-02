@@ -167,15 +167,3 @@ async function signup() {
     );
   }
 }
-function togglePasswordVisibility() {
-  const passwordInput = document.getElementById("password");
-  const toggleButton = document.querySelector(".password-toggle");
-
-  if (!passwordInput || !toggleButton) return;
-
-  const isVisible = passwordInput.type === "text";
-  passwordInput.type = isVisible ? "password" : "text";
-  toggleButton.setAttribute("aria-label", isVisible ? "Show password" : "Hide password");
-  toggleButton.setAttribute("aria-pressed", String(!isVisible));
-}
-
