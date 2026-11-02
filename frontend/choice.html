@@ -108,7 +108,19 @@
 
                   <label>
                     Contact Number
-                    <input id="reservationContact" type="text" placeholder="Enter contact number" />
+                    <span class="phone-number-field">
+                      <span aria-hidden="true">+63</span>
+                      <input
+                        id="reservationContact"
+                        type="tel"
+                        inputmode="numeric"
+                        autocomplete="tel-national"
+                        maxlength="10"
+                        pattern="9[0-9]{9}"
+                        aria-label="10-digit Philippine mobile number without country code"
+                        placeholder="9XXXXXXXXX"
+                      />
+                    </span>
                   </label>
 
                   <div class="reservation-actions">
@@ -283,7 +295,7 @@
   </div>
 
   <script src="js/api.js"></script>
-  <script src="js/choice.js"></script>
+  <script src="js/choice.js?v=scheduled-reservation-slots-20261103"></script>
 </body>
 
 </html>

@@ -27,6 +27,11 @@ exports.create = async ({ userId, type, chairIds = [], items = [], paymentMethod
 
     let total = 0;
     let reservationId = null;
+    const orderItems = [];
+
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new Error("Add at least one menu item before placing the order.");
+    }
 
     if (type === "dine_in") {
       if (!chairIds.length) {
@@ -47,9 +52,54 @@ exports.create = async ({ userId, type, chairIds = [], items = [], paymentMethod
         throw new Error("Selected chair does not exist.");
       }
 
+      // Atomically convert the hold to occupied so only one order can claim it.
+      const tableResult = await client.query(
+        `UPDATE restaurant.restaurant_tables
+         SET status = 'occupied', updated_at = NOW()
+         WHERE id = $1
+           AND deleted_at IS NULL
+           AND status = 'reserved'
+         RETURNING id`,
+        [tableId]
+      );
+      
+      if (!tableResult.rows[0]) {
+        throw new Error("The selected table is no longer available. Please choose another table.");
+      }
+
+      const tableChairsResult = await client.query(
+        `SELECT id, status, (locked_until > NOW()) AS hold_active
+         FROM restaurant.chairs
+         WHERE table_id = $1 AND deleted_at IS NULL
+         ORDER BY id
+         FOR UPDATE`,
+        [tableId]
+      );
+
+      const requestedChairIds = [...new Set(chairIds.map(Number))].sort((a, b) => a - b);
+      const activeTableChairIds = tableChairsResult.rows.map((chair) => Number(chair.id)).sort((a, b) => a - b);
+      
+      const ownsWholeTable =
+        requestedChairIds.length === activeTableChairIds.length &&
+        requestedChairIds.every((id, index) => id === activeTableChairIds[index]);
+
+      if (!ownsWholeTable || !tableChairsResult.rows.length) {
+        throw new Error("Your table hold expired or is no longer available. Please choose a table again.");
+      }
+
+      if (tableChairsResult.rows.some((chair) => chair.status !== "reserved" || !chair.hold_active)) {
+        throw new Error("Your table hold expired or is no longer available. Please choose a table again.");
+      }
+
+      const dateValue = reservationDate || new Date().toISOString().split("T")[0];
+      const timeValue = reservationTime || new Date().toTimeString().split(" ")[0];
+      const resolvedName = customerName || "Customer";
+      const resolvedContact = contactNumber || "N/A";
+
       const reservationResult = await client.query(
-        `INSERT INTO reservations (user_id, table_id, num_guests)
-         VALUES ($1, $2, $3)
+        `INSERT INTO restaurant.reservations
+         (user_id, table_id, num_guests, status, reservation_date, reservation_time, customer_name, contact_number)
+         VALUES ($1, $2, $3, 'checked_in', $4, $5, $6, $7)
          RETURNING id`,
         [userId, tableId, chairIds.length]
       );
@@ -63,39 +113,38 @@ exports.create = async ({ userId, type, chairIds = [], items = [], paymentMethod
         [chairIds]
       );
 
-      await client.query(
-        `UPDATE restaurant_tables
-         SET status = 'occupied', updated_at = NOW()
-         WHERE id = $1`,
-        [tableId]
-      );
     }
 
     for (const item of items) {
+      const quantity = Number(item.quantity);
+      if (!Number.isSafeInteger(quantity) || quantity <= 0) {
+        throw new Error(`Invalid quantity for item ${item.menu_item_id}.`);
+      }
+
       const menuResult = await client.query(
-        `SELECT *
-         FROM menu_items
+        `UPDATE restaurant.menu_items
+         SET stock_count = stock_count - $2,
+             updated_at = NOW()
          WHERE id = $1
            AND deleted_at IS NULL
-         FOR UPDATE`,
-        [item.menu_item_id]
+           AND stock_count >= $2
+         RETURNING price`,
+        [item.menu_item_id, quantity]
       );
 
       const menuItem = menuResult.rows[0];
 
-      if (!menuItem || menuItem.stock_count < item.quantity) {
+      if (!menuItem) {
         throw new Error(`Not enough stock for item ${item.menu_item_id}.`);
       }
 
-      total += Number(menuItem.price) * item.quantity;
-
-      await client.query(
-        `UPDATE menu_items
-         SET stock_count = stock_count - $2,
-             updated_at = NOW()
-         WHERE id = $1`,
-        [item.menu_item_id, item.quantity]
-      );
+      const unitPrice = Number(menuItem.price);
+      total += unitPrice * quantity;
+      orderItems.push({
+        menuItemId: Number(item.menu_item_id),
+        quantity,
+        unitPrice,
+      });
     }
 
     const orderCode = await generateOrderCode(client);
@@ -148,19 +197,12 @@ exports.create = async ({ userId, type, chairIds = [], items = [], paymentMethod
 
     const order = orderResult.rows[0];
 
-    for (const item of items) {
-      const priceResult = await client.query(
-        "SELECT price FROM menu_items WHERE id = $1",
-        [item.menu_item_id]
-      );
-
-      const price = Number(priceResult.rows[0].price);
-
+    for (const item of orderItems) {
       await client.query(
         `INSERT INTO order_items
          (order_id, menu_item_id, quantity, unit_price, subtotal)
          VALUES ($1, $2, $3, $4, $5)`,
-        [order.id, item.menu_item_id, item.quantity, price, price * item.quantity]
+        [order.id, item.menuItemId, item.quantity, item.unitPrice, item.unitPrice * item.quantity]
       );
     }
 
@@ -187,13 +229,17 @@ exports.findKdsOrders = async () => {
 };
 
 exports.updateStatus = async (id, status) => {
+  if (!["preparing", "ready", "completed"].includes(status)) {
+    throw new Error("Invalid order status.");
+  }
+
   const client = await db.connect();
 
   try {
     await client.query("BEGIN");
 
     const result = await client.query(
-      `UPDATE orders
+      `UPDATE restaurant.orders
        SET status = $2, updated_at = NOW()
        WHERE id = $1
        RETURNING *`,
@@ -269,6 +315,41 @@ exports.updateStatus = async (id, status) => {
             orderedItems
           ]
         );
+      }
+
+      if (order.type === "dine_in" && order.reservation_id) {
+        const reservationResult = await client.query(
+          `SELECT table_id
+           FROM restaurant.reservations
+           WHERE id = $1
+           FOR UPDATE`,
+          [order.reservation_id]
+        );
+
+        const tableId = reservationResult.rows[0]?.table_id;
+
+        if (tableId) {
+          await client.query(
+            `UPDATE restaurant.reservations
+             SET status = 'completed', updated_at = NOW()
+             WHERE id = $1 AND status IN ('active', 'checked_in')`,
+            [order.reservation_id]
+          );
+
+          await client.query(
+            `UPDATE restaurant.chairs
+             SET status = 'vacant', locked_until = NULL, updated_at = NOW()
+             WHERE table_id = $1 AND deleted_at IS NULL`,
+            [tableId]
+          );
+
+          await client.query(
+            `UPDATE restaurant.restaurant_tables
+             SET status = 'vacant', updated_at = NOW()
+             WHERE id = $1 AND deleted_at IS NULL`,
+            [tableId]
+          );
+        }
       }
     }
 
