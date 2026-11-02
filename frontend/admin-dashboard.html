@@ -46,120 +46,8 @@
       </div>
     </div>
 
-    <!-- 1. DASHBOARD & KPIS TAB -->
-    <section id="tab-dashboard" class="tab-section active">
-      
-      <!-- TOP 4 METRIC CARDS ROW -->
-      <div class="hound-metrics-grid">
-        <div class="hound-metric-card">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span class="metric-title">Total Sales</span>
-            <span style="color: var(--success); font-size: 11px; font-weight: 800;">+3.34%</span>
-          </div>
-          <div class="metric-value">₱<span id="kpiRevenue">0.00</span></div>
-        </div>
-
-        <div class="hound-metric-card">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span class="metric-title">Total Orders</span>
-            <span style="color: var(--danger); font-size: 11px; font-weight: 800;">-2.89%</span>
-          </div>
-          <div class="metric-value" id="kpiOrders" style="color: var(--white);">0</div>
-        </div>
-
-        <div class="hound-metric-card">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span class="metric-title">Active Staff</span>
-            <span style="color: var(--success); font-size: 11px; font-weight: 800;">+8.02%</span>
-          </div>
-          <div class="metric-value" id="kpiUsers" style="color: var(--white);">0</div>
-        </div>
-
-        <div class="hound-metric-card">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span class="metric-title">Conversion Rate</span>
-            <span style="color: var(--success); font-size: 11px; font-weight: 800;">+2.1%</span>
-          </div>
-          <div class="metric-value" id="kpiConversion">0.0%</div>
-        </div>
-      </div>
-
-      <!-- MIDDLE ROW: REVENUE ANALYTICS + CATEGORY PIE CHART -->
-      <div class="hound-analytics-grid">
-        <!-- Revenue Velocity Chart -->
-        <div class="card" style="margin: 0; display: flex; flex-direction: column; justify-content: space-between;">
-          <div class="card-header" style="margin-bottom: 12px;">
-            <div>
-              <h3>Revenue Analytics</h3>
-              <p>Real-time revenue velocity tracking.</p>
-            </div>
-            <select id="revenueTimeFilter" class="panel-input-control" style="width: 120px; min-height: 36px; margin: 0; font-size: 12px;" onchange="updateRevenueChartRange()">
-              <option value="hourly">Hourly</option>
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-            </select>
-          </div>
-          <canvas id="revenueChart" height="130"></canvas>
-        </div>
-
-        <!-- Sales by Category Donut Chart (Side Widget) -->
-        <div class="card" style="margin: 0; display: flex; flex-direction: column; justify-content: space-between;">
-          <div class="card-header" style="margin-bottom: 8px;">
-            <h3>Top Categories</h3>
-            <span style="font-size: 12px; color: var(--gold); cursor: pointer;">See All</span>
-          </div>
-          
-          <div class="category-card-flex">
-            <!-- Left Side: Doughnut Chart -->
-            <div class="category-chart-side">
-              <canvas id="categoryChart" height="130"></canvas>
-            </div>
-
-            <!-- Right Side: Category Legend -->
-            <div class="category-legend-side">
-              <div class="category-legend-item">
-                <span class="category-legend-color" style="background: #d6a83f;"></span>
-                <span>Appetizers</span>
-              </div>
-              <div class="category-legend-item">
-                <span class="category-legend-color" style="background: #ffe4a0;"></span>
-                <span>Beverages</span>
-              </div>
-              <div class="category-legend-item">
-                <span class="category-legend-color" style="background: #12304f;"></span>
-                <span>Desserts</span>
-              </div>
-              <div class="category-legend-item">
-                <span class="category-legend-color" style="background: #e05656;"></span>
-                <span>Main Course</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      <!-- BOTTOM ROW: LIVE DATABASE MONITORS -->
-      <div class="hound-bottom-grid">
-        <div class="card" style="margin: 0;">
-          <div class="card-header" style="margin-bottom: 10px;">
-            <h3>Live Database Orders</h3>
-          </div>
-          <div id="orders" class="dashboard-scroll" style="max-height: 220px;"></div>
-        </div>
-
-        <div class="card" style="margin: 0;">
-          <div class="card-header" style="margin-bottom: 10px;">
-            <h3>Reservations</h3>
-          </div>
-          <div id="reservations" class="dashboard-scroll" style="max-height: 220px;"></div>
-        </div>
-      </div>
-
-    </section>
-
-    <!-- 2. MENU MANAGEMENT TAB -->
-    <section id="tab-menu" class="tab-section">
-      <div class="card-header">
+    <section class="admin-panel account-management-panel">
+      <div class="panel-heading-row">
         <div>
           <span class="section-kicker">Account Management</span>
           <h2>Create Staff Account</h2>
@@ -195,6 +83,7 @@
   </main>
 
   <script src="js/api.js"></script>
-  <script src="js/admin.js?v=reservation-statuses-20261103"></script>
+  <script src="js/admin.js"></script>
 </body>
+
 </html>
