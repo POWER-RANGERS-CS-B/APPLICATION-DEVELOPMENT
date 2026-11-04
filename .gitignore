@@ -1,0 +1,20 @@
+# Secrets and local environment files
+.env
+.env.*
+!.env.example
+
+# Node.js dependencies
+node_modules/
+backend/node_modules/
+
+# Logs
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+
+.venv/
+.venv-win/
+

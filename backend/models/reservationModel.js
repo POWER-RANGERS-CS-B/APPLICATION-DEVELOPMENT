@@ -1,14 +1,19 @@
 const db = require("../config/db");
+const auditService = require("../services/auditService");
+const { normalizeReservationCustomer } = require("../utils/reservationCustomerValidation");
 
 exports.create = async ({
   userId,
+  actorName,
   chairIds = [],
   reservationDate,
   reservationTime,
   customerName,
   contactNumber,
+  contactCountry,
   numGuests,
 }) => {
+  const customer = normalizeReservationCustomer(customerName, contactNumber, contactCountry);
   const client = await db.connect();
 
   try {
@@ -89,8 +94,8 @@ exports.create = async ({
         numGuests || chairIds.length,
         reservationDate,
         reservationTime,
-        customerName || "Customer",
-        contactNumber || "N/A",
+        customer.customerName,
+        customer.contactNumber,
       ]
     );
 
@@ -110,6 +115,47 @@ exports.create = async ({
        WHERE id = $1`,
       [tableId]
     );
+
+    await auditService.insert(client, {
+      userId,
+      actorName,
+      action: "TABLE_STATUS_CHANGED",
+      module: "tables",
+      entityId: tableId,
+      previousValues: { status: tableStateResult.rows[0].status },
+      newValues: { status: "occupied" },
+      details: { reservation_id: reservationResult.rows[0].id },
+    });
+
+    await auditService.insert(client, {
+      userId,
+      actorName,
+      action: "CHAIR_STATUS_CHANGED",
+      module: "chairs",
+      entityId: tableId,
+      previousValues: {
+        chairs: tableChairsResult.rows.map(({ id, status }) => ({ id, status })),
+      },
+      newValues: {
+        chairs: tableChairsResult.rows.map(({ id }) => ({ id, status: "occupied" })),
+      },
+      details: { reservation_id: reservationResult.rows[0].id },
+    });
+
+    await auditService.insert(client, {
+      userId,
+      actorName,
+      action: "RESERVATION_CREATED",
+      module: "reservations",
+      entityId: reservationResult.rows[0].id,
+      newValues: {
+        table_id: tableId,
+        num_guests: reservationResult.rows[0].num_guests,
+        status: reservationResult.rows[0].status,
+        reservation_date: reservationResult.rows[0].reservation_date,
+        reservation_time: reservationResult.rows[0].reservation_time,
+      },
+    });
 
     await client.query("COMMIT");
 
@@ -134,6 +180,26 @@ exports.findAll = async () => {
      LEFT JOIN restaurant.restaurant_tables rt ON rt.id = r.table_id
      WHERE r.deleted_at IS NULL
      ORDER BY r.created_at DESC`
+  );
+
+  return result.rows;
+};
+
+exports.findForecastHistory = async (asOf) => {
+  const result = await db.query(
+    `SELECT
+       id,
+       reservation_date::text AS reservation_date,
+       reservation_time::text AS reservation_time,
+       num_guests,
+       updated_at::text AS updated_at
+     FROM restaurant.reservations
+     WHERE deleted_at IS NULL
+       AND LOWER(COALESCE(status::text, '')) IN ('active', 'completed', 'confirmed')
+       AND reservation_date >= $1::date - INTERVAL '1095 days'
+       AND reservation_date < $1::date
+     ORDER BY reservation_date, reservation_time`,
+    [asOf]
   );
 
   return result.rows;

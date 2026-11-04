@@ -1,15 +1,24 @@
 const reservationModel = require("../models/reservationModel");
+const { normalizeReservationCustomer } = require("../utils/reservationCustomerValidation");
 
 exports.createReservation = async (req, res) => {
   try {
+    const body = req.body ?? {};
+    const { customerName, contactNumber } = normalizeReservationCustomer(
+      body.customer_name,
+      body.contact_number,
+      body.contact_country
+    );
     const reservation = await reservationModel.create({
       userId: req.user?.id || null,
-      chairIds: req.body.chairIds || [],
-      reservationDate: req.body.reservation_date,
-      reservationTime: req.body.reservation_time,
-      customerName: req.body.customer_name,
-      contactNumber: req.body.contact_number,
-      numGuests: req.body.num_guests,
+      actorName: req.user?.email || null,
+      chairIds: body.chairIds || [],
+      reservationDate: body.reservation_date,
+      reservationTime: body.reservation_time,
+      customerName,
+      contactNumber,
+      contactCountry: body.contact_country,
+      numGuests: body.num_guests,
     });
 
     res.status(201).json(reservation);

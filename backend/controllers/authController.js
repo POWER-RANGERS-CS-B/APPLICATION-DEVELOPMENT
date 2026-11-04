@@ -1,55 +1,64 @@
+const { assertRequiredEnvironmentVariables } = require("../config/env");
+assertRequiredEnvironmentVariables(["JWT_SECRET"]);
+
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const authModel = require("../models/authModel");
-
-// Helper function to validate allowed email domains
-const isValidEmailDomain = (email) => {
-  if (!email) return false;
-  
-  // PASTED HERE: Allows ANY domain as long as it has a valid format (e.g., text@domain.suffix)
-  const domainRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-  
-  return domainRegex.test(email.trim());
-};
-
-exports.signup = async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    // Reject signup if email is completely missing or lacks a valid @domain.suffix structure
-    if (!isValidEmailDomain(email)) {
-      return res.status(400).json({ 
-        message: "Invalid email format. Please provide a complete email address (e.g., user@example.com)." 
-      });
-    }
-
-    const user = await authModel.createUser(req.body);
-    res.status(201).json(user);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-};
+const auditService = require("../services/auditService");
+const { isValidEmailDomain } = require("../utils/emailValidation");
 
 exports.login = async (req, res) => {
+  const submittedEmail =
+    typeof req.body.email === "string" ? req.body.email.trim().slice(0, 255) : null;
+
   try {
     const { email, password } = req.body;
 
     // Reject login if email lacks a valid @domain.suffix structure
     if (!isValidEmailDomain(email)) {
+      await auditService.record({
+        actorName: submittedEmail,
+        action: "LOGIN_FAILED",
+        module: "auth",
+        details: { reason: "invalid_email" },
+      });
       return res.status(400).json({ 
         message: "Invalid email format. Please log in using a complete email address (e.g., user@example.com)." 
       });
     }
 
+    if (typeof password !== "string" || password.length === 0) {
+      await auditService.record({
+        actorName: submittedEmail,
+        action: "LOGIN_FAILED",
+        module: "auth",
+        details: { reason: "invalid_credentials" },
+      });
+      return res.status(401).json({ message: "Invalid email or password." });
+    }
+
     const user = await authModel.findByEmail(email.trim());
 
     if (!user) {
+      await auditService.record({
+        actorName: submittedEmail,
+        action: "LOGIN_FAILED",
+        module: "auth",
+        details: { reason: "invalid_credentials" },
+      });
       return res.status(401).json({ message: "Invalid email or password." });
     }
 
     const isMatch = await bcrypt.compare(password, user.password_hash);
 
     if (!isMatch) {
+      await auditService.record({
+        userId: user.id,
+        actorName: user.email,
+        action: "LOGIN_FAILED",
+        module: "auth",
+        details: { reason: "invalid_credentials" },
+      });
       return res.status(401).json({ message: "Invalid email or password." });
     }
 
@@ -58,6 +67,17 @@ exports.login = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
+
+    const auditRecorded = await auditService.record({
+      userId: user.id,
+      actorName: user.full_name,
+      action: "LOGIN_SUCCESS",
+      module: "auth",
+    });
+
+    if (!auditRecorded) {
+      return res.status(503).json({ message: "Login is temporarily unavailable. Please try again." });
+    }
 
     res.json({
       token,
@@ -71,4 +91,19 @@ exports.login = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
+};
+
+exports.logout = async (req, res) => {
+  const recorded = await auditService.record({
+    userId: req.user.id,
+    actorName: req.user.email,
+    action: "LOGOUT",
+    module: "auth",
+  });
+
+  if (!recorded) {
+    return res.status(503).json({ message: "Logout could not be recorded. Please retry." });
+  }
+
+  res.json({ message: "Logged out." });
 };

@@ -6,6 +6,7 @@ const { authenticate, allowRoles } = require("../middleware/auth");
 const requiredHandlers = {
   createOrder: orderController.createOrder,
   getReceipt: orderController.getReceipt,
+  getCategorySales: orderController.getCategorySales,
   getKdsOrders: orderController.getKdsOrders,
   getOrderHistory: orderController.getOrderHistory,
   getTodayIncome: orderController.getTodayIncome,
@@ -21,6 +22,7 @@ for (const [name, handler] of Object.entries(requiredHandlers)) {
 
 router.post("/", requiredHandlers.createOrder);
 router.get("/receipt", requiredHandlers.getReceipt);
+router.get("/category-sales", authenticate, allowRoles("admin"), requiredHandlers.getCategorySales);
 router.get("/kds", authenticate, allowRoles("admin", "staff"), requiredHandlers.getKdsOrders);
 router.get("/history", authenticate, allowRoles("admin"), requiredHandlers.getOrderHistory);
 router.get("/income/today", authenticate, allowRoles("admin"), requiredHandlers.getTodayIncome);

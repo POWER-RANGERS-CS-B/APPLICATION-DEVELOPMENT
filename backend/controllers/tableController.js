@@ -11,9 +11,27 @@ exports.getTables = async (req, res) => {
 
 exports.cleanTable = async (req, res) => {
   try {
-    const result = await tableModel.markCleaned(req.params.id);
+    const result = await tableModel.markCleaned(req.params.id, req.user);
     res.json(result);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(error.statusCode || 500).json({ message: error.message });
+  }
+};
+
+exports.markNeedsCleaning = async (req, res) => {
+  try {
+    const result = await tableModel.markNeedsCleaning(req.params.id, req.user);
+    res.json(result);
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ message: error.message });
+  }
+};
+
+exports.startCleaning = async (req, res) => {
+  try {
+    const result = await tableModel.startCleaning(req.params.id, req.user);
+    res.json(result);
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ message: error.message });
   }
 };

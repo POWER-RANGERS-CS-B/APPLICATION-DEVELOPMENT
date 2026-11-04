@@ -5,37 +5,209 @@
   <script src="js/transitions.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DineQueue Staff KDS</title>
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="icon" href="/images/icon/dineari-logo.ico" type="image/x-icon" />
+  <title>Dine-Ari Staff Workspace</title>
+  <script src="js/theme.js?v=20261104-day-night-switch-2"></script>
+  <link rel="stylesheet" href="css/style.css?v=20261105-table-cleaning-1" />
+  <link rel="stylesheet" href="css/design-system.css?v=20261105-table-cleaning-1" />
+  <script src="/vendor/lucide/lucide.min.js?v=1.67.0"></script>
 </head>
 
-<body>
-  <main class="page">
-    <div class="topbar">
-      <div>
-        <span class="section-kicker">Kitchen Display</span>
-        <h1 class="logo-title">Staff KDS</h1>
-      </div>
-      <button class="secondary" onclick="logout()">Logout</button>
+<body class="kds-app-layout staff-workspace-layout">
+  <aside class="staff-sidebar" aria-label="Staff workspace navigation">
+    <div class="staff-sidebar-header">
+      <a class="staff-brand" href="#overview" aria-label="Dine-Ari staff workspace home">
+        <picture class="system-logo-picture">
+          <source srcset="images/Logo/dineari-logo.webp" type="image/webp" />
+          <img class="system-logo system-logo-kds" src="images/Logo/Dine-ari%20Chef%E2%80%99s%20Table%20Logo.png" alt="Dine-Ari Chef’s Table" width="1536" height="1024" decoding="async" />
+        </picture>
+        <span class="staff-brand-caption">STAFF WORKSPACE</span>
+      </a>
     </div>
 
-    <section class="kds-layout">
+    <nav class="staff-nav" id="staffNavigation" aria-label="Workspace sections">
+      <a class="staff-nav-link is-active" href="#overview" aria-current="page">
+        <i data-lucide="layout-dashboard" aria-hidden="true"></i>
+        <span>Overview</span>
+      </a>
+      <a class="staff-nav-link" href="#orders">
+        <i data-lucide="chef-hat" aria-hidden="true"></i>
+        <span>Kitchen orders</span>
+        <span class="staff-nav-count" id="staffSidebarOrderCount">0</span>
+      </a>
+      <a class="staff-nav-link" href="#table-cleaning">
+        <i data-lucide="brush-cleaning" aria-hidden="true"></i>
+        <span>Table cleaning</span>
+      </a>
+    </nav>
+
+    <div class="staff-sidebar-footer">
+      <button class="staff-sidebar-logout" type="button" onclick="logout()">
+        <i data-lucide="log-out" aria-hidden="true"></i>
+        <span>Logout</span>
+      </button>
+    </div>
+  </aside>
+  <div class="staff-drawer-backdrop" aria-hidden="true"></div>
+
+  <main class="staff-main-content">
+    <header class="topbar staff-topbar">
+      <button class="staff-mobile-menu-toggle" type="button" aria-label="Open staff navigation" aria-expanded="false" aria-controls="staffNavigation">
+        <i class="staff-menu-icon" data-lucide="menu" aria-hidden="true"></i>
+        <i class="staff-menu-close-icon" data-lucide="x" aria-hidden="true"></i>
+      </button>
       <div>
-        <div id="kdsOrders" class="kds-scroll"></div>
+        <span class="section-kicker">STAFF WORKSPACE</span>
+        <h1>Kitchen operations</h1>
       </div>
+    </header>
 
-      <aside class="panel kds-tools">
-        <h2>Table Cleaning</h2>
-        <p class="muted">Enter table ID after cleaning.</p>
+    <div class="staff-content">
+      <section id="overview" class="staff-page-section staff-overview" aria-labelledby="staffOverviewTitle">
+        <div class="staff-page-heading">
+          <div>
+            <span class="section-kicker">SERVICE OVERVIEW</span>
+            <h2 id="staffOverviewTitle">Good service starts here</h2>
+            <p class="muted">Keep kitchen orders moving and tables ready for the next guests.</p>
+          </div>
+          <div class="staff-live-indicator">
+            <span class="staff-status-dot" aria-hidden="true"></span>
+            Live order updates
+          </div>
+        </div>
 
-        <input id="tableId" type="number" placeholder="Table ID" />
-        <button onclick="markCleaned()">Mark Cleaned</button>
-      </aside>
-    </section>
+        <div class="staff-metrics-grid" aria-label="Current kitchen order totals">
+          <article class="staff-metric-card">
+            <span class="staff-metric-icon"><i data-lucide="inbox" aria-hidden="true"></i></span>
+            <span class="staff-metric-label">Pending</span>
+            <strong id="staffPendingCount" class="staff-metric-value">0</strong>
+            <span class="staff-metric-note">Waiting to be started</span>
+          </article>
+          <article class="staff-metric-card">
+            <span class="staff-metric-icon"><i data-lucide="cooking-pot" aria-hidden="true"></i></span>
+            <span class="staff-metric-label">Preparing</span>
+            <strong id="staffPreparingCount" class="staff-metric-value">0</strong>
+            <span class="staff-metric-note">In the kitchen now</span>
+          </article>
+          <article class="staff-metric-card">
+            <span class="staff-metric-icon"><i data-lucide="badge-check" aria-hidden="true"></i></span>
+            <span class="staff-metric-label">Ready to serve</span>
+            <strong id="staffReadyCount" class="staff-metric-value">0</strong>
+            <span class="staff-metric-note">Ready for collection</span>
+          </article>
+        </div>
+
+        <div class="staff-overview-links" aria-label="Staff workspace sections">
+          <a class="staff-overview-link" href="#orders">
+            <span class="staff-overview-link-icon"><i data-lucide="chef-hat" aria-hidden="true"></i></span>
+            <span class="staff-overview-link-copy">
+              <strong>Kitchen orders</strong>
+              <span><span id="staffOverviewOrderCount">0</span> active orders · <span id="staffOverviewPendingCount">0</span> pending</span>
+            </span>
+            <i data-lucide="arrow-up-right" aria-hidden="true"></i>
+          </a>
+          <a class="staff-overview-link" href="#table-cleaning">
+            <span class="staff-overview-link-icon"><i data-lucide="brush-cleaning" aria-hidden="true"></i></span>
+            <span class="staff-overview-link-copy">
+              <strong>Table cleaning</strong>
+              <span>Open the existing table cleaning tool</span>
+            </span>
+            <i data-lucide="arrow-up-right" aria-hidden="true"></i>
+          </a>
+        </div>
+      </section>
+
+      <section id="orders" class="staff-page-section" aria-labelledby="staffOrdersTitle" hidden>
+        <div class="staff-page-heading">
+          <div>
+            <span class="section-kicker">KITCHEN</span>
+            <h2 id="staffOrdersTitle">Kitchen orders</h2>
+            <p class="muted">Review active orders and update their preparation status.</p>
+          </div>
+          <span class="staff-module-count"><span id="staffActiveOrderCount">0</span> active</span>
+        </div>
+
+        <div class="staff-module staff-orders-module">
+          <div class="staff-module-heading">
+            <div>
+              <h3><i data-lucide="chef-hat" aria-hidden="true"></i> Active orders</h3>
+              <p class="muted">Update each order as it moves through preparation.</p>
+            </div>
+          </div>
+          <div id="kdsOrders" class="kds-scroll staff-orders-list" aria-live="polite" aria-busy="true">
+            <div class="staff-empty-state">
+              <i data-lucide="loader-circle" aria-hidden="true"></i>
+              <span>Loading active kitchen orders…</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="table-cleaning" class="staff-page-section" aria-labelledby="staffCleaningTitle" hidden>
+        <div class="staff-page-heading">
+          <div>
+            <span class="section-kicker">DINING ROOM</span>
+            <h2 id="staffCleaningTitle">Table cleaning</h2>
+            <p class="muted">View every restaurant table and move it through the cleaning workflow.</p>
+          </div>
+        </div>
+        <div class="staff-module staff-cleaning-module">
+          <div class="staff-cleaning-toolbar">
+            <div class="staff-module-heading">
+              <div>
+                <h3><i data-lucide="brush-cleaning" aria-hidden="true"></i> Restaurant tables</h3>
+                <p class="muted">Select a table to review its status and available action.</p>
+              </div>
+            </div>
+            <button id="staffTablesRefresh" class="secondary staff-tables-refresh" type="button">
+              <i data-lucide="refresh-cw" aria-hidden="true"></i>
+              Refresh
+            </button>
+          </div>
+
+          <div id="staffCleaningFilters" class="staff-cleaning-filters" role="group" aria-label="Filter tables by status">
+            <button class="staff-cleaning-filter is-active" type="button" data-table-filter="all" aria-pressed="true">
+              All tables <span id="staffTableCountAll">0</span>
+            </button>
+            <button class="staff-cleaning-filter" type="button" data-table-filter="needs_cleaning" aria-pressed="false">
+              Needs cleaning <span id="staffTableCountNeedsCleaning">0</span>
+            </button>
+            <button class="staff-cleaning-filter" type="button" data-table-filter="cleaning" aria-pressed="false">
+              Cleaning <span id="staffTableCountCleaning">0</span>
+            </button>
+            <button class="staff-cleaning-filter" type="button" data-table-filter="vacant" aria-pressed="false">
+              Clean / available <span id="staffTableCountVacant">0</span>
+            </button>
+            <button class="staff-cleaning-filter" type="button" data-table-filter="occupied" aria-pressed="false">
+              Occupied <span id="staffTableCountOccupied">0</span>
+            </button>
+          </div>
+
+          <p id="staffCleaningMessage" class="staff-cleaning-message" role="status" aria-live="polite"></p>
+
+          <div class="staff-cleaning-workspace">
+            <div id="staffTableGrid" class="staff-table-grid" aria-label="Restaurant tables" aria-live="polite" aria-busy="true">
+              <div class="staff-cleaning-empty">
+                <i data-lucide="loader-circle" aria-hidden="true"></i>
+                <span>Loading restaurant tables…</span>
+              </div>
+            </div>
+            <aside id="staffSelectedTable" class="staff-selected-table" aria-live="polite" aria-label="Selected table details">
+              <div class="staff-table-selection-prompt">
+                <i data-lucide="mouse-pointer-2" aria-hidden="true"></i>
+                <strong>Select a table</strong>
+                <span>Its current status and next action will appear here.</span>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+    </div>
   </main>
 
   <script src="js/api.js"></script>
-  <script src="js/staff.js"></script>
+  <script src="js/staff.js?v=20261105-table-cleaning-1"></script>
+  <script>if (window.lucide) lucide.createIcons();</script>
 </body>
 
 </html>
