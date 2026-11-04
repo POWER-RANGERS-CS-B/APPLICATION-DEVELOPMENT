@@ -6,8 +6,8 @@
   <link rel="icon" href="/images/icon/dineari-logo.ico" type="image/x-icon" />
   <title>Dine-Ari Admin Dashboard</title>
   <script src="js/theme.js?v=20261104-day-night-switch-2"></script>
-  <link rel="stylesheet" href="css/style.css?v=dine-ari-mobile-workspace-2" />
-  <link rel="stylesheet" href="css/design-system.css?v=20261104-admin-mobile-nav-5" />
+  <link rel="stylesheet" href="css/style.css?v=20261105-category-chart-1" />
+  <link rel="stylesheet" href="css/design-system.css?v=20261105-category-chart-1" />
   <script src="/vendor/chart.js/chart.umd.js"></script>
   <script src="/vendor/lucide/lucide.min.js?v=1.67.0"></script>
 </head>
@@ -145,25 +145,30 @@
             <!-- Left Side: Doughnut Chart -->
             <div class="category-chart-side">
               <canvas id="categoryChart" height="130"></canvas>
+              <p id="categoryChartStatus" class="category-chart-status" role="status" aria-live="polite">Loading category totals…</p>
             </div>
 
             <!-- Right Side: Category Legend -->
-            <div class="category-legend-side">
+            <div class="category-legend-side" aria-label="Sales totals by category">
               <div class="category-legend-item">
-                <span class="category-legend-color" style="background: var(--gold);"></span>
+                <span class="category-legend-color" style="background: #22A06B;"></span>
                 <span>Appetizers</span>
+                <span class="category-legend-value" data-category-value="Appetizers">—</span>
               </div>
               <div class="category-legend-item">
-                <span class="category-legend-color" style="background: #ffb45c;"></span>
+                <span class="category-legend-color" style="background: #F59E0B;"></span>
                 <span>Beverages</span>
+                <span class="category-legend-value" data-category-value="Beverages">—</span>
               </div>
               <div class="category-legend-item">
-                <span class="category-legend-color" style="background: #69402b;"></span>
+                <span class="category-legend-color" style="background: #3B82F6;"></span>
                 <span>Desserts</span>
+                <span class="category-legend-value" data-category-value="Desserts">—</span>
               </div>
               <div class="category-legend-item">
-                <span class="category-legend-color" style="background: #a45b14;"></span>
+                <span class="category-legend-color" style="background: #8B5CF6;"></span>
                 <span>Main Course</span>
+                <span class="category-legend-value" data-category-value="Main Course">—</span>
               </div>
             </div>
           </div>
@@ -595,6 +600,6 @@
 
   <script src="js/api.js"></script>
   <script>if (window.lucide) lucide.createIcons();</script>
-  <script src="js/admin.js"></script>
+  <script src="js/admin.js?v=20261105-category-chart-1"></script>
 </body>
 </html>

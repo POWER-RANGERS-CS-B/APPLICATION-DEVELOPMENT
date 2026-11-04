@@ -9,9 +9,9 @@
   <title>Dine-Ari | Home</title>
   <script src="js/theme.js?v=20261104-day-night-switch-2"></script>
   <link rel="preload" as="image" href="images/backgrounds/restaurant-bg.webp" type="image/webp" fetchpriority="high" />
-  <link rel="stylesheet" href="css/style.css?v=dine-ari-day-night-switch-1" />
+  <link rel="stylesheet" href="css/style.css?v=20261105-floor-plan-fit-1" />
   <link rel="stylesheet" href="/vendor/intl-tel-input/css/intlTelInput.min.css" />
-  <link rel="stylesheet" href="css/design-system.css?v=20261104-choice-glass-1" />
+  <link rel="stylesheet" href="css/design-system.css?v=20261105-receipt-1" />
   <script src="/vendor/lucide/lucide.min.js?v=1.67.0"></script>
 </head>
 
@@ -184,6 +184,13 @@
                 <span><i class="legend-swatch unavailable"></i>Occupied</span>
               </div>
 
+              <div class="floor-plan-view-controls" role="group" aria-label="Floor plan zoom controls">
+                <span id="floorPlanZoomLevel" aria-live="polite">Fit</span>
+                <button id="floorPlanZoomOut" type="button" aria-label="Zoom out" title="Zoom out">-</button>
+                <button id="floorPlanZoomIn" type="button" aria-label="Zoom in" title="Zoom in">+</button>
+                <button id="floorPlanZoomFit" type="button" aria-label="Fit floor plan to screen">Fit</button>
+              </div>
+
               <div class="floor-scroll-wrapper">
                 <div id="floorPlan" class="floor-plan"></div>
               </div>
@@ -296,7 +303,7 @@
               </p>
 
               <div class="receipt-qr-box">
-                <img id="qrImage" alt="QR Code" />
+                <img id="qrImage" alt="QR code linking to the official receipt" />
 
                 <button type="button" onclick="downloadQrCode()">
                   Download QR Code
@@ -354,7 +361,7 @@
 
   <script src="js/api.js"></script>
   <script src="/vendor/intl-tel-input/js/intlTelInput.min.js"></script>
-  <script src="js/choice.js?v=dine-ari-brand"></script>
+  <script src="js/choice.js?v=20261105-floor-plan-fit-1"></script>
   <script>if (window.lucide) lucide.createIcons();</script>
 </body>
 

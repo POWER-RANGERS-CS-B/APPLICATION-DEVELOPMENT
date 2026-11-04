@@ -29,7 +29,8 @@ exports.createOrder = async (req, res) => {
 
     res.status(201).json(order);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    const status = error.code === "PUBLIC_BASE_URL_CONFIGURATION_ERROR" ? 500 : 400;
+    res.status(status).json({ message: error.message });
   }
 };
 
@@ -62,10 +63,18 @@ exports.deleteOrder = async (req, res) => {
 };
 
 exports.getReceipt = async (req, res) => {
+  res.set("Cache-Control", "no-store");
+  res.set("X-Robots-Tag", "noindex, nofollow");
+
   try {
     const { code, token } = req.query;
 
-    if (!code || !token) {
+    if (
+      typeof code !== "string" ||
+      !/^\d{3}$/.test(code) ||
+      typeof token !== "string" ||
+      !/^[a-f\d]{64}$/i.test(token)
+    ) {
       return res.status(400).json({ message: "Invalid receipt link." });
     }
 
@@ -76,6 +85,15 @@ exports.getReceipt = async (req, res) => {
     }
 
     res.json(receipt);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getCategorySales = async (req, res) => {
+  try {
+    res.set("Cache-Control", "no-store");
+    res.json(await orderModel.getCategorySales());
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

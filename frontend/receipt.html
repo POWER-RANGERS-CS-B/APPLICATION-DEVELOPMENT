@@ -4,11 +4,12 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="no-referrer" />
     <link rel="icon" href="/images/icon/dineari-logo.ico" type="image/x-icon" />
     <title>Dine-Ari Official Receipt</title>
     <script src="js/theme.js?v=20261104-day-night-switch-2"></script>
-    <link rel="stylesheet" href="css/style.css?v=dine-ari-day-night-switch-1" />
-    <link rel="stylesheet" href="css/design-system.css?v=20261104-geometric-triangles-1" />
+    <link rel="stylesheet" href="css/style.css?v=20261105-receipt-1" />
+    <link rel="stylesheet" href="css/design-system.css?v=20261105-receipt-1" />
     <script src="/vendor/lucide/lucide.min.js?v=1.67.0"></script>
 </head>
 
@@ -27,12 +28,12 @@
             </div>
 
             <div class="receipt-actions">
-                <button onclick="window.print()"><i data-lucide="printer" aria-hidden="true"></i> Download / Print Receipt</button>
+                <button id="printReceiptButton" onclick="window.print()" disabled><i data-lucide="printer" aria-hidden="true"></i> Download / Print Receipt</button>
             </div>
         </section>
     </main>
 
-    <script src="js/receipt.js?v=dynamic-receipt-host"></script>
+    <script src="js/receipt.js?v=20261105-receipt-1"></script>
     <script>if (window.lucide) lucide.createIcons();</script>
 </body>
 

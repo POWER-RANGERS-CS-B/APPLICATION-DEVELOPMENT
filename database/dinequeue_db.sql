@@ -35,7 +35,7 @@ CREATE TABLE restaurant.restaurant_tables (
     position_x INTEGER,
     position_y INTEGER,
     status TEXT NOT NULL DEFAULT 'vacant'
-        CHECK (status IN ('vacant', 'reserved', 'locked', 'occupied')),
+        CHECK (status IN ('vacant', 'reserved', 'locked', 'occupied', 'needs_cleaning', 'cleaning')),
     deleted_at TIMESTAMP WITHOUT TIME ZONE,
     created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP

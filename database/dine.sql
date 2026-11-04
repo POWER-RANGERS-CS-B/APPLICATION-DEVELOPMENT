@@ -37,7 +37,7 @@ CREATE TABLE restaurant_tables (
   table_name VARCHAR(50) NOT NULL,
   position_x INT DEFAULT 0,
   position_y INT DEFAULT 0,
-  status VARCHAR(20) DEFAULT 'vacant' CHECK (status IN ('vacant', 'occupied', 'reserved', 'cleaning')),
+  status VARCHAR(20) DEFAULT 'vacant' CHECK (status IN ('vacant', 'occupied', 'reserved', 'needs_cleaning', 'cleaning')),
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
   deleted_at TIMESTAMP NULL

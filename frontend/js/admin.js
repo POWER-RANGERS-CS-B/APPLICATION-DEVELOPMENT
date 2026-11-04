@@ -11,12 +11,20 @@ let auditPageCount = 1;
 let auditSearchTimer = null;
 let ordersCache = [];
 let allOrdersCache = [];
-let menuItemsCache = [];
 let revenueChartInstance = null;
 let ridgelineChartInstance = null;
+let categoryChartInstance = null;
 let weeklyForecastChart = null;
 let hourlyForecastChart = null;
 let latestReservationForecast = null;
+let categoryChartRefreshPromise = null;
+
+const CATEGORY_CHART_CATEGORIES = [
+  { label: "Appetizers", color: "#22A06B" },
+  { label: "Beverages", color: "#F59E0B" },
+  { label: "Desserts", color: "#3B82F6" },
+  { label: "Main Course", color: "#8B5CF6" }
+];
 
 function dashboardChartTheme() {
   const isDark = document.documentElement.dataset.theme === "dark";
@@ -31,7 +39,7 @@ function refreshDashboardChartTheme() {
   const charts = [
     revenueChartInstance,
     ridgelineChartInstance,
-    window.categoryChartInstance,
+    categoryChartInstance,
     weeklyForecastChart,
     hourlyForecastChart
   ];
@@ -118,6 +126,8 @@ async function loadAdminWorkspace() {
 
 // --- 1. DASHBOARD, LIVE ORDERS & TELEMETRY ---
 async function loadAdminDashboardMetrics() {
+  void refreshCategoryPieChart();
+
   try {
     const orders = await apiRequest("/orders/kds");
     const reservations = await apiRequest("/reservations");
@@ -159,7 +169,6 @@ async function loadAdminDashboardMetrics() {
 
     // Refresh charts with real data
     updateRevenueChartRange();
-    initCategoryPieChart();
   } catch (error) {
     console.error("Admin dashboard telemetry error:", error);
     document.querySelectorAll("#orders, #reservations, #history").forEach((el) => {
@@ -263,7 +272,6 @@ async function deleteOrder(id) {
 async function fetchProducts() {
   try {
     const data = await apiRequest("/menu");
-    menuItemsCache = data;
     products = data.map(item => ({
       id: item.id,
       name: item.item_name,
@@ -274,7 +282,6 @@ async function fetchProducts() {
       image_url: item.image_url || 'images/default-food.jpg'
     }));
     renderProducts();
-    initCategoryPieChart();
   } catch (err) {
     console.error("Failed to fetch menu items from DB:", err);
   }
@@ -822,7 +829,6 @@ function renderAlerts() {
 function initCharts() {
   updateRevenueChartRange();
   initRidgelineChart();
-  initCategoryPieChart();
 }
 
 function updateRevenueChartRange() {
@@ -977,65 +983,107 @@ function initRidgelineChart() {
   });
 }
 
-// Sales by Category Pie / Doughnut Chart
-function initCategoryPieChart() {
+function setCategoryChartStatus(message, isError = false) {
+  const status = document.getElementById("categoryChartStatus");
+  if (!status) return;
+
+  status.textContent = message;
+  status.classList.toggle("hidden", !message);
+  status.classList.toggle("category-chart-status-error", isError);
+}
+
+function initCategoryPieChart(categorySales) {
   const ctxCategory = document.getElementById('categoryChart');
-  if (!ctxCategory) return;
+  if (!ctxCategory || !Array.isArray(categorySales)) return;
 
-  // Extract unique categories from menu items
-  const categoriesMap = {};
-  menuItemsCache.forEach(item => {
-    const cat = item.category || "Main Course";
-    categoriesMap[cat] = 0;
+  const totals = new Map(CATEGORY_CHART_CATEGORIES.map(({ label }) => [label, 0]));
+  categorySales.forEach(({ category, total }) => {
+    if (!totals.has(category)) return;
+    const value = Number(total);
+    if (Number.isFinite(value) && value >= 0) {
+      totals.set(category, totals.get(category) + value);
+    }
   });
 
-  if (Object.keys(categoriesMap).length === 0) {
-    categoriesMap["Main Course"] = 1;
-    categoriesMap["Appetizers"] = 1;
-    categoriesMap["Beverages"] = 1;
-  }
-
-  // Aggregate totals by category
-  allOrdersCache.forEach(ord => {
-    const catKeys = Object.keys(categoriesMap);
-    const fallbackCat = catKeys[0] || "Main Course";
-    categoriesMap[fallbackCat] += Number(ord.total_amount || 0);
+  const labels = CATEGORY_CHART_CATEGORIES.map(({ label }) => label);
+  const values = labels.map((label) => totals.get(label));
+  const totalSales = values.reduce((sum, value) => sum + value, 0);
+  CATEGORY_CHART_CATEGORIES.forEach(({ label }) => {
+    const valueElement = document.querySelector(`[data-category-value="${label}"]`);
+    const value = totals.get(label);
+    if (valueElement) {
+      valueElement.textContent = `₱${value.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })}`;
+    }
   });
 
-  const labels = Object.keys(categoriesMap);
-  const data = labels.map(cat => categoriesMap[cat]);
-  const totalVal = data.reduce((a, b) => a + b, 0);
-  const chartData = totalVal === 0 ? data.map(() => 1) : data;
+  setCategoryChartStatus(totalSales === 0 ? "No category sales recorded yet." : "");
 
-  // If the doughnut chart already exists, update data smoothly without re-rendering/flickering
-  if (window.categoryChartInstance) {
-    window.categoryChartInstance.data.labels = labels;
-    window.categoryChartInstance.data.datasets[0].data = chartData;
-    window.categoryChartInstance.update('none'); // 'none' mode stops the flicker animation
+  if (categoryChartInstance) {
+    categoryChartInstance.data.labels = labels;
+    categoryChartInstance.data.datasets[0].data = values;
+    categoryChartInstance.update('none');
     return;
   }
 
-  // Otherwise, create it for the first time
-  window.categoryChartInstance = new Chart(ctxCategory.getContext('2d'), {
+  categoryChartInstance = new Chart(ctxCategory.getContext('2d'), {
     type: 'doughnut',
     data: {
-      labels: labels,
+      labels,
       datasets: [{
-        data: chartData,
-        backgroundColor: ['#ef7417', '#ffb45c', '#69402b', '#a45b14', '#8f5937', '#c78354'],
-        borderWidth: 1
+        data: values,
+        backgroundColor: CATEGORY_CHART_CATEGORIES.map(({ color }) => color),
+        borderColor: dashboardChartTheme().grid,
+        borderWidth: 1,
+        hoverOffset: 4
       }]
     },
     options: {
       responsive: true,
-      animation: { duration: 0 }, // Disables heavy initial animation loops causing visual jitter
+      maintainAspectRatio: true,
+      animation: { duration: 180 },
       plugins: {
-        legend: {
-          display: false // <-- Hides the built-in default chart legend so only your custom right-side labels show
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label(context) {
+              const value = Number(context.raw) || 0;
+              return `${context.label}: ₱${value.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              })}`;
+            }
+          }
         }
       }
     }
   });
+}
+
+async function refreshCategoryPieChart() {
+  const canvas = document.getElementById("categoryChart");
+  if (!canvas) return;
+  if (categoryChartRefreshPromise) return categoryChartRefreshPromise;
+
+  setCategoryChartStatus(categoryChartInstance ? "Updating category totals…" : "Loading category totals…");
+  categoryChartRefreshPromise = (async () => {
+    try {
+      const categorySales = await apiRequest("/orders/category-sales");
+      if (!Array.isArray(categorySales)) {
+        throw new Error("The category totals response was invalid.");
+      }
+      initCategoryPieChart(categorySales);
+    } catch (error) {
+      console.error("Failed to load category sales:", error);
+      setCategoryChartStatus("Unable to load category totals. Please try again later.", true);
+    } finally {
+      categoryChartRefreshPromise = null;
+    }
+  })();
+
+  return categoryChartRefreshPromise;
 }
 
 // Tab Switching Navigation

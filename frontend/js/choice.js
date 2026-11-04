@@ -10,6 +10,14 @@ let floorTables = [];
 let selectedTableId = null;
 let reservationPhoneInput = null;
 let reservationPhoneUtilsReady = false;
+let floorPlanZoomIndex = 0;
+let floorPlanResizeObserver = null;
+let floorPlanResizeFrame = 0;
+let floorPlanFallbackResizeHandler = null;
+let floorPlanScalingAbortController = null;
+
+const FLOOR_PLAN_DESIGN_WIDTH = 760;
+const FLOOR_PLAN_ZOOM_LEVELS = [1, 1.25, 1.5, 1.75, 2, 2.25, 2.5];
 
 function syncLucideIcons() {
   if (window.lucide) window.lucide.createIcons();
@@ -483,6 +491,119 @@ function renderFloorPlan() {
   if (!renderedTables) {
     floorPlan.innerHTML = `<p class="floor-empty-message">No restaurant tables are configured on Floor ${activeFloor}. Add tables and chairs in the database, then reload this page.</p>`;
   }
+
+  queueFloorPlanScaleUpdate();
+}
+
+function updateFloorPlanScale() {
+  const wrapper = document.querySelector("#floorSection .floor-scroll-wrapper");
+  const floorPlan = document.getElementById("floorPlan");
+  if (!wrapper || !floorPlan) return;
+
+  const zoomLevel = document.getElementById("floorPlanZoomLevel");
+  const zoomOut = document.getElementById("floorPlanZoomOut");
+  const zoomIn = document.getElementById("floorPlanZoomIn");
+
+  if (window.innerWidth > 1024) {
+    floorPlan.style.removeProperty("--floor-plan-scale");
+    floorPlan.style.removeProperty("margin-left");
+    wrapper.style.removeProperty("height");
+    wrapper.style.removeProperty("overflow-x");
+    wrapper.style.removeProperty("overflow-y");
+    if (zoomLevel) zoomLevel.textContent = "Fit";
+    if (zoomOut) zoomOut.disabled = true;
+    if (zoomIn) zoomIn.disabled = false;
+    return;
+  }
+
+  const availableWidth = wrapper.clientWidth;
+  if (!availableWidth) return;
+
+  const fitScale = Math.min(1, availableWidth / FLOOR_PLAN_DESIGN_WIDTH);
+  const requestedZoomFactor = FLOOR_PLAN_ZOOM_LEVELS[floorPlanZoomIndex] || 1;
+  const zoomFactor = Math.min(requestedZoomFactor, 1 / fitScale);
+  const scale = fitScale * zoomFactor;
+  const scaledWidth = FLOOR_PLAN_DESIGN_WIDTH * scale;
+  const styles = window.getComputedStyle(wrapper);
+  const verticalPadding =
+    (Number.parseFloat(styles.paddingTop) || 0) +
+    (Number.parseFloat(styles.paddingBottom) || 0);
+
+  floorPlan.style.setProperty("--floor-plan-scale", String(scale));
+  floorPlan.style.marginLeft = `${Math.max(0, (availableWidth - scaledWidth) / 2)}px`;
+  wrapper.style.height = `${floorPlan.offsetHeight * scale + verticalPadding}px`;
+  wrapper.style.setProperty("overflow-x", scale > fitScale ? "auto" : "hidden", "important");
+  wrapper.style.setProperty("overflow-y", "hidden", "important");
+
+  if (zoomLevel) {
+    zoomLevel.textContent = floorPlanZoomIndex === 0
+      ? "Fit"
+      : `${Math.round(zoomFactor * 100)}%`;
+  }
+  if (zoomOut) zoomOut.disabled = floorPlanZoomIndex === 0;
+  if (zoomIn) {
+    zoomIn.disabled =
+      scale >= 1 || floorPlanZoomIndex === FLOOR_PLAN_ZOOM_LEVELS.length - 1;
+  }
+}
+
+function queueFloorPlanScaleUpdate() {
+  if (floorPlanResizeFrame) cancelAnimationFrame(floorPlanResizeFrame);
+  floorPlanResizeFrame = requestAnimationFrame(() => {
+    floorPlanResizeFrame = 0;
+    updateFloorPlanScale();
+  });
+}
+
+function initializeFloorPlanScaling() {
+  const wrapper = document.querySelector("#floorSection .floor-scroll-wrapper");
+  if (!wrapper || floorPlanScalingAbortController) return;
+
+  const setZoomIndex = (nextIndex) => {
+    floorPlanZoomIndex = Math.max(
+      0,
+      Math.min(FLOOR_PLAN_ZOOM_LEVELS.length - 1, nextIndex)
+    );
+    queueFloorPlanScaleUpdate();
+  };
+
+  floorPlanScalingAbortController = new AbortController();
+  const { signal } = floorPlanScalingAbortController;
+
+  document.getElementById("floorPlanZoomOut")?.addEventListener("click", () => {
+    setZoomIndex(floorPlanZoomIndex - 1);
+  }, { signal });
+  document.getElementById("floorPlanZoomIn")?.addEventListener("click", () => {
+    setZoomIndex(floorPlanZoomIndex + 1);
+  }, { signal });
+  document.getElementById("floorPlanZoomFit")?.addEventListener("click", () => {
+    setZoomIndex(0);
+  }, { signal });
+
+  if ("ResizeObserver" in window) {
+    floorPlanResizeObserver = new ResizeObserver(queueFloorPlanScaleUpdate);
+    floorPlanResizeObserver.observe(wrapper);
+  } else {
+    floorPlanFallbackResizeHandler = queueFloorPlanScaleUpdate;
+    window.addEventListener("resize", floorPlanFallbackResizeHandler, {
+      passive: true,
+      signal
+    });
+  }
+
+  window.addEventListener("pagehide", () => {
+    floorPlanResizeObserver?.disconnect();
+    floorPlanResizeObserver = null;
+    floorPlanFallbackResizeHandler = null;
+    floorPlanScalingAbortController?.abort();
+    floorPlanScalingAbortController = null;
+    if (floorPlanResizeFrame) {
+      cancelAnimationFrame(floorPlanResizeFrame);
+      floorPlanResizeFrame = 0;
+    }
+  }, { once: true });
+
+  queueFloorPlanScaleUpdate();
 }
 
 function selectTable(table, chairs) {
@@ -1042,7 +1163,7 @@ function placeOrder() {
       });
 
       document.getElementById("thankYouMessage").textContent =
-        `Thank you for dining with Dine-Ari! Your order has been placed with ${selectedPayment} selected. Please complete payment with staff; the QR code contains your order details.`;
+        `Thank you for dining with Dine-Ari! Your order has been placed with ${selectedPayment} selected. Please complete payment with staff; scan the QR code to open your official receipt.`;
 
     } catch (error) {
       alert("Cannot place order: " + error.message);
@@ -1052,6 +1173,11 @@ function placeOrder() {
 
 
 document.addEventListener("DOMContentLoaded", () => {
+  initializeFloorPlanScaling();
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) initializeFloorPlanScaling();
+  });
+
   const cartDialog = document.getElementById("cartDialog");
   cartDialog?.addEventListener("close", () => {
     document.getElementById("floatingCartButton")?.setAttribute("aria-expanded", "false");

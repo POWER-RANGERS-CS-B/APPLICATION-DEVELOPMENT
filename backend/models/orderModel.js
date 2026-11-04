@@ -2,6 +2,7 @@ const db = require("../config/db");
 const QRCode = require("qrcode");
 const crypto = require("crypto");
 const auditService = require("../services/auditService");
+const { buildReceiptUrl } = require("../config/publicUrl");
 const { normalizeReservationCustomer } = require("../utils/reservationCustomerValidation");
 
 function normalizeOrderItems(items) {
@@ -241,18 +242,12 @@ exports.create = async ({
 
     const receiptToken = crypto.randomBytes(32).toString("hex");
 
-    const baseUrl =
-      receiptBaseUrl ||
-      process.env.PUBLIC_BASE_URL ||
-      process.env.BASE_URL ||
-      process.env.FRONTEND_URL ||
-      `http://localhost:${process.env.PORT || 3000}`;
+    if (!receiptBaseUrl) {
+      throw new Error("Receipt base URL is not configured.");
+    }
 
-    const receiptUrl = new URL("/receipt.html", baseUrl);
-    receiptUrl.searchParams.set("code", orderCode);
-    receiptUrl.searchParams.set("token", receiptToken);
-
-    const qrCode = await QRCode.toDataURL(receiptUrl.toString());
+    const receiptUrl = buildReceiptUrl(receiptBaseUrl, orderCode, receiptToken);
+    const qrCode = await QRCode.toDataURL(receiptUrl);
 
     const orderResult = await client.query(
       `INSERT INTO restaurant.orders
@@ -362,7 +357,16 @@ exports.create = async ({
 
 exports.findKdsOrders = async () => {
   const result = await db.query(
-    `SELECT *
+    `SELECT
+       id,
+       order_code,
+       type,
+       status,
+       payment_status,
+       payment_method,
+       total_amount,
+       customer_name,
+       created_at
      FROM restaurant.orders
      WHERE deleted_at IS NULL
        AND status IN ('pending', 'preparing', 'ready')
@@ -523,7 +527,9 @@ exports.softDelete = async (id, actor) => {
     });
 
     await client.query("COMMIT");
-    return order;
+    const orderResponse = { ...order };
+    delete orderResponse.receipt_token;
+    return orderResponse;
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
@@ -543,7 +549,6 @@ exports.findReceiptByCodeAndToken = async (code, token) => {
        o.payment_method,
        o.total_amount,
        o.customer_name,
-       o.contact_number,
        o.created_at
      FROM restaurant.orders o
      WHERE o.order_code = $1
@@ -560,20 +565,72 @@ exports.findReceiptByCodeAndToken = async (code, token) => {
 
   const itemsResult = await db.query(
     `SELECT
-       mi.item_name,
+      mi.item_name,
        oi.quantity,
        oi.unit_price,
        oi.subtotal
      FROM restaurant.order_items oi
      LEFT JOIN restaurant.menu_items mi ON mi.id = oi.menu_item_id
-     WHERE oi.order_id = $1`,
+    WHERE oi.order_id = $1
+      AND oi.deleted_at IS NULL
+    ORDER BY oi.id`,
     [order.id]
   );
 
   return {
-    ...order,
+    order_code: order.order_code,
+    type: order.type,
+    status: order.status,
+    payment_status: order.payment_status,
+    payment_method: order.payment_method,
+    total_amount: order.total_amount,
+    customer_name: order.customer_name,
+    created_at: order.created_at,
     items: itemsResult.rows,
   };
+};
+
+exports.getCategorySales = async () => {
+  const result = await db.query(
+    `WITH categories(category, normalized_name) AS (
+       VALUES
+         ('Appetizers', 'appetizers'),
+         ('Beverages', 'beverages'),
+         ('Desserts', 'desserts'),
+         ('Main Course', 'main course')
+     ),
+     totals AS (
+       SELECT
+         c.category,
+         SUM(oi.subtotal) AS total
+       FROM restaurant.order_items oi
+       JOIN restaurant.orders o
+         ON o.id = oi.order_id
+        AND o.deleted_at IS NULL
+       JOIN restaurant.menu_items mi
+         ON mi.id = oi.menu_item_id
+       JOIN categories c
+         ON CASE lower(btrim(mi.category))
+              WHEN 'rice meals' THEN 'main course'
+              ELSE lower(btrim(mi.category))
+            END = c.normalized_name
+       WHERE oi.deleted_at IS NULL
+       GROUP BY c.category
+     )
+     SELECT
+       c.category,
+       COALESCE(t.total, 0) AS total
+     FROM categories c
+     LEFT JOIN totals t ON t.category = c.category
+     ORDER BY CASE c.category
+       WHEN 'Appetizers' THEN 1
+       WHEN 'Beverages' THEN 2
+       WHEN 'Desserts' THEN 3
+       WHEN 'Main Course' THEN 4
+     END`
+  );
+
+  return result.rows;
 };
 
 exports.findOrderHistory = async () => {

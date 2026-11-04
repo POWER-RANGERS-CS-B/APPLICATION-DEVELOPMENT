@@ -8,8 +8,8 @@
   <link rel="icon" href="/images/icon/dineari-logo.ico" type="image/x-icon" />
   <title>Dine-Ari Staff Workspace</title>
   <script src="js/theme.js?v=20261104-day-night-switch-2"></script>
-  <link rel="stylesheet" href="css/style.css?v=dine-ari-mobile-workspace-2" />
-  <link rel="stylesheet" href="css/design-system.css?v=20261104-staff-layout-balance-5" />
+  <link rel="stylesheet" href="css/style.css?v=20261105-table-cleaning-1" />
+  <link rel="stylesheet" href="css/design-system.css?v=20261105-table-cleaning-1" />
   <script src="/vendor/lucide/lucide.min.js?v=1.67.0"></script>
 </head>
 
@@ -148,27 +148,65 @@
           <div>
             <span class="section-kicker">DINING ROOM</span>
             <h2 id="staffCleaningTitle">Table cleaning</h2>
-            <p class="muted">Mark a cleaned table as ready for the next guests.</p>
+            <p class="muted">View every restaurant table and move it through the cleaning workflow.</p>
           </div>
         </div>
         <div class="staff-module staff-cleaning-module">
-          <div class="staff-cleaning-icon"><i data-lucide="brush-cleaning" aria-hidden="true"></i></div>
-          <span class="section-kicker">TABLE STATUS</span>
-          <h3>Mark table clean</h3>
-          <p class="muted">Enter the table ID to reset it for the next guests.</p>
-          <label for="tableId">Table ID</label>
-          <input id="tableId" type="number" min="1" step="1" inputmode="numeric" placeholder="Enter table ID" />
-          <button class="staff-clean-button" type="button" onclick="markCleaned()">
-            <i data-lucide="check" aria-hidden="true"></i>
-            Mark cleaned
-          </button>
+          <div class="staff-cleaning-toolbar">
+            <div class="staff-module-heading">
+              <div>
+                <h3><i data-lucide="brush-cleaning" aria-hidden="true"></i> Restaurant tables</h3>
+                <p class="muted">Select a table to review its status and available action.</p>
+              </div>
+            </div>
+            <button id="staffTablesRefresh" class="secondary staff-tables-refresh" type="button">
+              <i data-lucide="refresh-cw" aria-hidden="true"></i>
+              Refresh
+            </button>
+          </div>
+
+          <div id="staffCleaningFilters" class="staff-cleaning-filters" role="group" aria-label="Filter tables by status">
+            <button class="staff-cleaning-filter is-active" type="button" data-table-filter="all" aria-pressed="true">
+              All tables <span id="staffTableCountAll">0</span>
+            </button>
+            <button class="staff-cleaning-filter" type="button" data-table-filter="needs_cleaning" aria-pressed="false">
+              Needs cleaning <span id="staffTableCountNeedsCleaning">0</span>
+            </button>
+            <button class="staff-cleaning-filter" type="button" data-table-filter="cleaning" aria-pressed="false">
+              Cleaning <span id="staffTableCountCleaning">0</span>
+            </button>
+            <button class="staff-cleaning-filter" type="button" data-table-filter="vacant" aria-pressed="false">
+              Clean / available <span id="staffTableCountVacant">0</span>
+            </button>
+            <button class="staff-cleaning-filter" type="button" data-table-filter="occupied" aria-pressed="false">
+              Occupied <span id="staffTableCountOccupied">0</span>
+            </button>
+          </div>
+
+          <p id="staffCleaningMessage" class="staff-cleaning-message" role="status" aria-live="polite"></p>
+
+          <div class="staff-cleaning-workspace">
+            <div id="staffTableGrid" class="staff-table-grid" aria-label="Restaurant tables" aria-live="polite" aria-busy="true">
+              <div class="staff-cleaning-empty">
+                <i data-lucide="loader-circle" aria-hidden="true"></i>
+                <span>Loading restaurant tables…</span>
+              </div>
+            </div>
+            <aside id="staffSelectedTable" class="staff-selected-table" aria-live="polite" aria-label="Selected table details">
+              <div class="staff-table-selection-prompt">
+                <i data-lucide="mouse-pointer-2" aria-hidden="true"></i>
+                <strong>Select a table</strong>
+                <span>Its current status and next action will appear here.</span>
+              </div>
+            </aside>
+          </div>
         </div>
       </section>
     </div>
   </main>
 
   <script src="js/api.js"></script>
-  <script src="js/staff.js"></script>
+  <script src="js/staff.js?v=20261105-table-cleaning-1"></script>
   <script>if (window.lucide) lucide.createIcons();</script>
 </body>
 
