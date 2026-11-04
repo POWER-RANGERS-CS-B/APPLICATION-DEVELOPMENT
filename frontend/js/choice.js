@@ -8,7 +8,12 @@ let activeFloor = 1;
 let floorChairs = [];
 let floorTables = [];
 let selectedTableId = null;
+let reservationPhoneInput = null;
+let reservationPhoneUtilsReady = false;
 
+function syncLucideIcons() {
+  if (window.lucide) window.lucide.createIcons();
+}
 
 const foodImages = {
   "Halo-Halo": "images/menu-images/halo-halo.png",
@@ -45,7 +50,7 @@ async function request(path, options = {}) {
     return apiRequest(path, options);
   }
 
-  const base = "http://localhost:3000/api";
+  const base = `${window.location.origin}/api`;
   const token = localStorage.getItem("token");
 
   const res = await fetch(`${base}${path}`, {
@@ -70,8 +75,7 @@ async function request(path, options = {}) {
 }
 
 function logout() {
-  localStorage.clear();
-  location.href = "index.html";
+  void logoutTo("index.html");
 }
 
 function hideCustomerSections() {
@@ -90,9 +94,14 @@ function hideCustomerSections() {
 
 function updateFlowStep(stepNumber) {
   document.querySelectorAll(".flow-step").forEach((step, index) => {
-    step.classList.toggle("active", index + 1 === stepNumber);
+    const isActive = index + 1 === stepNumber;
+    step.classList.toggle("active", isActive);
     step.classList.toggle("done", index + 1 < stepNumber);
+    step.setAttribute("aria-current", isActive ? "step" : "false");
   });
+  const currentStepLabel = document.getElementById("currentStepLabel");
+  const labels = ["Choose Mode", "Select Table", "Order Food", "Payment", "Receipt"];
+  if (currentStepLabel) currentStepLabel.textContent = `Step ${stepNumber} of 5 · ${labels[stepNumber - 1] || labels[0]}`;
 }
 
 function showSection(sectionId, flowStep = 1, display = "block") {
@@ -133,6 +142,7 @@ function showChoicePanel() {
 
   const thankYouMessage = document.getElementById("thankYouMessage");
   if (thankYouMessage) thankYouMessage.textContent = "";
+  updateReceiptSummary({});
 
   showSection("choicePanel", 1, "grid");
   updateChairSelectionUI();
@@ -155,19 +165,115 @@ function showReservationSection() {
     dateInput.value = today;
   }
 
+  updateReservationCustomerValidation();
   showSection("reservationSection", 1);
 }
 
+function initializeReservationPhoneInput() {
+  const input = document.getElementById("reservationContact");
+  if (!input) return;
+
+  if (typeof window.intlTelInput !== "function") {
+    console.error("International phone input failed to load.");
+    updateReservationField(
+      "reservationContact",
+      "reservationContactError",
+      false,
+      "Phone number validation is unavailable. Please reload and try again."
+    );
+    return;
+  }
+
+  reservationPhoneInput = window.intlTelInput(input, {
+    initialCountry: "ph",
+    countrySearch: true,
+    separateDialCode: true,
+    countrySelectorMode: "AUTO",
+    dropdownParent: document.body,
+    placeholderNumberPolicy: "AGGRESSIVE",
+    formatAsYouType: true,
+    loadUtils: () => import("/vendor/intl-tel-input/js/utils.js")
+  });
+
+  const updateValidation = () => updateReservationCustomerValidation();
+  input.addEventListener("input", updateValidation);
+  input.addEventListener("blur", updateValidation);
+  input.addEventListener("countrychange", updateValidation);
+
+  reservationPhoneInput.promise.then(() => {
+    reservationPhoneUtilsReady = true;
+    updateValidation();
+  }).catch((error) => {
+    console.error("International phone number validation could not be loaded.", error);
+    updateReservationField(
+      "reservationContact",
+      "reservationContactError",
+      false,
+      "Phone number validation is unavailable. Please reload and try again."
+    );
+    const continueButton = document.getElementById("continueReservationButton");
+    if (continueButton) continueButton.disabled = true;
+  });
+}
+
+function validateReservationName(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function validateReservationContact() {
+  const value = document.getElementById("reservationContact")?.value ?? "";
+  if (!value.trim()) return { valid: false, message: "Enter your contact number." };
+  if (!reservationPhoneUtilsReady || !reservationPhoneInput) {
+    return { valid: false, message: "Phone number validation is still loading." };
+  }
+  if (!reservationPhoneInput.isValidNumberPrecise()) {
+    return { valid: false, message: "Enter a valid phone number for the selected country." };
+  }
+  return { valid: true, message: "" };
+}
+
+function updateReservationField(inputId, errorId, isValid, message) {
+  const input = document.getElementById(inputId);
+  const error = document.getElementById(errorId);
+  if (!input || !error) return isValid;
+
+  input.setAttribute("aria-invalid", String(!isValid));
+  error.textContent = isValid ? "" : message;
+  error.hidden = isValid;
+  return isValid;
+}
+
+function updateReservationCustomerValidation() {
+  const name = document.getElementById("reservationName")?.value ?? "";
+  const nameValid = updateReservationField(
+    "reservationName",
+    "reservationNameError",
+    validateReservationName(name),
+    "Enter your full name."
+  );
+  const contactValidation = validateReservationContact();
+  const contactValid = updateReservationField(
+    "reservationContact",
+    "reservationContactError",
+    contactValidation.valid,
+    contactValidation.message
+  );
+  const continueButton = document.getElementById("continueReservationButton");
+  if (continueButton) continueButton.disabled = !(nameValid && contactValid);
+  return nameValid && contactValid;
+}
+
 async function continueReservationToChairs() {
+  if (!updateReservationCustomerValidation()) {
+    document.getElementById("reservationName")?.focus();
+    return;
+  }
+
   const date = document.getElementById("reservationDate")?.value;
   const time = document.getElementById("reservationTime")?.value;
-  const name =
-    document.getElementById("reservationName")?.value.trim() ||
-    localStorage.getItem("full_name") ||
-    "Customer";
-  const contact =
-    document.getElementById("reservationContact")?.value.trim() ||
-    "N/A";
+  const name = document.getElementById("reservationName")?.value.trim();
+  const contact = reservationPhoneInput?.getNumber();
+  const contactCountry = reservationPhoneInput?.getSelectedCountryData().iso2;
 
   if (!date || !time) {
     alert("Please select reservation date and time.");
@@ -178,7 +284,8 @@ async function continueReservationToChairs() {
     date,
     time,
     name,
-    contact
+    contact,
+    contactCountry
   };
 
   showSection("floorSection", 2);
@@ -235,56 +342,14 @@ const restaurantBlueprint = {
   ]
 };
 
-function getChairPosition(chairCount, index) {
-  const positions = {
-    2: [
-      { x: -55, y: 0 },
-      { x: 55, y: 0 }
-    ],
-
-    4: [
-      { x: 0, y: -65 },
-      { x: 65, y: 0 },
-      { x: 0, y: 65 },
-      { x: -65, y: 0 }
-    ],
-
-    6: [
-      { x: -75, y: -40 },
-      { x: 0, y: -55 },
-      { x: 75, y: -40 },
-      { x: -75, y: 40 },
-      { x: 0, y: 55 },
-      { x: 75, y: 40 }
-    ],
-
-    8: [
-      { x: -85, y: -55 },
-      { x: -28, y: -55 },
-      { x: 28, y: -55 },
-      { x: 85, y: -55 },
-      { x: -85, y: 55 },
-      { x: -28, y: 55 },
-      { x: 28, y: 55 },
-      { x: 85, y: 55 }
-    ],
-
-    10: [
-      { x: -48, y: -65 },
-      { x: 0, y: -65 },
-      { x: 48, y: -65 },
-      { x: -48, y: 65 },
-      { x: 0, y: 65 },
-      { x: 48, y: 65 },
-      { x: -105, y: 0 },
-      { x: 105, y: 0 },
-      { x: -85, y: -65 },
-      { x: 85, y: 65 }
-    ]
+function getChairPosition(chairCount, index, shape) {
+  const radiusX = shape === "rect-large" ? 112 : shape === "rect-medium" ? 100 : shape === "circle" ? 78 : 68;
+  const radiusY = shape === "rect-large" ? 70 : shape === "rect-medium" ? 64 : shape === "circle" ? 78 : 48;
+  const angle = (-Math.PI / 2) + (2 * Math.PI * index) / Math.max(chairCount, 1);
+  return {
+    x: Math.round(Math.cos(angle) * radiusX),
+    y: Math.round(Math.sin(angle) * radiusY)
   };
-
-  const set = positions[chairCount] || positions[4];
-  return set[index % set.length];
 }
 
 async function loadFloorPlan() {
@@ -329,29 +394,39 @@ function renderFloorPlan() {
   floorPlan.dataset.floor = String(activeFloor);
   floorPlan.innerHTML = "";
 
+  const configuredTables = [...floorTables].sort(
+    (first, second) => Number(first.id ?? first.table_id) - Number(second.id ?? second.table_id)
+  );
   const tablesOnFloor = restaurantBlueprint.tables.filter(
     (table) => table.floor === activeFloor
   );
+  const floorOffset = activeFloor === 1 ? 0 : 10;
+  const floorTableSlots = configuredTables.slice(floorOffset, floorOffset + tablesOnFloor.length);
+  const usedTableIds = new Set();
+  let renderedTables = 0;
 
-  tablesOnFloor.forEach((blueprintTable) => {
-    const realTable =
-      floorTables.find((t) => Number(t.id ?? t.table_id) === Number(blueprintTable.id)) || {
-        id: blueprintTable.id,
-        table_id: blueprintTable.id,
-        table_name: `T${blueprintTable.id}`
-      };
+  tablesOnFloor.forEach((blueprintTable, index) => {
+    const realTableIdForSlot = (table) => Number(table.id ?? table.table_id);
+    const tableNameForSlot = `T${blueprintTable.id}`;
+    const realTable = configuredTables.find((table) =>
+      !usedTableIds.has(realTableIdForSlot(table)) &&
+      String(table.table_name || table.name || "").trim().toLowerCase() === tableNameForSlot.toLowerCase()
+    ) || configuredTables.find((table) =>
+      !usedTableIds.has(realTableIdForSlot(table)) &&
+      realTableIdForSlot(table) === Number(blueprintTable.id)
+    ) || floorTableSlots.find((table) =>
+      !usedTableIds.has(realTableIdForSlot(table))
+    );
+    if (!realTable) return;
+    const realTableId = realTableIdForSlot(realTable);
+    usedTableIds.add(realTableId);
+    renderedTables += 1;
 
     const tableChairs = floorChairs.filter(
-      (c) => Number(c.table_id ?? c.tableId) === Number(blueprintTable.id)
+      (c) => Number(c.table_id ?? c.tableId) === realTableId
     );
 
-    const chairSource = tableChairs.length
-      ? tableChairs
-      : Array.from({ length: blueprintTable.chairs }, (_, i) => ({
-        id: `local-${blueprintTable.id}-${i + 1}`,
-        table_id: blueprintTable.id,
-        status: "vacant"
-      }));
+    const chairSource = tableChairs;
 
     const isAvailable =
       String(realTable.status || "vacant").toLowerCase() === "vacant" &&
@@ -366,17 +441,18 @@ function renderFloorPlan() {
     const tableBox = document.createElement("button");
     tableBox.type = "button";
     tableBox.className = `table-box ${blueprintTable.shape} table-select`;
-    tableBox.dataset.tableId = blueprintTable.id;
-    tableBox.classList.toggle("selected", selectedTableId === Number(blueprintTable.id));
+    tableBox.dataset.tableId = realTableId;
+    tableBox.classList.toggle("selected", selectedTableId === realTableId);
     tableBox.classList.toggle("unavailable", !isAvailable);
     tableBox.disabled = !isAvailable;
-    tableBox.setAttribute("aria-pressed", String(selectedTableId === Number(blueprintTable.id)));
+    tableBox.setAttribute("aria-pressed", String(selectedTableId === realTableId));
     tableBox.title = isAvailable
-      ? `Select ${realTable.table_name || realTable.name || `Table ${blueprintTable.id}`} with ${chairSource.length} seats`
-      : `${realTable.table_name || realTable.name || `Table ${blueprintTable.id}`} is unavailable`;
-    tableBox.innerHTML = `<span>${realTable.table_name || realTable.name || `Table ${blueprintTable.id}`}</span><small>${chairSource.length} seats</small>`;
+      ? `Select ${realTable.table_name || realTable.name || `Table ${realTableId}`} with ${chairSource.length} seats`
+      : `${realTable.table_name || realTable.name || `Table ${realTableId}`} is unavailable`;
+    const occupiedLabel = isAvailable ? "" : '<small class="table-status-label"><span aria-hidden="true">●</span> Occupied</small>';
+    tableBox.innerHTML = `<span>${realTable.table_name || realTable.name || `Table ${realTableId}`}</span><small>${chairSource.length} seats</small>${occupiedLabel}`;
     if (isAvailable) {
-      tableBox.addEventListener("click", () => selectTable(blueprintTable, chairSource));
+      tableBox.addEventListener("click", () => selectTable(realTable, chairSource));
     }
 
     tableGroup.appendChild(tableBox);
@@ -384,18 +460,19 @@ function renderFloorPlan() {
     chairSource.forEach((chair, index) => {
       const status = String(chair.status || "vacant").toLowerCase();
 
-      const pos = getChairPosition(chairSource.length, index);
+      const pos = getChairPosition(chairSource.length, index, blueprintTable.shape);
 
       const chairEl = document.createElement("span");
       chairEl.type = "button";
       chairEl.className = `chair ${status}`;
-      if (selectedTableId === Number(blueprintTable.id)) chairEl.classList.add("selected");
-      chairEl.textContent = `C${index + 1}`;
+      if (selectedTableId === realTableId) chairEl.classList.add("selected");
+      chairEl.textContent = chair.chair_label || `C${index + 1}`;
       chairEl.style.left = `calc(50% + ${pos.x}px)`;
       chairEl.style.top = `calc(50% + ${pos.y}px)`;
-      chairEl.title = `Table ${blueprintTable.id} - Chair ${index + 1}`;
-      chairEl.dataset.tableId = blueprintTable.id;
-      chairEl.setAttribute("aria-hidden", "true");
+      chairEl.title = `${realTable.table_name || `Table ${realTableId}`} - Chair ${chair.chair_label || index + 1}`;
+      chairEl.dataset.tableId = realTableId;
+      chairEl.setAttribute("aria-label", `${realTable.table_name || `Table ${realTableId}`}, chair ${chair.chair_label || index + 1}, ${status}`);
+      chairEl.tabIndex = 0;
 
       tableGroup.appendChild(chairEl);
     });
@@ -403,8 +480,8 @@ function renderFloorPlan() {
     floorPlan.appendChild(tableGroup);
   });
 
-  if (!tablesOnFloor.length) {
-    floorPlan.innerHTML = `<p class="floor-empty-message">No tables are configured on Floor ${activeFloor} yet.</p>`;
+  if (!renderedTables) {
+    floorPlan.innerHTML = `<p class="floor-empty-message">No restaurant tables are configured on Floor ${activeFloor}. Add tables and chairs in the database, then reload this page.</p>`;
   }
 }
 
@@ -416,25 +493,22 @@ function selectTable(table, chairs) {
 }
 
 function updateChairSelectionUI() {
-  const selectedTable = restaurantBlueprint.tables.find(
-    (table) => Number(table.id) === Number(selectedTableId)
-  );
-  const realTable = selectedTable && floorTables.find(
+  const realTable = floorTables.find(
     (table) => Number(table.id ?? table.table_id) === Number(selectedTableId)
   );
   const selectedTableLabel = document.getElementById("selectedTableLabel");
   const lockButton = document.getElementById("lockChairsButton");
 
   if (selectedTableLabel) {
-    selectedTableLabel.textContent = selectedTable
-      ? `${realTable?.table_name || realTable?.name || `Table ${selectedTable.id}`} · ${selectedChairIds.length} seats`
+    selectedTableLabel.textContent = realTable
+      ? `${realTable.table_name || realTable.name || `Table ${selectedTableId}`} · ${selectedChairIds.length} seats`
       : "None";
   }
   if (lockButton) {
-    lockButton.textContent = selectedTable
-      ? `Reserve Table ${selectedTable.id} & continue`
+    lockButton.textContent = realTable
+      ? `Reserve ${realTable.table_name || realTable.name || `Table ${selectedTableId}`} & continue`
       : "Select a table to continue";
-    lockButton.disabled = !selectedTable;
+    lockButton.disabled = !realTable;
   }
 }
 
@@ -480,7 +554,7 @@ async function confirmReservationOnly() {
   }
 
   try {
-    await request("/reservations", {
+    const reservation = await request("/reservations", {
       method: "POST",
       body: JSON.stringify({
         chairIds: selectedChairIds,
@@ -488,11 +562,12 @@ async function confirmReservationOnly() {
         reservation_time: reservationDetails.time,
         customer_name: reservationDetails.name,
         contact_number: reservationDetails.contact,
+        contact_country: reservationDetails.contactCountry,
         num_guests: selectedChairIds.length
       })
     });
 
-    showSection("receiptSection", 4);
+    showSection("receiptSection", 5);
 
     const receiptTitle = document.getElementById("receiptTitle");
     if (receiptTitle) {
@@ -509,19 +584,40 @@ async function confirmReservationOnly() {
       qrBox.style.display = "none";
     }
 
-    document.getElementById("thankYouMessage").innerHTML = `
-      <div class="official-receipt">
-        <h3>Reservation Details</h3>
-        <p><strong>Customer:</strong> ${reservationDetails.name}</p>
-        <p><strong>Contact:</strong> ${reservationDetails.contact}</p>
-        <p><strong>Date:</strong> ${reservationDetails.date}</p>
-        <p><strong>Time:</strong> ${reservationDetails.time}</p>
-        <p><strong>Guests:</strong> ${selectedChairIds.length}</p>
-        <p class="receipt-note">
-          Please arrive on time and present your name to the staff.
-        </p>
-      </div>
-    `;
+    const thankYouMessage = document.getElementById("thankYouMessage");
+    if (thankYouMessage) {
+      const receiptDetails = document.createElement("div");
+      receiptDetails.className = "official-receipt";
+
+      const receiptHeading = document.createElement("h3");
+      receiptHeading.textContent = "Reservation Details";
+      receiptDetails.append(receiptHeading);
+
+      const addReceiptDetail = (label, value) => {
+        const row = document.createElement("p");
+        const strong = document.createElement("strong");
+        strong.textContent = `${label}:`;
+        row.append(strong, ` ${value}`);
+        receiptDetails.append(row);
+      };
+
+      addReceiptDetail("Customer", reservationDetails.name);
+      addReceiptDetail("Contact", reservationDetails.contact);
+      addReceiptDetail("Date", reservationDetails.date);
+      addReceiptDetail("Time", reservationDetails.time);
+      addReceiptDetail("Guests", selectedChairIds.length);
+
+      const receiptNote = document.createElement("p");
+      receiptNote.className = "receipt-note";
+      receiptNote.textContent = "Please arrive on time and present your name to the staff.";
+      receiptDetails.append(receiptNote);
+      thankYouMessage.replaceChildren(receiptDetails);
+    }
+    updateReceiptSummary({
+      orderNumber: reservation.reservation_code || reservation.id || "Reservation confirmed",
+      table: floorTables.find((table) => Number(table.id ?? table.table_id) === Number(selectedTableId))?.table_name || `Table ${selectedTableId}`,
+      paymentMethod: "Not applicable"
+    });
   } catch (error) {
     alert("Cannot create reservation: " + error.message);
   }
@@ -560,6 +656,43 @@ function getItemName(item) {
   return item.item_name || item.name || "Menu Item";
 }
 
+function getItemDescription(item) {
+  const description = String(item.description || "").trim();
+  return description.startsWith("Fictional local-development sample;") ? "" : description;
+}
+
+function renderMenuCardActions(name, itemId, stock, cartLine) {
+  if (stock <= 0) {
+    return `<button class="out-of-stock danger" disabled>Sold Out</button>`;
+  }
+
+  if (!cartLine) {
+    return `<button type="button" onclick="addToCart(${itemId})"><i data-lucide="plus" aria-hidden="true"></i> Add</button>`;
+  }
+
+  return `<div class="menu-quantity-control" aria-label="${name} quantity">
+    <button type="button" aria-label="Remove one ${name}" onclick="changeQuantity(${itemId}, -1)"><i data-lucide="minus" aria-hidden="true"></i></button>
+    <span aria-live="polite">${cartLine.quantity}</span>
+    <button type="button" aria-label="Add one ${name}" onclick="changeQuantity(${itemId}, 1)"><i data-lucide="plus" aria-hidden="true"></i></button>
+  </div>`;
+}
+
+function updateMenuCartControls() {
+  const menuGrid = document.getElementById("menuGrid");
+  if (!menuGrid) return;
+
+  menuGrid.querySelectorAll(".menu-card").forEach((card) => {
+    const itemId = Number(card.dataset.menuItemId);
+    const item = menuItems.find((menuItem) => Number(menuItem.id ?? menuItem.item_id) === itemId);
+    const actions = card.querySelector(".menu-card-actions");
+    if (!item || !actions) return;
+
+    const stock = Number(item.stock_count ?? item.stock ?? 99);
+    const cartLine = cart.find((line) => Number(line.menu_item_id) === itemId);
+    actions.innerHTML = renderMenuCardActions(getItemName(item), itemId, stock, cartLine);
+  });
+}
+
 function renderMenu(items) {
   const menuGrid = document.getElementById("menuGrid");
   if (!menuGrid) return;
@@ -570,33 +703,48 @@ function renderMenu(items) {
     const name = getItemName(item).toLowerCase();
     const category = getCategory(item);
     const matchesCategory = activeCategory === "All" || category === activeCategory;
-    const matchesSearch = !query || name.includes(query) || (item.description || "").toLowerCase().includes(query);
+    const matchesSearch = !query || name.includes(query) || getItemDescription(item).toLowerCase().includes(query);
     return matchesCategory && matchesSearch;
   });
 
   menuGrid.innerHTML = filtered.map((item, index) => {
     const name = getItemName(item);
-    const imageUrl = foodImages[name] || "images/menu-images/default-food.png";
+    const fallbackImageUrl = foodImages[name] || "";
+    const storedImageUrl = item.image_url || "";
+    const staleLocalJpeg = /^\/?images\/menu-images\/.+\.jpe?g$/i.test(storedImageUrl);
+    const selectedImageUrl = staleLocalJpeg && fallbackImageUrl
+      ? fallbackImageUrl
+      : storedImageUrl || fallbackImageUrl || "images/menu-images/default-food.png";
+    const localPngImage = /^(\/?images\/menu-images\/[^?#]+)\.png([?#].*)?$/i.exec(selectedImageUrl);
+    const imageUrl = localPngImage
+      ? `${localPngImage[1]}.webp${localPngImage[2] || ""}`
+      : selectedImageUrl;
+    const imageFallbackUrl = localPngImage ? selectedImageUrl : fallbackImageUrl;
     const stock = Number(item.stock_count ?? item.stock ?? 99);
     const price = Number(item.price || 0);
+    const description = getItemDescription(item);
+    const itemId = Number(item.id ?? item.item_id);
+    const cartLine = cart.find((line) => Number(line.menu_item_id) === itemId);
 
     return `
-      <div class="panel menu-card" style="animation-delay:${index * 0.04}s">
+      <div class="panel menu-card" data-menu-item-id="${itemId}" style="animation-delay:${index * 0.04}s">
         <div class="menu-image-wrapper">
-          <img src="${imageUrl}" alt="${name}" loading="lazy" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=&quot;width:100%;height:100%;display:grid;place-items:center;color:var(--gold-2);font-size:44px;&quot;>♨</div>'">
+          <img src="${imageUrl}" data-fallback-src="${imageFallbackUrl}" alt="${name}" width="960" height="640" loading="lazy" decoding="async" onerror="if(this.dataset.fallbackSrc && !this.src.endsWith(this.dataset.fallbackSrc)){this.src=this.dataset.fallbackSrc;this.dataset.fallbackSrc=''}else{this.hidden=true;this.parentElement.classList.add('image-fallback')}">
+          <span class="menu-image-fallback" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none"><path d="M5 17h22c0 6-4.5 10-11 10S5 23 5 17Z" stroke="currentColor" stroke-width="1.7"/><path d="M8 13c1.4 1 2.8 1 4.2 0s2.8-1 4.2 0 2.8 1 4.2 0 2.8-1 4.2 0M16 5v4m-5-2 2 3m8-3-2 3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          </span>
         </div>
         <h3>${name}</h3>
-        <p>${item.description || "Authentic Filipino flavors prepared fresh for every guest."}</p>
+        ${description ? `<p>${description}</p>` : ""}
         <div class="price-stock">
           <strong>₱${price.toFixed(2)}</strong>
           <span class="stock">${stock > 0 ? `${stock} left` : "Sold Out"}</span>
         </div>
-        <button class="${stock <= 0 ? "out-of-stock danger" : ""}" ${stock <= 0 ? "disabled" : ""} onclick="addToCart(${Number(item.id ?? item.item_id)})">
-          ${stock <= 0 ? "Sold Out" : "+ Add"}
-        </button>
+        <div class="menu-card-actions">${renderMenuCardActions(name, itemId, stock, cartLine)}</div>
       </div>
     `;
-  }).join("") || `<div class="panel" style="padding:24px;"><h3>No dishes found</h3><p>Try another search or category.</p></div>`;
+  }).join("") || `<div class="panel empty-menu" style="padding:24px;"><h3>No items found</h3><p>Try another search or category.</p></div>`;
+  syncLucideIcons();
 }
 
 function filterMenuCategory(category, button) {
@@ -638,6 +786,23 @@ function addToCart(menuItemId) {
   }
 
   updateCartTotal();
+  showCartToast(`${getItemName(item)} added to cart`);
+}
+
+let cartToastTimer;
+function showCartToast(message) {
+  const toast = document.getElementById("cartToast");
+  if (!toast) return;
+  toast.textContent = message;
+  toast.classList.add("visible");
+  const cartButton = document.getElementById("floatingCartButton");
+  cartButton?.classList.remove("cart-bump");
+  if (cartButton) {
+    void cartButton.offsetWidth;
+    cartButton.classList.add("cart-bump");
+  }
+  window.clearTimeout(cartToastTimer);
+  cartToastTimer = window.setTimeout(() => toast.classList.remove("visible"), 2200);
 }
 
 function removeFromCart(menuItemId) {
@@ -674,16 +839,19 @@ function updateCartTotal() {
         <strong>${line.item_name}</strong><br>
         <small>₱${line.price.toFixed(2)} × ${line.quantity}</small>
       </div>
-      <div style="display:grid; gap:6px; justify-items:end;">
+      <div class="cart-line-actions">
         <strong>₱${(line.price * line.quantity).toFixed(2)}</strong>
-        <div style="display:flex; gap:4px;">
-          <button type="button" style="min-height:28px; padding:3px 9px;" onclick="changeQuantity(${line.menu_item_id}, -1)">−</button>
-          <button type="button" style="min-height:28px; padding:3px 9px;" onclick="changeQuantity(${line.menu_item_id}, 1)">+</button>
-          <button type="button" class="danger" style="min-height:28px; padding:3px 9px;" onclick="removeFromCart(${line.menu_item_id})">×</button>
+        <div class="cart-quantity-control">
+          <button type="button" aria-label="Remove one ${line.item_name}" onclick="changeQuantity(${line.menu_item_id}, -1)"><i data-lucide="minus" aria-hidden="true"></i></button>
+          <span aria-live="polite">${line.quantity}</span>
+          <button type="button" aria-label="Add one ${line.item_name}" onclick="changeQuantity(${line.menu_item_id}, 1)"><i data-lucide="plus" aria-hidden="true"></i></button>
+          <button type="button" class="danger remove-cart-item" aria-label="Remove ${line.item_name} from cart" onclick="removeFromCart(${line.menu_item_id})"><i data-lucide="trash-2" aria-hidden="true"></i></button>
         </div>
       </div>
     </div>
-  `).join("") : `<p>No items added yet.</p>`;
+  `).join("") : `<div class="cart-empty-state"><strong>Your cart is empty</strong><span>Add a dish from the menu to get started.</span></div>`;
+  updateMenuCartControls();
+  syncLucideIcons();
 }
 
 function openCartDialog() {
@@ -729,6 +897,14 @@ function openPaymentPanel() {
   if (paymentTotal) {
     paymentTotal.textContent = total.toFixed(2);
   }
+  const paymentSubtotal = document.getElementById("paymentSubtotal");
+  if (paymentSubtotal) paymentSubtotal.textContent = total.toFixed(2);
+  const paymentOrderType = document.getElementById("paymentOrderType");
+  if (paymentOrderType) paymentOrderType.textContent = orderType === "reservation" ? "Reservation" : orderType === "dine_in" ? "Dine-in" : "Takeout";
+  const paymentTableNumber = document.getElementById("paymentTableNumber");
+  if (paymentTableNumber) paymentTableNumber.textContent = selectedTableId
+    ? floorTables.find((table) => Number(table.id ?? table.table_id) === Number(selectedTableId))?.table_name || `Table ${selectedTableId}`
+    : "Takeout";
 
   closeCartDialog();
   showSection("paymentSection", 4);
@@ -743,7 +919,20 @@ function selectPaymentCard(input) {
     card.classList.remove("active");
   });
 
-  input.closest(".payment-method-card").classList.add("active");
+  input.closest(".payment-method-card")?.classList.add("active");
+}
+
+function updateReceiptSummary({ orderNumber, table, total, paymentMethod } = {}) {
+  const values = {
+    receiptOrderNumber: orderNumber || "—",
+    receiptTableNumber: table || "—",
+    receiptTotal: total == null ? "—" : `₱${Number(total).toFixed(2)}`,
+    receiptPaymentMethod: paymentMethod || "—"
+  };
+  Object.entries(values).forEach(([id, value]) => {
+    const element = document.getElementById(id);
+    if (element) element.textContent = value;
+  });
 }
 
 function confirmPaymentAndOrder() {
@@ -792,7 +981,7 @@ function placeOrder() {
   const selectedPayment =
     document.querySelector('input[name="paymentMethod"]:checked')?.value || "Cash";
 
-  // Gigamit nato ang anonymous async function module aron ma-process ang await nga walay error 🌟
+  // Use an async function so the flow can await its database requests.
   (async () => {
     try {
       order = await request("/orders", {
@@ -802,11 +991,12 @@ function placeOrder() {
           chairIds: selectedChairIds,
           payment_method: selectedPayment,
           
-          // MAP RES DETAILS APIL ARON DILI MAG-NULL SA DATABASE 🌟
+          // Include reservation details so the database receives the selected booking.
           reservation_date: reservationDetails ? reservationDetails.date : null,
           reservation_time: reservationDetails ? reservationDetails.time : null,
           customer_name: reservationDetails ? reservationDetails.name : null,
           contact_number: reservationDetails ? reservationDetails.contact : null,
+          contact_country: reservationDetails ? reservationDetails.contactCountry : null,
           num_guests: selectedChairIds.length || 1,
 
           items: cart.map((item) => ({
@@ -827,7 +1017,7 @@ function placeOrder() {
         receiptIntro.textContent = "Show this QR code to the staff to view the official receipt.";
       }
 
-      showSection("receiptSection", 4);
+      showSection("receiptSection", 5);
 
       const qrBox = document.querySelector(".receipt-qr-box");
       if (qrBox) {
@@ -842,8 +1032,17 @@ function placeOrder() {
         qrImage.dataset.qr = order.qr_code;
       }
 
+      updateReceiptSummary({
+        orderNumber: order.order_code || order.order_number || order.id,
+        table: selectedTableId
+          ? floorTables.find((table) => Number(table.id ?? table.table_id) === Number(selectedTableId))?.table_name || `Table ${selectedTableId}`
+          : "Takeout",
+        total: order.total_amount ?? cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
+        paymentMethod: order.payment_method || selectedPayment
+      });
+
       document.getElementById("thankYouMessage").textContent =
-        `Thank you for dining with Dine-Ari! Your order has been placed successfully using ${selectedPayment}. Please show the QR code to the staff to view your receipt.`;
+        `Thank you for dining with Dine-Ari! Your order has been placed with ${selectedPayment} selected. Please complete payment with staff; the QR code contains your order details.`;
 
     } catch (error) {
       alert("Cannot place order: " + error.message);
@@ -859,6 +1058,10 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   updateCartTotal();
+  document.getElementById("reservationName")?.addEventListener("input", updateReservationCustomerValidation);
+  document.getElementById("reservationName")?.addEventListener("blur", updateReservationCustomerValidation);
+  initializeReservationPhoneInput();
+  updateReservationCustomerValidation();
 
   if (
     !localStorage.getItem("token") &&

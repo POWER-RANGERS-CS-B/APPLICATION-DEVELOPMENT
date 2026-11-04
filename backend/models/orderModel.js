@@ -1,6 +1,40 @@
 const db = require("../config/db");
 const QRCode = require("qrcode");
 const crypto = require("crypto");
+const auditService = require("../services/auditService");
+const { normalizeReservationCustomer } = require("../utils/reservationCustomerValidation");
+
+function normalizeOrderItems(items) {
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new Error("Add at least one menu item to the order.");
+  }
+
+  const quantitiesByMenuItem = new Map();
+
+  for (const item of items) {
+    const menuItemId = Number(item?.menu_item_id);
+    const quantity = Number(item?.quantity);
+
+    if (!Number.isSafeInteger(menuItemId) || menuItemId <= 0) {
+      throw new Error("Each order item must have a valid menu item.");
+    }
+
+    if (!Number.isSafeInteger(quantity) || quantity <= 0) {
+      throw new Error("Each order item quantity must be a positive whole number.");
+    }
+
+    const combinedQuantity = (quantitiesByMenuItem.get(menuItemId) || 0) + quantity;
+    if (!Number.isSafeInteger(combinedQuantity)) {
+      throw new Error("The requested item quantity is too large.");
+    }
+    quantitiesByMenuItem.set(menuItemId, combinedQuantity);
+  }
+
+  return Array.from(quantitiesByMenuItem, ([menu_item_id, quantity]) => ({
+    menu_item_id,
+    quantity,
+  }));
+}
 
 async function generateOrderCode(client) {
   for (let i = 0; i < 20; i++) {
@@ -21,6 +55,7 @@ async function generateOrderCode(client) {
 
 exports.create = async ({
   userId,
+  actorName,
   type,
   chairIds = [],
   items = [],
@@ -29,8 +64,14 @@ exports.create = async ({
   reservationTime = null,
   customerName = null,
   contactNumber = null,
+  contactCountry = null,
   receiptBaseUrl = null,
 }) => {
+  items = normalizeOrderItems(items);
+  const hasCustomerDetails = Boolean(customerName || contactNumber || contactCountry);
+  const customer = hasCustomerDetails
+    ? normalizeReservationCustomer(customerName, contactNumber, contactCountry)
+    : null;
   const client = await db.connect();
 
   try {
@@ -46,6 +87,7 @@ exports.create = async ({
 
     let total = 0;
     let reservationId = null;
+    const inventoryChanges = [];
 
     if (type === "dine_in") {
       if (!chairIds.length) {
@@ -103,20 +145,44 @@ exports.create = async ({
         throw new Error("Your table hold expired or is no longer available. Please choose a table again.");
       }
 
-      const dateValue = reservationDate || new Date().toISOString().split("T")[0];
-      const timeValue = reservationTime || new Date().toTimeString().split(" ")[0];
-      const resolvedName = customerName || "Customer";
-      const resolvedContact = contactNumber || "N/A";
+      if (customer) {
+        const dateValue = reservationDate || new Date().toISOString().split("T")[0];
+        const timeValue = reservationTime || new Date().toTimeString().split(" ")[0];
+        const reservationResult = await client.query(
+          `INSERT INTO restaurant.reservations
+           (user_id, table_id, num_guests, status, reservation_date, reservation_time, customer_name, contact_number)
+           VALUES ($1, $2, $3, 'active', $4, $5, $6, $7)
+           RETURNING id`,
+          [userId, tableId, chairIds.length, dateValue, timeValue, customer.customerName, customer.contactNumber]
+        );
+        reservationId = reservationResult.rows[0].id;
+      }
 
-      const reservationResult = await client.query(
-        `INSERT INTO restaurant.reservations
-         (user_id, table_id, num_guests, status, reservation_date, reservation_time, customer_name, contact_number)
-         VALUES ($1, $2, $3, 'active', $4, $5, $6, $7)
-         RETURNING id`,
-        [userId, tableId, chairIds.length, dateValue, timeValue, resolvedName, resolvedContact]
-      );
+      await auditService.insert(client, {
+        userId,
+        actorName,
+        action: "TABLE_STATUS_CHANGED",
+        module: "tables",
+        entityId: tableId,
+        previousValues: { status: tableResult.rows[0].status },
+        newValues: { status: "occupied" },
+        details: reservationId ? { reservation_id: reservationId } : null,
+      });
 
-      reservationId = reservationResult.rows[0].id;
+      await auditService.insert(client, {
+        userId,
+        actorName,
+        action: "CHAIR_STATUS_CHANGED",
+        module: "chairs",
+        entityId: tableId,
+        previousValues: {
+          chairs: tableChairsResult.rows.map(({ id, status }) => ({ id, status })),
+        },
+        newValues: {
+          chairs: tableChairsResult.rows.map(({ id }) => ({ id, status: "occupied" })),
+        },
+        details: reservationId ? { reservation_id: reservationId } : null,
+      });
 
       await client.query(
         `UPDATE restaurant.chairs
@@ -144,12 +210,23 @@ exports.create = async ({
       );
 
       const menuItem = menuResult.rows[0];
+      const availableStock = Number(menuItem?.stock_count);
 
-      if (!menuItem || menuItem.stock_count < item.quantity) {
+      if (
+        !menuItem ||
+        !Number.isSafeInteger(availableStock) ||
+        availableStock < item.quantity
+      ) {
         throw new Error(`Not enough stock for item ${item.menu_item_id}.`);
       }
 
       total += Number(menuItem.price) * item.quantity;
+      inventoryChanges.push({
+        menu_item_id: menuItem.id,
+        quantity: item.quantity,
+        previous_stock_count: availableStock,
+        new_stock_count: availableStock - item.quantity,
+      });
 
       await client.query(
         `UPDATE restaurant.menu_items
@@ -188,6 +265,8 @@ exports.create = async ({
      payment_status,
      payment_method,
      total_amount,
+     customer_name,
+     contact_number,
      qr_code,
      receipt_token
    )
@@ -197,11 +276,13 @@ exports.create = async ({
      $3,
      $4,
      'preparing',
-     'paid',
+     'unpaid',
      $5,
      $6,
      $7,
-     $8
+     $8,
+     $9,
+     $10
    )
    RETURNING *`,
       [
@@ -211,6 +292,8 @@ exports.create = async ({
         type,
         paymentMethod,
         total,
+        customer?.customerName || null,
+        customer?.contactNumber || null,
         qrCode,
         receiptToken
       ]
@@ -232,6 +315,39 @@ exports.create = async ({
          VALUES ($1, $2, $3, $4, $5)`,
         [order.id, item.menu_item_id, item.quantity, price, price * item.quantity]
       );
+    }
+
+    await auditService.insert(client, {
+      userId,
+      actorName,
+      action: "ORDER_CREATED",
+      module: "orders",
+      entityId: order.id,
+      newValues: {
+        order_code: order.order_code,
+        type: order.type,
+        status: order.status,
+        payment_status: order.payment_status,
+        payment_method: order.payment_method,
+        total_amount: order.total_amount,
+        reservation_id: order.reservation_id,
+      },
+      details: {
+        items: items.map(({ menu_item_id, quantity }) => ({ menu_item_id, quantity })),
+      },
+    });
+
+    for (const change of inventoryChanges) {
+      await auditService.insert(client, {
+        userId,
+        actorName,
+        action: "INVENTORY_DEDUCTED",
+        module: "inventory",
+        entityId: change.menu_item_id,
+        previousValues: { stock_count: change.previous_stock_count },
+        newValues: { stock_count: change.new_stock_count },
+        details: { order_id: order.id, quantity: change.quantity },
+      });
     }
 
     await client.query("COMMIT");
@@ -256,14 +372,26 @@ exports.findKdsOrders = async () => {
   return result.rows;
 };
 
-exports.updateStatus = async (id, status) => {
+exports.updateStatus = async (id, status, actor) => {
   const client = await db.connect();
 
   try {
     await client.query("BEGIN");
 
+    const previousResult = await client.query(
+      `SELECT id, order_code, status, payment_status
+       FROM restaurant.orders
+       WHERE id = $1 AND deleted_at IS NULL
+       FOR UPDATE`,
+      [id]
+    );
+    const previous = previousResult.rows[0];
+    if (!previous) {
+      throw new Error("Order not found.");
+    }
+
     const result = await client.query(
-      `UPDATE rrestaurant.orders
+      `UPDATE restaurant.orders
        SET status = $2, updated_at = NOW()
        WHERE id = $1
        RETURNING *`,
@@ -285,15 +413,6 @@ exports.updateStatus = async (id, status) => {
       );
 
       if (!existingHistory.rowCount) {
-        const userResult = await client.query(
-          `SELECT full_name, email
-           FROM restaurant.users
-           WHERE id = $1`,
-          [order.user_id]
-        );
-
-        const user = userResult.rows[0] || {};
-
         const itemsResult = await client.query(
           `SELECT 
              mi.item_name,
@@ -330,17 +449,33 @@ exports.updateStatus = async (id, status) => {
           [
             order.id,
             order.order_code,
-            user.full_name || "Customer",
-            user.email || "N/A",
+            order.customer_name || "Guest",
+            "N/A",
             order.type,
             order.payment_method || "GCash",
-            order.payment_status || "paid",
+            order.payment_status || "unpaid",
             order.total_amount,
             orderedItems
           ]
         );
       }
     }
+
+    await auditService.insert(client, {
+      userId: actor?.id || null,
+      actorName: actor?.email || null,
+      action: "ORDER_STATUS_UPDATED",
+      module: "orders",
+      entityId: order.id,
+      previousValues: {
+        status: previous.status,
+        payment_status: previous.payment_status,
+      },
+      newValues: {
+        status: order.status,
+        payment_status: order.payment_status,
+      },
+    });
 
     await client.query("COMMIT");
 
@@ -353,16 +488,48 @@ exports.updateStatus = async (id, status) => {
   }
 };
 
-exports.softDelete = async (id) => {
-  const result = await db.query(
-    `UPDATE restaurant.orders
-     SET deleted_at = NOW(), updated_at = NOW()
-     WHERE id = $1
-     RETURNING *`,
-    [id]
-  );
+exports.softDelete = async (id, actor) => {
+  const client = await db.connect();
 
-  return result.rows[0];
+  try {
+    await client.query("BEGIN");
+    const previousResult = await client.query(
+      "SELECT id, order_code, status FROM restaurant.orders WHERE id = $1 AND deleted_at IS NULL FOR UPDATE",
+      [id]
+    );
+    const previous = previousResult.rows[0];
+    if (!previous) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+
+    const result = await client.query(
+      `UPDATE restaurant.orders
+       SET deleted_at = NOW(), updated_at = NOW()
+       WHERE id = $1 AND deleted_at IS NULL
+       RETURNING id, order_code, status, deleted_at`,
+      [id]
+    );
+    const order = result.rows[0];
+
+    await auditService.insert(client, {
+      userId: actor?.id || null,
+      actorName: actor?.email || null,
+      action: "ORDER_CANCELLED",
+      module: "orders",
+      entityId: order.id,
+      previousValues: { status: previous.status },
+      newValues: { deleted_at: order.deleted_at, status: order.status },
+    });
+
+    await client.query("COMMIT");
+    return order;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 exports.findReceiptByCodeAndToken = async (code, token) => {
@@ -375,10 +542,10 @@ exports.findReceiptByCodeAndToken = async (code, token) => {
        o.payment_status,
        o.payment_method,
        o.total_amount,
-       o.created_at,
-       u.full_name
+       o.customer_name,
+       o.contact_number,
+       o.created_at
      FROM restaurant.orders o
-     LEFT JOIN restaurant.users u ON u.id = o.user_id
      WHERE o.order_code = $1
        AND o.receipt_token = $2
        AND o.deleted_at IS NULL`,
@@ -428,3 +595,5 @@ exports.getTodayIncome = async () => {
 
   return result.rows[0];
 };
+
+exports.normalizeOrderItems = normalizeOrderItems;

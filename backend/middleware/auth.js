@@ -27,12 +27,16 @@ function authenticate(req, res, next) {
       (typeof payload.id === "string" && payload.id.length > 0) ||
       Number.isSafeInteger(payload.id)
     ) ||
-    !["customer", "staff", "admin"].includes(payload.role)
+    !["staff", "admin"].includes(payload.role)
   ) {
     return res.status(401).json({ message: "Invalid authentication token." });
   }
 
-  req.user = { id: payload.id, role: payload.role };
+  req.user = {
+    id: payload.id,
+    role: payload.role,
+    email: typeof payload.email === "string" ? payload.email : null,
+  };
   next();
 }
 

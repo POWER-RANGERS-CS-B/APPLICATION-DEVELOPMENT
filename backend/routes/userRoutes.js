@@ -5,11 +5,13 @@ const { authenticate, allowRoles } = require("../middleware/auth");
 const router = express.Router();
 
 router.get("/", authenticate, allowRoles("admin"), userController.getEmployees);
+router.post("/", authenticate, allowRoles("admin"), userController.createStaff);
+router.put("/:id", authenticate, allowRoles("admin"), userController.updateStaff);
 router.patch(
   "/:id/status",
   authenticate,
   allowRoles("admin"),
-  userController.toggleStaffStatus
+  userController.setStaffStatus
 );
 
 module.exports = router;

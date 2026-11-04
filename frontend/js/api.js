@@ -1,4 +1,4 @@
-const API_BASE = `${window.location.protocol}//${window.location.hostname}:3000/api`;
+const API_BASE = `${window.location.origin}/api`;
 
 function getToken() {
   const token = localStorage.getItem("token");
@@ -7,12 +7,18 @@ function getToken() {
 }
 
 function redirectForAuthorizationFailure(status) {
-  if (!window.location.pathname.endsWith("/admin-dashboard.html")) return;
+  const pathname = window.location.pathname;
+  const isAdminDashboard = pathname.endsWith("/admin-dashboard.html");
+  const isStaffDashboard = pathname.endsWith("/staff-kds.html");
 
   if (status === 401) {
-    window.location.replace("/login.html");
-  } else if (status === 403) {
+    if (isAdminDashboard || isStaffDashboard) {
+      window.location.replace("/login.html");
+    }
+  } else if (status === 403 && isAdminDashboard) {
     window.location.replace("/choice.html");
+  } else if (status === 403 && isStaffDashboard) {
+    window.location.replace("/login.html");
   }
 }
 
@@ -37,7 +43,7 @@ async function apiRequest(path, options = {}) {
     });
   } catch (error) {
     throw new Error(
-      "Cannot connect to backend. Make sure your server is running at http://localhost:3000"
+      `Cannot connect to backend at ${API_BASE}. Make sure the server is running.`
     );
   }
 
@@ -84,17 +90,30 @@ function saveSession(data) {
   }
 
   localStorage.setItem("user", JSON.stringify(user));
-  localStorage.setItem("role", user.role || "customer");
+  localStorage.setItem("role", user.role || "");
   localStorage.setItem("user_id", user.id || user.user_id || "");
-  localStorage.setItem("full_name", user.fullName || user.full_name || user.name || "Customer");
+  localStorage.setItem("full_name", user.fullName || user.full_name || user.name || "");
   localStorage.setItem("email", user.email || "");
 
   return user;
 }
 
+async function logoutTo(destination) {
+  try {
+    if (getToken()) {
+      await apiRequest("/auth/logout", { method: "POST" });
+    }
+  } catch {
+    console.error("Logout audit event could not be confirmed.");
+  } finally {
+    localStorage.clear();
+    sessionStorage.clear();
+    location.href = destination;
+  }
+}
+
 function logout() {
-  localStorage.clear();
-  location.href = "index.html";
+  void logoutTo("index.html");
 }
 
 function togglePasswordVisibility(inputId, toggleButton) {
@@ -106,6 +125,13 @@ function togglePasswordVisibility(inputId, toggleButton) {
   passwordInput.type = isVisible ? "password" : "text";
   toggleButton.setAttribute("aria-label", isVisible ? "Show password" : "Hide password");
   toggleButton.setAttribute("aria-pressed", String(!isVisible));
+
+  const icon = toggleButton.querySelector("svg");
+  if (icon && window.lucide) {
+    icon.outerHTML = `<i data-lucide="${isVisible ? "eye" : "eye-off"}" aria-hidden="true"></i>`;
+    window.lucide.createIcons();
+    return;
+  }
 
   const svg = toggleButton.querySelector("svg");
   if (svg) {

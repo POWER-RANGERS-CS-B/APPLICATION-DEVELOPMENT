@@ -14,6 +14,7 @@ exports.createOrder = async (req, res) => {
 
     const order = await orderModel.create({
       userId: req.user?.id || null,
+      actorName: req.user?.email || null,
       type,
       chairIds,
       items: req.body.items,
@@ -22,6 +23,7 @@ exports.createOrder = async (req, res) => {
       reservationTime: req.body.reservation_time,
       customerName: req.body.customer_name || req.body.customerName,
       contactNumber: req.body.contact_number || req.body.contactNumber,
+      contactCountry: req.body.contact_country,
       receiptBaseUrl: getPublicBaseUrl(req),
     });
 
@@ -41,7 +43,7 @@ exports.getKdsOrders = async (req, res) => {
 
 exports.updateStatus = async (req, res) => {
   try {
-    res.json(await orderModel.updateStatus(req.params.id, req.body.status));
+    res.json(await orderModel.updateStatus(req.params.id, req.body.status, req.user));
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -49,7 +51,11 @@ exports.updateStatus = async (req, res) => {
 
 exports.deleteOrder = async (req, res) => {
   try {
-    res.json(await orderModel.softDelete(req.params.id));
+    const order = await orderModel.softDelete(req.params.id, req.user);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found." });
+    }
+    res.json(order);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }

@@ -4,15 +4,22 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DineQueue Official Receipt</title>
-    <link rel="stylesheet" href="css/style.css" />
+    <link rel="icon" href="/images/icon/dineari-logo.ico" type="image/x-icon" />
+    <title>Dine-Ari Official Receipt</title>
+    <script src="js/theme.js?v=20261104-day-night-switch-2"></script>
+    <link rel="stylesheet" href="css/style.css?v=dine-ari-day-night-switch-1" />
+    <link rel="stylesheet" href="css/design-system.css?v=20261104-geometric-triangles-1" />
+    <script src="/vendor/lucide/lucide.min.js?v=1.67.0"></script>
 </head>
 
 <body>
     <main class="page center-page">
         <section class="card receipt-download-card">
             <span class="section-kicker">Official Receipt</span>
-            <h1 class="logo-title">DineQueue</h1>
+            <picture class="system-logo-picture">
+                <source srcset="images/Logo/dineari-logo.webp" type="image/webp" />
+                <img class="system-logo system-logo-receipt" src="images/Logo/Dine-ari%20Chef%E2%80%99s%20Table%20Logo.png" alt="Dine-Ari Chef’s Table" width="1536" height="1024" decoding="async" />
+            </picture>
             <p class="muted">Restaurant Order Receipt Verification</p>
 
             <div id="receiptContent">
@@ -20,12 +27,13 @@
             </div>
 
             <div class="receipt-actions">
-                <button onclick="window.print()">Download / Print Receipt</button>
+                <button onclick="window.print()"><i data-lucide="printer" aria-hidden="true"></i> Download / Print Receipt</button>
             </div>
         </section>
     </main>
 
     <script src="js/receipt.js?v=dynamic-receipt-host"></script>
+    <script>if (window.lucide) lucide.createIcons();</script>
 </body>
 
 </html>

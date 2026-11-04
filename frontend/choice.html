@@ -5,19 +5,34 @@
   <script src="js/transitions.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="/images/icon/dineari-logo.ico" type="image/x-icon" />
   <title>Dine-Ari | Home</title>
-  <link rel="stylesheet" href="css/style.css?v=floating-cart-dialog" />
+  <script src="js/theme.js?v=20261104-day-night-switch-2"></script>
+  <link rel="preload" as="image" href="images/backgrounds/restaurant-bg.webp" type="image/webp" fetchpriority="high" />
+  <link rel="stylesheet" href="css/style.css?v=dine-ari-day-night-switch-1" />
+  <link rel="stylesheet" href="/vendor/intl-tel-input/css/intlTelInput.min.css" />
+  <link rel="stylesheet" href="css/design-system.css?v=20261104-choice-glass-1" />
+  <script src="/vendor/lucide/lucide.min.js?v=1.67.0"></script>
 </head>
 
-<body>
+<body class="customer-app-layout">
   <div class="main-container">
     <div class="content-wrapper">
 
       <main class="page">
         <div class="topbar home-topbar">
           <div class="home-brand">
-            <span class="section-kicker">Customer Workspace</span>
-            <h1 class="logo-title">Dine-Ari</h1>
+            <picture class="system-logo-picture">
+              <source srcset="images/Logo/dineari-logo.webp" type="image/webp" />
+              <img class="system-logo system-logo-header" src="images/Logo/Dine-ari%20Chef%E2%80%99s%20Table%20Logo.png" alt="Dine-Ari Chef’s Table" width="1536" height="1024" decoding="async" />
+            </picture>
+          </div>
+          <div id="currentStepLabel" class="current-step-label" aria-live="polite">Step 1 of 5 · Choose Mode</div>
+          <div class="home-topbar-actions">
+            <a class="header-login-link" href="login.html" aria-label="Staff and admin login" title="Staff and admin login">
+              <i data-lucide="user-round" aria-hidden="true"></i>
+              <span>Staff login</span>
+            </a>
           </div>
         </div>
 
@@ -28,23 +43,23 @@
 
             <div class="flow-steps">
               <div class="flow-step active">
-                <strong>1</strong>
+                <strong>1<i data-lucide="check" aria-hidden="true"></i></strong>
                 <span>Choose Mode</span>
               </div>
               <div class="flow-step">
-                <strong>2</strong>
+                <strong>2<i data-lucide="check" aria-hidden="true"></i></strong>
                 <span>Select Table</span>
               </div>
               <div class="flow-step">
-                <strong>3</strong>
+                <strong>3<i data-lucide="check" aria-hidden="true"></i></strong>
                 <span>Order Food</span>
               </div>
               <div class="flow-step">
-                <strong>4</strong>
+                <strong>4<i data-lucide="check" aria-hidden="true"></i></strong>
                 <span>Payment</span>
               </div>
               <div class="flow-step">
-                <strong>5</strong>
+                <strong>5<i data-lucide="check" aria-hidden="true"></i></strong>
                 <span>Receipt</span>
               </div>
             </div>
@@ -54,6 +69,10 @@
             <section id="choicePanel" class="card">
               <div class="choice-hero">
                 <div class="choice-copy">
+                  <picture class="system-logo-picture">
+                    <source srcset="images/Logo/dineari-logo.webp" type="image/webp" />
+                    <img class="choice-hero-logo" src="images/Logo/Dine-ari%20Chef%E2%80%99s%20Table%20Logo.png" alt="Dine-Ari Chef’s Table" width="1536" height="1024" decoding="async" />
+                  </picture>
                   <span class="section-kicker">Start Your Order</span>
                   <h2>Welcome to Dine-Ari</h2>
                   <p class="page-subtitle">
@@ -62,14 +81,24 @@
                 </div>
 
                 <div class="choice-buttons">
-                  <button class="choice-card-btn" onclick="chooseType('dine_in')">
-                    <span>Dine-In</span>
-                    <small>Select your preferred table and start ordering.</small>
+                  <button type="button" class="choice-card-btn" onclick="chooseType('dine_in')">
+                    <span class="front">
+                      <span class="choice-card-title">
+                        <i data-lucide="utensils" aria-hidden="true"></i>
+                        <span class="button-label">Dine-In</span>
+                      </span>
+                      <small>Select your preferred table and start ordering.</small>
+                    </span>
                   </button>
 
-                  <button class="choice-card-btn reservation-choice" onclick="showReservationSection()">
-                    <span>Reservation</span>
-                    <small>Book your table by choosing a date, time, and seating.</small>
+                  <button type="button" class="choice-card-btn reservation-choice" onclick="showReservationSection()">
+                    <span class="front">
+                      <span class="choice-card-title">
+                        <i data-lucide="calendar-days" aria-hidden="true"></i>
+                        <span class="button-label">Reservation</span>
+                      </span>
+                      <small>Book your table by choosing a date, time, and seating.</small>
+                    </span>
                   </button>
                 </div>
               </div>
@@ -96,19 +125,21 @@
                     <input id="reservationTime" type="time" />
                   </label>
 
-                  <label>
-                    Guest Name
-                    <input id="reservationName" type="text" placeholder="Enter customer name" />
+                  <label for="reservationName">
+                    Full Name <span class="required-field-mark" aria-hidden="true">*</span>
+                    <input id="reservationName" type="text" placeholder="Enter customer name" autocomplete="name" required aria-describedby="reservationNameError" />
+                    <small id="reservationNameError" class="field-error" role="alert" hidden></small>
                   </label>
 
-                  <label>
-                    Contact Number
-                    <input id="reservationContact" type="text" placeholder="Enter contact number" />
+                  <label for="reservationContact">
+                    Contact Number <span class="required-field-mark" aria-hidden="true">*</span>
+                    <input id="reservationContact" type="tel" autocomplete="tel" inputmode="tel" required aria-describedby="reservationContactError" />
+                    <small id="reservationContactError" class="field-error" role="alert" hidden></small>
                   </label>
 
                   <div class="reservation-actions">
-                    <button onclick="continueReservationToChairs()">Continue to Chair Selection</button>
-                    <button class="secondary" onclick="showChoicePanel()">Back</button>
+                    <button id="continueReservationButton" onclick="continueReservationToChairs()" disabled>Continue to Chair Selection</button>
+                    <button class="secondary" type="button" onclick="showChoicePanel()">Back</button>
                   </div>
                 </div>
 
@@ -147,16 +178,17 @@
                 </button>
               </div>
 
+              <div class="chair-legend" aria-label="Table status legend">
+                <span><i class="legend-swatch available"></i>Available</span>
+                <span><i class="legend-swatch selected"></i>Selected</span>
+                <span><i class="legend-swatch unavailable"></i>Occupied</span>
+              </div>
+
               <div class="floor-scroll-wrapper">
                 <div id="floorPlan" class="floor-plan"></div>
               </div>
 
               <div class="cart-actions floor-selection-actions">
-                <div class="chair-legend" aria-label="Chair status legend">
-                  <span><i class="legend-swatch available"></i>Available</span>
-                  <span><i class="legend-swatch selected"></i>Selected</span>
-                  <span><i class="legend-swatch unavailable"></i>Unavailable</span>
-                </div>
                 <button id="lockChairsButton" onclick="lockSelectedChairs()" disabled>Select a table to continue</button>
                 <button class="secondary" onclick="showChoicePanel()">Back</button>
               </div>
@@ -174,7 +206,7 @@
               <div class="menu-shell menu-only-shell">
                 <main class="menu-main-area">
                   <div class="category-tabs" role="tablist" aria-label="Menu categories">
-                    <button type="button" role="tab" aria-selected="false" onclick="filterMenuCategory('All', this)">All</button>
+                    <button class="active" type="button" role="tab" aria-selected="true" onclick="filterMenuCategory('All', this)">All</button>
                     <button type="button" role="tab" aria-selected="false" onclick="filterMenuCategory('Appetizers', this)">Appetizers</button>
                     <button type="button" role="tab" aria-selected="false" onclick="filterMenuCategory('Main Course', this)">Main Course</button>
                     <button type="button" role="tab" aria-selected="false" onclick="filterMenuCategory('Rice Meals', this)">Rice Meals</button>
@@ -206,26 +238,42 @@
                 <div class="payment-methods">
                   <label class="payment-method-card active">
                     <input type="radio" name="paymentMethod" value="GCash" checked onchange="selectPaymentCard(this)" />
-                    <div>
+                    <i class="payment-method-check" data-lucide="check" aria-hidden="true"></i>
+                    <span class="payment-method-icon gcash-icon" aria-hidden="true">G</span>
+                    <div class="payment-method-copy">
                       <h3>GCash</h3>
                       <p>Pay using your GCash mobile wallet.</p>
+                      <small>Have your GCash app ready when staff confirms your order.</small>
                     </div>
                   </label>
 
                   <label class="payment-method-card">
                     <input type="radio" name="paymentMethod" value="Card" onchange="selectPaymentCard(this)" />
-                    <div>
+                    <i class="payment-method-check" data-lucide="check" aria-hidden="true"></i>
+                    <span class="payment-method-icon card-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M3 10h18" stroke="currentColor" stroke-width="1.8"/></svg>
+                    </span>
+                    <div class="payment-method-copy">
                       <h3>Card</h3>
                       <p>Pay using debit or credit card.</p>
+                      <small>Present your card to staff; no card details are collected here.</small>
                     </div>
                   </label>
                 </div>
 
                 <aside class="payment-summary">
                   <h3>Order Summary</h3>
+                  <dl class="payment-order-meta">
+                    <div><dt>Order type</dt><dd id="paymentOrderType">—</dd></div>
+                    <div><dt>Table</dt><dd id="paymentTableNumber">—</dd></div>
+                  </dl>
 
                   <div id="paymentItems"></div>
 
+                  <div class="payment-total payment-subtotal">
+                    <span>Subtotal</span>
+                    <strong>₱<span id="paymentSubtotal">0.00</span></strong>
+                  </div>
                   <div class="payment-total">
                     <span>Total Amount</span>
                     <strong>₱<span id="paymentTotal">0.00</span></strong>
@@ -255,6 +303,13 @@
                 </button>
               </div>
 
+              <dl class="receipt-summary" aria-label="Order summary">
+                <div><dt>Order number</dt><dd id="receiptOrderNumber">—</dd></div>
+                <div><dt>Table</dt><dd id="receiptTableNumber">—</dd></div>
+                <div><dt>Total</dt><dd id="receiptTotal">—</dd></div>
+                <div><dt>Payment method</dt><dd id="receiptPaymentMethod">—</dd></div>
+              </dl>
+
               <p id="thankYouMessage"></p>
 
               <div class="receipt-actions">
@@ -267,13 +322,6 @@
 
     </div>
   </div>
-
-  <button class="floating-login-btn" type="button" aria-label="Staff and admin login" title="Staff and admin login" onclick="window.location.href='login.html'">
-    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2" />
-      <path d="M4 21c0-4.1 3.6-7 8-7s8 2.9 8 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-    </svg>
-  </button>
 
   <button id="floatingCartButton" class="floating-cart-btn" type="button" aria-label="Open your cart" aria-controls="cartDialog" aria-expanded="false" title="Open your cart" hidden onclick="openCartDialog()">
     <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -291,7 +339,7 @@
           <span class="section-kicker">Your Selection</span>
           <h2 id="cartDialogTitle">Your Cart</h2>
         </div>
-        <button class="cart-dialog-close" type="button" aria-label="Close cart and return to menu" title="Close cart" onclick="closeCartDialog()">×</button>
+        <button class="cart-dialog-close" type="button" aria-label="Close cart and return to menu" title="Close cart" onclick="closeCartDialog()"><i data-lucide="x" aria-hidden="true"></i></button>
       </header>
 
       <div id="cartItems" class="cart-dialog-items"></div>
@@ -302,9 +350,12 @@
       </div>
     </section>
   </dialog>
+  <div id="cartToast" class="cart-toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
   <script src="js/api.js"></script>
-  <script src="js/choice.js?v=dine-in-order-type-fallback"></script>
+  <script src="/vendor/intl-tel-input/js/intlTelInput.min.js"></script>
+  <script src="js/choice.js?v=dine-ari-brand"></script>
+  <script>if (window.lucide) lucide.createIcons();</script>
 </body>
 
 </html>

@@ -13,7 +13,7 @@ exports.createMenuItem = async (req, res) => {
   try {
     const image_url = req.file ? `images/menu-images/${req.file.filename}` : 'images/default-food.jpg';
     const itemData = { ...req.body, image_url };
-    const newItem = await menuModel.create(itemData);
+    const newItem = await menuModel.create(itemData, req.user);
     res.status(201).json(newItem);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -27,7 +27,7 @@ exports.updateMenuItem = async (req, res) => {
     if (req.file) {
       updateData.image_url = `images/menu-images/${req.file.filename}`;
     }
-    const updatedItem = await menuModel.update(req.params.id, updateData);
+    const updatedItem = await menuModel.update(req.params.id, updateData, req.user);
     if (!updatedItem) {
       return res.status(404).json({ message: "Menu item not found" });
     }
@@ -39,7 +39,11 @@ exports.updateMenuItem = async (req, res) => {
 
 exports.softDeleteMenuItem = async (req, res) => {
   try {
-    res.json(await menuModel.softDelete(req.params.id));
+    const deletedItem = await menuModel.softDelete(req.params.id, req.user);
+    if (!deletedItem) {
+      return res.status(404).json({ message: "Menu item not found" });
+    }
+    res.json(deletedItem);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }

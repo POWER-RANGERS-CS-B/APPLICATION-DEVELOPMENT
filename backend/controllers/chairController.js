@@ -16,7 +16,7 @@ exports.lockTable = async (req, res) => {
       return res.status(400).json({ message: "A valid tableId is required." });
     }
 
-    res.json(await chairModel.lockTable(tableId));
+    res.json(await chairModel.lockTable(tableId, req.user));
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
