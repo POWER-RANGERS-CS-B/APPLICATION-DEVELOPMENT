@@ -117,12 +117,12 @@
                 <div class="reservation-form">
                   <label>
                     Reservation Date
-                    <input id="reservationDate" type="date" />
+                    <input id="reservationDate" type="date" required />
                   </label>
 
                   <label>
                     Reservation Time
-                    <input id="reservationTime" type="time" />
+                    <input id="reservationTime" type="time" required />
                   </label>
 
                   <label for="reservationName">
@@ -138,8 +138,8 @@
                   </label>
 
                   <div class="reservation-actions">
-                    <button id="continueReservationButton" onclick="continueReservationToChairs()" disabled>Continue to Chair Selection</button>
-                    <button class="secondary" type="button" onclick="showChoicePanel()">Back</button>
+                    <button id="continueReservationButton" type="button" onclick="continueReservationToChairs()" disabled>Continue to Chair Selection</button>
+                    <button id="reservationBackButton" class="secondary" type="button" onclick="showChoicePanel()">Back</button>
                   </div>
                 </div>
 
@@ -196,8 +196,8 @@
               </div>
 
               <div class="cart-actions floor-selection-actions">
-                <button id="lockChairsButton" onclick="lockSelectedChairs()" disabled>Select a table to continue</button>
-                <button class="secondary" onclick="showChoicePanel()">Back</button>
+                <button id="lockChairsButton" type="button" onclick="lockSelectedChairs()" disabled>Select a table to continue</button>
+                <button id="chairSelectionBackButton" class="secondary" type="button" onclick="backToReservationDetails()">Back to reservation details</button>
               </div>
             </section>
 
@@ -361,7 +361,7 @@
 
   <script src="js/api.js"></script>
   <script src="/vendor/intl-tel-input/js/intlTelInput.min.js"></script>
-  <script src="js/choice.js?v=20261105-floor-plan-fit-1"></script>
+  <script src="js/choice.js?v=20261105-reservation-continue-1"></script>
   <script>if (window.lucide) lucide.createIcons();</script>
 </body>
 

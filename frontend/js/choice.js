@@ -10,6 +10,8 @@ let floorTables = [];
 let selectedTableId = null;
 let reservationPhoneInput = null;
 let reservationPhoneUtilsReady = false;
+let reservationContinueInProgress = false;
+let chairHoldInProgress = false;
 let floorPlanZoomIndex = 0;
 let floorPlanResizeObserver = null;
 let floorPlanResizeFrame = 0;
@@ -165,7 +167,10 @@ function showReservationSection() {
   updateChairSelectionUI();
   updateCartTotal();
 
-  const today = new Date().toISOString().split("T")[0];
+  const now = new Date();
+  const today = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+    .toISOString()
+    .split("T")[0];
   const dateInput = document.getElementById("reservationDate");
 
   if (dateInput) {
@@ -174,6 +179,14 @@ function showReservationSection() {
   }
 
   updateReservationCustomerValidation();
+  showSection("reservationSection", 1);
+}
+
+function backToReservationDetails() {
+  orderType = "reservation";
+  selectedChairIds = [];
+  selectedTableId = null;
+  updateChairSelectionUI();
   showSection("reservationSection", 1);
 }
 
@@ -267,13 +280,20 @@ function updateReservationCustomerValidation() {
     contactValidation.message
   );
   const continueButton = document.getElementById("continueReservationButton");
-  if (continueButton) continueButton.disabled = !(nameValid && contactValid);
+  if (continueButton) {
+    continueButton.disabled =
+      reservationContinueInProgress || !(nameValid && contactValid);
+  }
   return nameValid && contactValid;
 }
 
 async function continueReservationToChairs() {
+  if (reservationContinueInProgress) return;
+
   if (!updateReservationCustomerValidation()) {
-    document.getElementById("reservationName")?.focus();
+    const name = document.getElementById("reservationName");
+    const contact = document.getElementById("reservationContact");
+    (name?.getAttribute("aria-invalid") === "true" ? name : contact)?.focus();
     return;
   }
 
@@ -281,12 +301,29 @@ async function continueReservationToChairs() {
   const time = document.getElementById("reservationTime")?.value;
   const name = document.getElementById("reservationName")?.value.trim();
   const contact = reservationPhoneInput?.getNumber();
-  const contactCountry = reservationPhoneInput?.getSelectedCountryData().iso2;
+  const selectedCountry = reservationPhoneInput?.getSelectedCountry();
+  const contactCountry = selectedCountry?.iso2;
 
   if (!date || !time) {
     alert("Please select reservation date and time.");
+    document.getElementById(!date ? "reservationDate" : "reservationTime")?.focus();
     return;
   }
+
+  if (!contact || !contactCountry) {
+    alert("Please enter a valid contact number and select its country.");
+    document.getElementById("reservationContact")?.focus();
+    return;
+  }
+
+  const continueButton = document.getElementById("continueReservationButton");
+  const backButton = document.getElementById("reservationBackButton");
+  reservationContinueInProgress = true;
+  if (continueButton) {
+    continueButton.disabled = true;
+    continueButton.textContent = "Loading tables...";
+  }
+  if (backButton) backButton.disabled = true;
 
   reservationDetails = {
     date,
@@ -301,7 +338,16 @@ async function continueReservationToChairs() {
   const guestCount = document.getElementById("guestCount");
   if (guestCount) guestCount.textContent = "0";
 
-  await loadFloorPlan();
+  try {
+    await loadFloorPlan();
+  } finally {
+    reservationContinueInProgress = false;
+    if (continueButton) {
+      continueButton.textContent = "Continue to Chair Selection";
+      updateReservationCustomerValidation();
+    }
+    if (backButton) backButton.disabled = false;
+  }
 }
 
 async function chooseType(type) {
@@ -619,6 +665,7 @@ function updateChairSelectionUI() {
   );
   const selectedTableLabel = document.getElementById("selectedTableLabel");
   const lockButton = document.getElementById("lockChairsButton");
+  const backButton = document.getElementById("chairSelectionBackButton");
 
   if (selectedTableLabel) {
     selectedTableLabel.textContent = realTable
@@ -626,18 +673,26 @@ function updateChairSelectionUI() {
       : "None";
   }
   if (lockButton) {
-    lockButton.textContent = realTable
-      ? `Reserve ${realTable.table_name || realTable.name || `Table ${selectedTableId}`} & continue`
-      : "Select a table to continue";
-    lockButton.disabled = !realTable;
+    lockButton.textContent = chairHoldInProgress
+      ? "Reserving table..."
+      : realTable
+        ? `Reserve ${realTable.table_name || realTable.name || `Table ${selectedTableId}`} & continue`
+        : "Select a table to continue";
+    lockButton.disabled = chairHoldInProgress || !realTable;
   }
+  if (backButton) backButton.disabled = chairHoldInProgress;
 }
 
 async function lockSelectedChairs() {
+  if (chairHoldInProgress) return;
+
   if (!selectedTableId) {
     alert("Please select an available table.");
     return;
   }
+
+  chairHoldInProgress = true;
+  updateChairSelectionUI();
 
   try {
     const lockedChairs = await request("/chairs/lock", {
@@ -645,22 +700,22 @@ async function lockSelectedChairs() {
       body: JSON.stringify({ tableId: selectedTableId })
     });
     selectedChairIds = lockedChairs.map((chair) => chair.id);
+    if (orderType === "reservation") {
+      await confirmReservationOnly();
+      return;
+    }
+
+    showSection("menuSection", 3);
+    await loadMenu();
   } catch (error) {
     alert("Cannot reserve table: " + error.message);
     selectedTableId = null;
     selectedChairIds = [];
-    updateChairSelectionUI();
     await loadFloorPlan();
-    return;
+  } finally {
+    chairHoldInProgress = false;
+    updateChairSelectionUI();
   }
-
-  if (orderType === "reservation") {
-    await confirmReservationOnly();
-    return;
-  }
-
-  showSection("menuSection", 3);
-  await loadMenu();
 }
 
 async function confirmReservationOnly() {
