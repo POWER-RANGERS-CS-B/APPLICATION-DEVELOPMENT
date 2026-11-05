@@ -4,9 +4,11 @@ function showAuthMessage(message, isError = false, messageId = "authMessage") {
   if (!messageBox) return;
 
   messageBox.textContent = message;
-  messageBox.style.color = isError
-    ? "var(--danger)"
-    : "var(--gold-2)";
+  messageBox.classList.toggle("is-error", isError);
+  messageBox.classList.toggle(
+    "is-success",
+    !isError && /\bsuccessful\b/i.test(message)
+  );
 }
 
 async function login(accountType = "admin") {

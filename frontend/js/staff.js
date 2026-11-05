@@ -233,6 +233,12 @@ function getStaffTableStatus(status) {
   };
 }
 
+function isCleaningTableEligible(table) {
+  return ["occupied", "needs_cleaning", "cleaning"].includes(
+    String(table?.status || "").trim().toLowerCase()
+  );
+}
+
 function setTableCleaningMessage(message = "", isError = false) {
   const messageElement = document.getElementById("staffCleaningMessage");
   if (!messageElement) return;
@@ -263,7 +269,7 @@ function initializeTableCleaning() {
 
   tableGrid?.addEventListener("click", (event) => {
     const tableCard = event.target.closest("[data-table-id]");
-    if (!tableCard || !tableGrid.contains(tableCard)) return;
+    if (!tableCard || !tableGrid.contains(tableCard) || tableCard.disabled) return;
     selectedCleaningTableId = Number(tableCard.dataset.tableId);
     renderStaffTableCleaning();
   });
@@ -303,7 +309,10 @@ async function loadTableCleaning() {
         table.deleted_at == null
       );
 
-      if (!staffTables.some((table) => Number(table.id) === selectedCleaningTableId)) {
+      const selectedTable = staffTables.find(
+        (table) => Number(table.id) === selectedCleaningTableId
+      );
+      if (!selectedTable || !isCleaningTableEligible(selectedTable)) {
         selectedCleaningTableId = null;
       }
 
@@ -385,9 +394,10 @@ function renderStaffTableCleaning() {
       const tableId = Number(table.id);
       const tableName = table.table_name || `Table ${tableId}`;
       const isSelected = tableId === selectedCleaningTableId;
+      const isEligible = isCleaningTableEligible(table);
       return `
-        <button class="staff-table-card ${status.className}${isSelected ? " is-selected" : ""}"
-                type="button" data-table-id="${tableId}" aria-pressed="${isSelected}">
+        <button class="staff-table-card ${status.className}${isSelected ? " is-selected" : ""}${isEligible ? "" : " is-ineligible"}"
+                type="button" data-table-id="${tableId}" aria-pressed="${isSelected}" ${isEligible ? "" : "disabled"} title="${isEligible ? `Select ${escapeStaffHtml(tableName)}` : `${escapeStaffHtml(tableName)} is not eligible for a cleaning action`}">
           <span class="staff-table-card-top">
             <span class="staff-table-card-icon"><i data-lucide="${status.icon}" aria-hidden="true"></i></span>
             <span class="staff-table-status">${escapeStaffHtml(status.label)}</span>
@@ -521,7 +531,21 @@ async function runTableCleaningAction(actionName) {
     return;
   }
 
-  if (transition.confirmation && !window.confirm(transition.confirmation)) return;
+  if (transition.confirmation) {
+    tableCleaningActionInProgress = true;
+    renderSelectedCleaningTable();
+    const confirmed = await window.DineAriNotifications.confirm({
+      type: "warning",
+      title: actionName === "mark-clean" ? "Mark this table as clean?" : "Mark this table for cleaning?",
+      message: transition.confirmation,
+      confirmLabel: actionName === "mark-clean" ? "Mark as clean" : "Mark for cleaning",
+    });
+    if (!confirmed) {
+      tableCleaningActionInProgress = false;
+      renderSelectedCleaningTable();
+      return;
+    }
+  }
 
   tableCleaningActionInProgress = true;
   renderSelectedCleaningTable();

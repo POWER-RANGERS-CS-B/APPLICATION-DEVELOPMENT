@@ -18,6 +18,17 @@ let weeklyForecastChart = null;
 let hourlyForecastChart = null;
 let latestReservationForecast = null;
 let categoryChartRefreshPromise = null;
+const pendingAdminMutations = new Set();
+
+function beginAdminMutation(key) {
+  if (pendingAdminMutations.has(key)) return false;
+  pendingAdminMutations.add(key);
+  return true;
+}
+
+function endAdminMutation(key) {
+  pendingAdminMutations.delete(key);
+}
 
 const CATEGORY_CHART_CATEGORIES = [
   { label: "Appetizers", color: "#22A06B" },
@@ -259,12 +270,27 @@ function renderOrderHistory(history) {
 }
 
 async function deleteOrder(id) {
-  if (!confirm("Soft delete this order from the database?")) return;
+  const actionKey = `delete-order:${id}`;
+  if (!beginAdminMutation(actionKey)) return;
   try {
-    await apiRequest(`/orders/${id}`, { method: "DELETE" });
-    await loadAdminDashboardMetrics();
-  } catch (err) {
-    console.error("Failed to delete order:", err);
+    const confirmed = await window.DineAriNotifications.confirm({
+      type: "warning",
+      title: "Delete this order?",
+      message: "Soft delete this order from the database?",
+      confirmLabel: "Delete order",
+      destructive: true,
+    });
+    if (!confirmed) return;
+    try {
+      await apiRequest(`/orders/${id}`, { method: "DELETE" });
+      await loadAdminDashboardMetrics();
+      window.DineAriNotifications.show({ type: "success", description: "Order deleted successfully." });
+    } catch (err) {
+      console.error("Failed to delete order:", err);
+      window.DineAriNotifications.show({ type: "error", description: err.message || "The order could not be deleted." });
+    }
+  } finally {
+    endAdminMutation(actionKey);
   }
 }
 
@@ -434,13 +460,27 @@ async function saveProduct() {
 }
 
 async function deleteProduct(id) {
-  if (confirm("Delete this food product from PostgreSQL?")) {
+  const actionKey = `delete-menu:${id}`;
+  if (!beginAdminMutation(actionKey)) return;
+  try {
+    const confirmed = await window.DineAriNotifications.confirm({
+      type: "warning",
+      title: "Delete this menu item?",
+      message: "Delete this food product from PostgreSQL?",
+      confirmLabel: "Delete item",
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       await apiRequest(`/menu/${id}`, { method: "DELETE" });
       await fetchProducts();
+      window.DineAriNotifications.show({ type: "success", description: "Menu item deleted successfully." });
     } catch (err) {
       console.error("Database deletion error:", err);
+      window.DineAriNotifications.show({ type: "error", description: err.message || "The menu item could not be deleted." });
     }
+  } finally {
+    endAdminMutation(actionKey);
   }
 }
 
@@ -468,6 +508,7 @@ async function fetchUsers() {
     }
     if (status) {
       status.classList.remove("is-error");
+      status.classList.remove("is-success");
       status.textContent = `${users.filter((user) => user.role === "staff").length} staff accounts`;
     }
   } catch {
@@ -544,6 +585,7 @@ function setStaffManagementMessage(message, isError = false) {
   const status = document.getElementById("staffManagementStatus");
   if (!status) return;
   status.classList.toggle("is-error", isError);
+  status.classList.toggle("is-success", Boolean(message) && !isError);
   status.textContent = message;
 }
 
@@ -642,18 +684,30 @@ async function submitStaffForm(event) {
 async function toggleUserStatus(id, nextStatus) {
   const user = users.find((item) => String(item.id) === String(id) && item.role === "staff");
   if (!user || !["active", "inactive"].includes(nextStatus)) return;
+  const actionKey = `staff-status:${id}:${nextStatus}`;
+  if (!beginAdminMutation(actionKey)) return;
   const action = nextStatus === "inactive" ? "deactivate" : "activate";
-  if (!confirm(`Are you sure you want to ${action} ${user.name}'s account?`)) return;
-
   try {
-    await apiRequest(`/users/${encodeURIComponent(id)}/status`, {
-      method: "PATCH",
-      body: JSON.stringify({ status: nextStatus }),
+    const confirmed = await window.DineAriNotifications.confirm({
+      type: nextStatus === "inactive" ? "warning" : "info",
+      title: `${action === "deactivate" ? "Deactivate" : "Activate"} this staff account?`,
+      message: `Are you sure you want to ${action} ${user.name}'s account?`,
+      confirmLabel: action === "deactivate" ? "Deactivate" : "Activate",
+      destructive: nextStatus === "inactive",
     });
-    await fetchUsers();
-    setStaffManagementMessage(`Staff account ${nextStatus === "active" ? "activated" : "deactivated"}.`);
-  } catch (error) {
-    setStaffManagementMessage(error.message || "Staff account status could not be changed.", true);
+    if (!confirmed) return;
+    try {
+      await apiRequest(`/users/${encodeURIComponent(id)}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      await fetchUsers();
+      setStaffManagementMessage(`Staff account ${nextStatus === "active" ? "activated" : "deactivated"}.`);
+    } catch (error) {
+      setStaffManagementMessage(error.message || "Staff account status could not be changed.", true);
+    }
+  } finally {
+    endAdminMutation(actionKey);
   }
 }
 
@@ -662,7 +716,10 @@ async function fetchAuditLogs() {
   const tbody = document.getElementById("auditTableBody");
   const status = document.getElementById("auditLogStatus");
   if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="muted">Loading audit logs…</td></tr>`;
-  if (status) status.textContent = "Loading audit events…";
+  if (status) {
+    status.classList.remove("is-error");
+    status.textContent = "Loading audit events…";
+  }
 
   const params = new URLSearchParams({
     page: String(auditPage),
@@ -702,7 +759,10 @@ async function fetchAuditLogs() {
     if (tbody) {
       tbody.innerHTML = `<tr><td colspan="6" class="muted">Unable to load audit logs. Check your admin session and try again.</td></tr>`;
     }
-    if (status) status.textContent = "Audit events could not be loaded.";
+    if (status) {
+      status.classList.add("is-error");
+      status.textContent = "Audit events could not be loaded.";
+    }
   }
 }
 
@@ -1576,9 +1636,17 @@ async function triggerModifyPricePrompt(productId, currentPrice) {
  * Drops the visibility relation boundary from client views
  */
 async function triggerDeleteProductOperation(productId) {
-  if (!confirm("Are you sure you want to flag this product row as deleted in pgAdmin?")) return;
-
+  const actionKey = `delete-product-row:${productId}`;
+  if (!beginAdminMutation(actionKey)) return;
   try {
+    const confirmed = await window.DineAriNotifications.confirm({
+      type: "warning",
+      title: "Delete this product?",
+      message: "Are you sure you want to flag this product row as deleted in pgAdmin?",
+      confirmLabel: "Delete product",
+      destructive: true,
+    });
+    if (!confirmed) return;
     await apiRequest(`/menu/${productId}`, {
       method: "DELETE"
     });
@@ -1587,6 +1655,8 @@ async function triggerDeleteProductOperation(productId) {
 
   } catch (error) {
     alert("Failed to drop database row reference safely: " + error.message);
+  } finally {
+    endAdminMutation(actionKey);
   }
 }
 

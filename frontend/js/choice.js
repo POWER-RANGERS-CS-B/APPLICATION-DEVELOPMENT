@@ -12,6 +12,8 @@ let reservationPhoneInput = null;
 let reservationPhoneUtilsReady = false;
 let reservationContinueInProgress = false;
 let chairHoldInProgress = false;
+let orderSubmissionInProgress = false;
+let paymentConfirmationInProgress = false;
 let floorPlanZoomIndex = 0;
 let floorPlanResizeObserver = null;
 let floorPlanResizeFrame = 0;
@@ -965,20 +967,18 @@ function addToCart(menuItemId) {
   showCartToast(`${getItemName(item)} added to cart`);
 }
 
-let cartToastTimer;
 function showCartToast(message) {
-  const toast = document.getElementById("cartToast");
-  if (!toast) return;
-  toast.textContent = message;
-  toast.classList.add("visible");
+  window.DineAriNotifications?.show({
+    type: "success",
+    title: "Added to your order",
+    description: message
+  });
   const cartButton = document.getElementById("floatingCartButton");
   cartButton?.classList.remove("cart-bump");
   if (cartButton) {
     void cartButton.offsetWidth;
     cartButton.classList.add("cart-bump");
   }
-  window.clearTimeout(cartToastTimer);
-  cartToastTimer = window.setTimeout(() => toast.classList.remove("visible"), 2200);
 }
 
 function removeFromCart(menuItemId) {
@@ -1111,7 +1111,8 @@ function updateReceiptSummary({ orderNumber, table, total, paymentMethod } = {})
   });
 }
 
-function confirmPaymentAndOrder() {
+async function confirmPaymentAndOrder() {
+  if (orderSubmissionInProgress || paymentConfirmationInProgress) return;
   const selectedPayment =
     document.querySelector('input[name="paymentMethod"]:checked')?.value || "GCash";
 
@@ -1120,14 +1121,24 @@ function confirmPaymentAndOrder() {
     return;
   }
 
-  const confirmMessage =
-    `Payment Method: ${selectedPayment}\n\nAre you sure you want to place this order?`;
-
-  const confirmed = confirm(confirmMessage);
-
-  if (!confirmed) return;
-
-  placeOrder();
+  const confirmButton = document.getElementById("confirmPaymentButton");
+  paymentConfirmationInProgress = true;
+  if (confirmButton) confirmButton.disabled = true;
+  try {
+    const confirmed = await window.DineAriNotifications.confirm({
+      type: "warning",
+      title: "Confirm your order?",
+      message: `Payment Method: ${selectedPayment}\n\nAre you sure you want to place this order?`,
+      confirmLabel: "Place order",
+    });
+    if (confirmed) {
+      paymentConfirmationInProgress = false;
+      await placeOrder();
+    }
+  } finally {
+    paymentConfirmationInProgress = false;
+    if (confirmButton) confirmButton.disabled = false;
+  }
 }
 
 function downloadQrCode() {
@@ -1146,21 +1157,27 @@ function downloadQrCode() {
   document.body.removeChild(link);
 }
 
-function placeOrder() {
+async function placeOrder() {
   if (!cart.length) {
     alert("Please add at least one item.");
     return;
   }
 
-  let order;
+  if (orderSubmissionInProgress) return;
+  orderSubmissionInProgress = true;
+  const confirmButton = document.getElementById("confirmPaymentButton");
+  const originalButtonText = confirmButton?.textContent;
+  if (confirmButton) {
+    confirmButton.disabled = true;
+    confirmButton.setAttribute("aria-busy", "true");
+    confirmButton.textContent = "Placing order…";
+  }
 
   const selectedPayment =
     document.querySelector('input[name="paymentMethod"]:checked')?.value || "Cash";
 
-  // Use an async function so the flow can await its database requests.
-  (async () => {
-    try {
-      order = await request("/orders", {
+  try {
+      const order = await request("/orders", {
         method: "POST",
         body: JSON.stringify({
           type: orderType || (selectedChairIds.length ? "dine_in" : null),
@@ -1220,10 +1237,16 @@ function placeOrder() {
       document.getElementById("thankYouMessage").textContent =
         `Thank you for dining with Dine-Ari! Your order has been placed with ${selectedPayment} selected. Please complete payment with staff; scan the QR code to open your official receipt.`;
 
-    } catch (error) {
-      alert("Cannot place order: " + error.message);
+  } catch (error) {
+    alert("Cannot place order: " + error.message);
+  } finally {
+    orderSubmissionInProgress = false;
+    if (confirmButton) {
+      confirmButton.disabled = false;
+      confirmButton.removeAttribute("aria-busy");
+      confirmButton.textContent = originalButtonText || "Confirm Payment";
     }
-  })();
+  }
 }
 
 

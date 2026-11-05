@@ -9,9 +9,9 @@
   <title>Dine-Ari | Home</title>
   <script src="js/theme.js?v=20261104-day-night-switch-2"></script>
   <link rel="preload" as="image" href="images/backgrounds/restaurant-bg.webp" type="image/webp" fetchpriority="high" />
-  <link rel="stylesheet" href="css/style.css?v=20261105-floor-plan-fit-1" />
+  <link rel="stylesheet" href="css/style.css?v=20261105-global-notifications-3" />
   <link rel="stylesheet" href="/vendor/intl-tel-input/css/intlTelInput.min.css" />
-  <link rel="stylesheet" href="css/design-system.css?v=20261105-receipt-1" />
+  <link rel="stylesheet" href="css/design-system.css?v=20261105-global-notifications-4" />
   <script src="/vendor/lucide/lucide.min.js?v=1.67.0"></script>
 </head>
 
@@ -287,7 +287,7 @@
                   </div>
 
                   <div class="payment-actions">
-                    <button onclick="confirmPaymentAndOrder()">Confirm Payment</button>
+                    <button id="confirmPaymentButton" onclick="confirmPaymentAndOrder()">Confirm Payment</button>
                     <button class="secondary" onclick="backToMenu()">Back to Menu</button>
                   </div>
                 </aside>
@@ -357,11 +357,10 @@
       </div>
     </section>
   </dialog>
-  <div id="cartToast" class="cart-toast" role="status" aria-live="polite" aria-atomic="true"></div>
-
+  <script src="js/notifications.js?v=20261105-global-notifications-5"></script>
   <script src="js/api.js"></script>
   <script src="/vendor/intl-tel-input/js/intlTelInput.min.js"></script>
-  <script src="js/choice.js?v=20261105-reservation-continue-1"></script>
+  <script src="js/choice.js?v=20261105-global-notifications-3"></script>
   <script>if (window.lucide) lucide.createIcons();</script>
 </body>
 
