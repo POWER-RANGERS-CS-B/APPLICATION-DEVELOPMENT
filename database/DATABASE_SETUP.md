@@ -66,35 +66,43 @@ All nine tables are created in `restaurant`; no records are inserted.
 
 | Table | Purpose |
 |---|---|
-| `users` | Authenticated admin/staff accounts only; bcrypt hash, required username/email, role, and soft-deactivation timestamp. |
+| `users` | Authenticated customer, admin, staff, and cashier accounts; bcrypt hash, required username/email, role, and soft-deactivation timestamp. |
 | `restaurant_tables` | Restaurant floor-plan tables, positions, and availability state. |
 | `chairs` | Seats belonging to floor-plan tables and temporary hold expiry. |
 | `reservations` | Reservation date/time, guest count, required guest full name/contact, and optional account/table references. |
 | `menu_items` | Menu item/category/pricing and stock quantity (`stock_count`). |
-| `orders` | Dine-in/takeout order, optional guest name/contact, kitchen status, payment method/status, amount, and receipt data. |
+| `orders` | Dine-in/takeout order, optional guest name/contact and account, dine-in table, kitchen status, payment method/status, amount, and receipt data. |
 | `order_items` | Order item, quantity, and price snapshots. |
 | `order_history` | Completed-order summary used by history and income views. |
 | `audit_logs` | Actor, action, module, entity, and JSONB before/after/details records. |
 
 ### Customers and account roles
 
-Customers do not register or log in. The public `/api/auth/signup` route is
-removed, authentication accepts only `admin` and `staff` accounts, and the
-`users` role constraint permits only those two roles. Passwords are never
-stored in plain text.
+Customers can register and sign in for reservations, account features, and
+dine-in ordering. Reservation creation and dine-in table locking/order
+submission require an authenticated customer account. Reservations store the
+required customer name/contact directly on the reservation, and the order API
+associates each new dine-in order with the authenticated customer's `user_id`.
+The column remains nullable for compatibility with existing records; the API
+rejects unauthenticated order submissions. Passwords are never stored in
+plain text.
 
-Reservations store customer `customer_name` and `contact_number` directly.
-Both are required for a reservation; the reservation API validates an
-international number against the selected country's numbering rules and
-stores it in E.164 format. Orders can store optional customer name/contact
-directly on the order record. An order or reservation does not require a
-customer `user_id`. Any nullable `user_id` is an optional association with an
-authenticated account (such as an operator), not a customer login identity.
+Reservation contact numbers are validated against the selected country's
+numbering rules and stored in E.164 format. Dine-in table orders store the
+selected `table_id` on the order, while the order's identity and line items
+remain linked through the existing order and order-item records.
 
 There are no separate permission, category, inventory, payment transaction,
 or kitchen-order tables in the current implementation. Roles live on `users`,
 category and stock live on `menu_items`, payment method/status live on `orders`
 and are copied to `order_history`, and the KDS reads the `orders` table.
+
+Late-arrival refunds apply to verified paid dine-in orders only. The backend
+uses `orders.total_amount` as the recorded amount paid and computes the
+50-percent refund only when a late arrival is successfully confirmed. The
+same order row stores the pending/processing/completed status. Starting
+processing records the assigned cashier and timestamp; confirming completion
+records the cashier and completion timestamp after the cash handoff.
 
 ## Foreign keys and relationships
 
@@ -102,6 +110,7 @@ and are copied to `order_history`, and the KDS reads the `orders` table.
 - `reservations.user_id` → `users.id` (`ON DELETE SET NULL`, nullable).
 - `reservations.table_id` → `restaurant_tables.id` (`ON DELETE SET NULL`).
 - `orders.user_id` → `users.id` (`ON DELETE SET NULL`, nullable).
+- `orders.table_id` → `restaurant_tables.id` (`ON DELETE SET NULL`, nullable).
 - `orders.reservation_id` → `reservations.id` (`ON DELETE SET NULL`).
 - `order_items.order_id` → `orders.id` (default `NO ACTION`).
 - `order_items.menu_item_id` → `menu_items.id` (default `NO ACTION`).
@@ -111,6 +120,12 @@ and are copied to `order_history`, and the KDS reads the `orders` table.
 Soft deactivation/removal uses `deleted_at` where the application supports it.
 The `ON DELETE` actions above apply only to explicit hard deletes. Audit rows
 retain `actor_name` even if an account is later removed.
+
+Admin reservation-history removal is a soft archive: the Admin-only
+`DELETE /api/reservations/:id` endpoint sets `reservations.deleted_at` only for
+completed, cancelled, or rejected records and writes the change to
+`audit_logs` in the same transaction. Active, pending, and confirmed
+reservations cannot be archived through this endpoint.
 
 ## Secure first administrator setup
 
@@ -181,11 +196,18 @@ and nullable account links. It includes the current staff-account and audit
 logging structures directly; no migration is required after fresh
 initialization.
 
+The canonical schema includes the cashier role and refund processing and
+completion fields on `restaurant.orders`. For an existing database, apply
+`database/migrations/20261109_late_arrival_refunds.sql` and
+`database/migrations/20261109_cashier_refund_processing.sql` after the existing
+order-payment and shared-arrival migrations before deploying the updated
+backend.
+
 Use only `database/dinequeue_db.sql` for a fresh database. The historical
 `database/dine.sql` is destructive and contains sample rows; do not use it.
 `database/dineari_schema.sql` is retained as a legacy development schema and
-is not the authoritative initializer; it has been aligned to admin/staff-only
-accounts and guest order fields, but use the canonical file above for fresh
-installations.
+is not the authoritative initializer; its historical account and order
+constraints may differ from the current authenticated customer workflows.
+Use the canonical file above for fresh installations.
 `database/dineari_sample_data.sql` is an optional, separate fictional
 development fixture and is not part of this clean schema.

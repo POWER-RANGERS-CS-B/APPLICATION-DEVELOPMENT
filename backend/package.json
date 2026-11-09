@@ -11,6 +11,7 @@
     "test:forecast-db": "node --test tests/forecastDatabase.test.js"
   },
   "dependencies": {
+    "@zxing/browser": "0.2.1",
     "bcryptjs": "latest",
     "chart.js": "^4.5.1",
     "cors": "latest",

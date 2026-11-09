@@ -1,10 +1,17 @@
 window.addEventListener("DOMContentLoaded", () => {
-  const user = getUser();
-  const role = String(user.role || localStorage.getItem("role") || "")
+  const user = getUser() || {};
+  const role = String(
+    user.role ||
+    user.user_role ||
+    user.account_type ||
+    user.type ||
+    localStorage.getItem("role") ||
+    ""
+  )
     .trim()
     .toLowerCase();
 
-  if (!getToken() || !["admin", "staff"].includes(role)) {
+  if (!getToken() || !["admin", "staff", "cashier"].includes(role)) {
     window.location.replace("./login.html");
     return;
   }
@@ -12,6 +19,14 @@ window.addEventListener("DOMContentLoaded", () => {
   const sidebar = document.querySelector(".staff-sidebar");
   const menuToggle = document.querySelector(".staff-mobile-menu-toggle");
   const drawerBackdrop = document.querySelector(".staff-drawer-backdrop");
+  const isCashier = role === "cashier";
+  const canAccessCashier = isCashier;
+  const cashierNavigation = document.getElementById("cashierRefundNavigation");
+  if (canAccessCashier) cashierNavigation.hidden = false;
+  if (isCashier) {
+    document.title = "Dine-Ari Staff Workspace";
+    document.querySelector(".staff-brand-caption").textContent = "STAFF WORKSPACE";
+  }
   const setNavigationOpen = (isOpen) => {
     sidebar.classList.toggle("is-navigation-open", isOpen);
     document.body.classList.toggle("staff-navigation-open", isOpen);
@@ -20,9 +35,24 @@ window.addEventListener("DOMContentLoaded", () => {
   };
   const updateActiveNavigation = () => {
     const requestedSection = window.location.hash.slice(1);
-    const activeSection = ["overview", "orders", "table-cleaning"].includes(requestedSection)
+    const allowedSections = [
+      "overview", "orders", "table-selection", "qr-scanner", "table-cleaning",
+      ...(canAccessCashier ? ["late-arrival-refunds"] : []),
+    ];
+    const activeSection = allowedSections.includes(requestedSection)
       ? requestedSection
       : "overview";
+    if (activeSection !== "qr-scanner" && typeof window.stopArrivalScanner === "function") {
+      window.stopArrivalScanner();
+    }
+    const topbarTitle = document.querySelector(".staff-topbar h1");
+    if (topbarTitle && activeSection === "qr-scanner") {
+      topbarTitle.textContent = "Customer Arrival Scanner";
+    } else if (topbarTitle) {
+      topbarTitle.textContent = activeSection === "late-arrival-refunds"
+        ? "Cashier / Refund Management"
+        : "Kitchen operations";
+    }
 
     document.querySelectorAll(".staff-nav-link").forEach((link) => {
       const isActive = link.getAttribute("href") === `#${activeSection}`;
@@ -42,6 +72,13 @@ window.addEventListener("DOMContentLoaded", () => {
     if (activeSection === "table-cleaning") {
       void loadTableCleaning();
     }
+    if (activeSection === "table-selection") {
+      void loadStaffTableSelection();
+      queueStaffFloorPlanScaleUpdate();
+    }
+    if (activeSection === "late-arrival-refunds") {
+      void loadCashierRefunds();
+    }
 
     setNavigationOpen(false);
 
@@ -52,8 +89,9 @@ window.addEventListener("DOMContentLoaded", () => {
 
   window.addEventListener("hashchange", updateActiveNavigation);
   window.addEventListener("pageshow", (event) => {
-    if (event.persisted && window.location.hash === "#table-cleaning") {
-      void loadTableCleaning();
+    if (event.persisted) {
+      if (window.location.hash === "#table-cleaning") void loadTableCleaning();
+      if (window.location.hash === "#table-selection") void loadStaffTableSelection();
     }
   });
   document.querySelector(".staff-nav").addEventListener("click", (event) => {
@@ -97,15 +135,157 @@ window.addEventListener("DOMContentLoaded", () => {
   });
   updateActiveNavigation();
 
+  if (canAccessCashier) {
+    document.getElementById("cashierRefundsRefresh").addEventListener("click", loadCashierRefunds);
+    document.getElementById("late-arrival-refunds").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-refund-action][data-refund-id]");
+      if (!button) return;
+      if (button.dataset.refundAction === "process") {
+        void startLateArrivalRefundProcessing(button.dataset.refundId, button);
+      } else if (button.dataset.refundAction === "complete") {
+        void completeLateArrivalRefund(button.dataset.refundId, button);
+      }
+    });
+    setInterval(() => {
+      if (window.location.hash === "#late-arrival-refunds") void loadCashierRefunds();
+    }, 15000);
+  }
+
   initializeTableCleaning();
+  initializeStaffFloorPlanScaling();
   void loadKds();
   setInterval(loadKds, 5000);
   setInterval(() => {
     if (window.location.hash === "#table-cleaning") {
       void loadTableCleaning();
     }
+    if (window.location.hash === "#table-selection") {
+      void loadStaffTableSelection();
+    }
   }, 15000);
 });
+
+async function loadCashierRefunds() {
+  const lists = {
+    pending: document.getElementById("cashierPendingRefunds"),
+    processing: document.getElementById("cashierProcessingRefunds"),
+    completed: document.getElementById("cashierCompletedRefunds"),
+  };
+  const message = document.getElementById("cashierRefundsMessage");
+  if (!lists.pending || !lists.processing || !lists.completed) return;
+  Object.values(lists).forEach((list) => list.setAttribute("aria-busy", "true"));
+  try {
+    const refunds = await apiRequest("/staff/refunds/late-arrivals");
+    for (const [status, list] of Object.entries(lists)) {
+      const groupedRefunds = refunds.filter((refund) => refund.refund_status === status);
+      document.getElementById(`cashier${status[0].toUpperCase()}${status.slice(1)}Count`).textContent =
+        String(groupedRefunds.length);
+      list.innerHTML = groupedRefunds.length
+        ? groupedRefunds.map(renderCashierRefundCard).join("")
+        : `<p class="muted empty-state">No ${status} refunds.</p>`;
+    }
+    message.textContent = "";
+    message.classList.remove("is-error");
+    if (window.lucide) window.lucide.createIcons();
+  } catch (error) {
+    message.textContent = error.message || "Late-arrival refunds could not be loaded.";
+    message.classList.add("is-error");
+  } finally {
+    Object.values(lists).forEach((list) => list.setAttribute("aria-busy", "false"));
+  }
+}
+
+function renderCashierRefundCard(refund) {
+  const statusLabel = {
+    pending: "PENDING REFUND",
+    processing: "PROCESSING REFUND",
+    completed: "REFUND COMPLETED",
+  }[refund.refund_status] || "REFUND STATUS UNAVAILABLE";
+  const customerContact = refund.contact_number
+    ? `<p><strong>Contact:</strong> ${escapeStaffHtml(refund.contact_number)}</p>`
+    : "";
+  const customerEmail = refund.customer_email
+    ? `<p><strong>Email:</strong> ${escapeStaffHtml(refund.customer_email)}</p>`
+    : "";
+  const processingDetails = refund.refund_status === "processing"
+    ? `<p><strong>Processing cashier:</strong> ${escapeStaffHtml(refund.processing_cashier_name || "Unavailable")}</p>
+       <p><strong>Started:</strong> ${escapeStaffHtml(refund.refund_processing_started_at ? new Date(refund.refund_processing_started_at).toLocaleString() : "Not recorded")}</p>`
+    : "";
+  const completionDetails = refund.refund_status === "completed"
+    ? `<p><strong>Completed:</strong> ${escapeStaffHtml(refund.refund_completed_at ? new Date(refund.refund_completed_at).toLocaleString() : "Not recorded")}</p>
+       <p><strong>Cashier:</strong> ${escapeStaffHtml(refund.cashier_name || "Unavailable")}</p>`
+    : "";
+  const action = refund.refund_status === "pending"
+    ? `<button class="primary" type="button" data-refund-action="process" data-refund-id="${Number(refund.id)}">Start Processing</button>`
+    : refund.refund_status === "processing"
+      ? `<button class="primary" type="button" data-refund-action="complete" data-refund-id="${Number(refund.id)}">Confirm Refund Completed</button>`
+      : "";
+
+  return `
+    <article class="staff-order-card">
+      <div class="staff-order-summary">
+        <div>
+          <span class="staff-order-label">CUSTOMER</span>
+          <h3>${escapeStaffHtml(refund.customer_name || "Name unavailable")}</h3>
+          <span class="staff-order-label">Order #${escapeStaffHtml(refund.order_code)}</span>
+        </div>
+        <span class="status-badge status-${escapeStaffHtml(refund.refund_status)}">${statusLabel}</span>
+      </div>
+      ${customerContact}
+      ${customerEmail}
+      <p><strong>Original payment:</strong> ₱${Number(refund.total_amount || 0).toFixed(2)}</p>
+      <p><strong>50% refund amount:</strong> ₱${Number(refund.refund_amount || 0).toFixed(2)}</p>
+      <p><strong>Arrival:</strong> ${escapeStaffHtml(new Date(refund.arrived_at).toLocaleString())}</p>
+      ${processingDetails}
+      ${completionDetails}
+      ${action}
+    </article>
+  `;
+}
+
+async function startLateArrivalRefundProcessing(id, button) {
+  if (button.disabled) return;
+  const message = document.getElementById("cashierRefundsMessage");
+  button.disabled = true;
+  try {
+    await apiRequest(`/staff/refunds/late-arrivals/${encodeURIComponent(id)}/process`, {
+      method: "PATCH",
+    });
+    message.classList.remove("is-error");
+    message.textContent = "Refund request moved to processing.";
+    await loadCashierRefunds();
+  } catch (error) {
+    message.classList.add("is-error");
+    message.textContent = error.message || "The refund request could not be moved to processing.";
+    button.disabled = false;
+  }
+}
+
+async function completeLateArrivalRefund(id, button) {
+  if (button.disabled) return;
+  const handedToCustomer = await window.DineAriNotifications.confirm({
+    type: "warning",
+    title: "Confirm Refund Completed?",
+    message: "This records the refund as complete. Only proceed after you have physically handed the refund to the customer.",
+    confirmLabel: "Confirm Refund Completed",
+  });
+  if (!handedToCustomer) return;
+
+  const message = document.getElementById("cashierRefundsMessage");
+  button.disabled = true;
+  try {
+    await apiRequest(`/staff/refunds/late-arrivals/${encodeURIComponent(id)}/complete`, {
+      method: "PATCH",
+    });
+    message.classList.remove("is-error");
+    message.textContent = "Refund completed and recorded.";
+    await loadCashierRefunds();
+  } catch (error) {
+    message.classList.add("is-error");
+    message.textContent = error.message || "The refund could not be marked complete.";
+    button.disabled = false;
+  }
+}
 
 async function loadKds() {
   const ordersContainer = document.getElementById("kdsOrders");
@@ -141,6 +321,9 @@ async function loadKds() {
                   <div>
                     <span class="staff-order-label">ORDER</span>
                     <h3>#${escapeStaffHtml(order.order_code)}</h3>
+                    <span class="staff-order-label">${order.type === "dine_in"
+                      ? escapeStaffHtml(order.table_name || `Table ${order.table_id || "unassigned"}`)
+                      : "Takeout"}</span>
                   </div>
                   <span class="status-badge status-${escapeStaffHtml(order.status)}">${escapeStaffHtml(String(order.status).toUpperCase())}</span>
                 </div>
@@ -149,6 +332,9 @@ async function loadKds() {
                   <strong>₱${Number(order.total_amount).toFixed(2)}</strong>
                 </div>
                 <div class="staff-order-actions" aria-label="Update order status">
+                  ${order.type === "dine_in" && order.dine_in_status === "arrived"
+                    ? `<span class="status-badge status-completed">CUSTOMER ARRIVED</span>`
+                    : ""}
                   <button class="secondary" onclick="updateOrderStatus(${Number(order.id)}, 'preparing')"><i data-lucide="chef-hat" aria-hidden="true"></i> Preparing</button>
                   <button class="secondary" onclick="updateOrderStatus(${Number(order.id)}, 'ready')"><i data-lucide="badge-check" aria-hidden="true"></i> Ready</button>
                   <button onclick="updateOrderStatus(${Number(order.id)}, 'completed')"><i data-lucide="check-check" aria-hidden="true"></i> Completed</button>
@@ -214,6 +400,34 @@ let activeTableFilter = "all";
 let tableCleaningLoadPromise = null;
 let tableCleaningReloadQueued = false;
 let tableCleaningActionInProgress = false;
+let staffSelectionTables = [];
+let staffSelectionChairs = [];
+let selectedWalkInTableId = null;
+let activeWalkInFloor = 1;
+let staffSelectionLoadPromise = null;
+let staffSelectionReloadQueued = false;
+let staffSelectionActionInProgress = false;
+let staffFloorPlanResizeObserver = null;
+let staffFloorPlanResizeFrame = 0;
+const STAFF_FLOOR_PLAN_DESIGN_WIDTH = 760;
+const staffFloorPlanBlueprint = {
+  tables: [
+    { id: 1, x: 14, y: 30, shape: "circle", floor: 1 },
+    { id: 2, x: 50, y: 30, shape: "circle", floor: 1 },
+    { id: 3, x: 86, y: 30, shape: "circle", floor: 1 },
+    { id: 4, x: 24, y: 70, shape: "circle", floor: 1 },
+    { id: 5, x: 58, y: 70, shape: "circle", floor: 1 },
+    { id: 6, x: 86, y: 70, shape: "circle", floor: 1 },
+    { id: 11, x: 14, y: 90, shape: "small", floor: 1 },
+    { id: 12, x: 38, y: 90, shape: "small", floor: 1 },
+    { id: 13, x: 62, y: 90, shape: "small", floor: 1 },
+    { id: 14, x: 86, y: 90, shape: "small", floor: 1 },
+    { id: 7, x: 22, y: 32, shape: "rect-medium", floor: 2 },
+    { id: 8, x: 78, y: 32, shape: "rect-medium", floor: 2 },
+    { id: 9, x: 22, y: 72, shape: "rect-large", floor: 2 },
+    { id: 10, x: 78, y: 72, shape: "rect-large", floor: 2 },
+  ],
+};
 
 const staffTableStatuses = {
   vacant: { label: "Clean / available", className: "is-clean", icon: "circle-check" },
@@ -284,6 +498,400 @@ function initializeTableCleaning() {
     setTableCleaningMessage();
     void loadTableCleaning();
   });
+
+  initializeStaffTableSelection();
+}
+
+function initializeStaffTableSelection() {
+  const floorPlan = document.getElementById("floorPlan");
+  const selectedTable = document.getElementById("staffWalkInSelectedTable");
+  const refreshButton = document.getElementById("staffTableSelectionRefresh");
+
+  floorPlan?.addEventListener("click", (event) => {
+    const tableCard = event.target.closest("[data-walk-in-table-id]");
+    if (!tableCard || !floorPlan.contains(tableCard)) return;
+    selectedWalkInTableId = Number(tableCard.dataset.walkInTableId);
+    renderStaffTableSelection();
+  });
+
+  document.querySelectorAll("[data-staff-floor]").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      activeWalkInFloor = Number(tab.dataset.staffFloor) === 2 ? 2 : 1;
+      document.querySelectorAll("[data-staff-floor]").forEach((floorTab) => {
+        const isActive = floorTab === tab;
+        floorTab.classList.toggle("active", isActive);
+        floorTab.setAttribute("aria-selected", String(isActive));
+      });
+      renderStaffTableSelection();
+    });
+  });
+
+  selectedTable?.addEventListener("click", (event) => {
+    if (!event.target.closest("[data-occupy-table]")) return;
+    void occupyWalkInTable();
+  });
+
+  refreshButton?.addEventListener("click", () => {
+    setWalkInTableMessage();
+    void loadStaffTableSelection();
+  });
+}
+
+function initializeStaffFloorPlanScaling() {
+  const wrapper = document.querySelector("#table-selection .staff-occupancy-floor-scroll");
+  if (!wrapper) return;
+
+  if ("ResizeObserver" in window) {
+    staffFloorPlanResizeObserver = new ResizeObserver(queueStaffFloorPlanScaleUpdate);
+    staffFloorPlanResizeObserver.observe(wrapper);
+  } else {
+    window.addEventListener("resize", queueStaffFloorPlanScaleUpdate, { passive: true });
+  }
+
+  window.addEventListener("pagehide", () => {
+    staffFloorPlanResizeObserver?.disconnect();
+    staffFloorPlanResizeObserver = null;
+    if (staffFloorPlanResizeFrame) {
+      cancelAnimationFrame(staffFloorPlanResizeFrame);
+      staffFloorPlanResizeFrame = 0;
+    }
+  }, { once: true });
+
+  queueStaffFloorPlanScaleUpdate();
+}
+
+function updateStaffFloorPlanScale() {
+  const wrapper = document.querySelector("#table-selection .staff-occupancy-floor-scroll");
+  const scaleContent = document.querySelector("#table-selection .floor-plan-scale-content");
+  const floorPlan = document.querySelector("#table-selection #floorPlan");
+  if (!wrapper || !scaleContent || !floorPlan) return;
+
+  if (window.innerWidth > 1024) {
+    floorPlan.style.removeProperty("--staff-floor-plan-scale");
+    floorPlan.style.removeProperty("margin-left");
+    scaleContent.style.removeProperty("width");
+    scaleContent.style.removeProperty("height");
+    wrapper.style.removeProperty("height");
+    wrapper.style.removeProperty("overflow-y");
+    wrapper.style.removeProperty("overflow-x");
+    return;
+  }
+
+  const availableWidth = Math.floor(wrapper.clientWidth);
+  if (!availableWidth) return;
+
+  const scale = Math.min(1, availableWidth / STAFF_FLOOR_PLAN_DESIGN_WIDTH);
+  const styles = window.getComputedStyle(wrapper);
+  const verticalPadding =
+    (Number.parseFloat(styles.paddingTop) || 0) +
+    (Number.parseFloat(styles.paddingBottom) || 0);
+  const scaledWidth = STAFF_FLOOR_PLAN_DESIGN_WIDTH * scale;
+  const scaledHeight = floorPlan.offsetHeight * scale;
+  const maxVisibleHeight = Math.max(240, Math.min(560, window.innerHeight * 0.55));
+
+  floorPlan.style.setProperty("--staff-floor-plan-scale", String(scale));
+  floorPlan.style.removeProperty("margin-left");
+  scaleContent.style.width = `${scaledWidth}px`;
+  scaleContent.style.height = `${scaledHeight}px`;
+  wrapper.style.height = `${Math.min(scaledHeight + verticalPadding, maxVisibleHeight)}px`;
+  wrapper.style.setProperty("overflow-y", "auto", "important");
+}
+
+function queueStaffFloorPlanScaleUpdate() {
+  if (staffFloorPlanResizeFrame) cancelAnimationFrame(staffFloorPlanResizeFrame);
+  staffFloorPlanResizeFrame = requestAnimationFrame(() => {
+    staffFloorPlanResizeFrame = 0;
+    updateStaffFloorPlanScale();
+  });
+}
+
+function setWalkInTableMessage(message = "", isError = false) {
+  const messageElement = document.getElementById("staffTableSelectionMessage");
+  if (!messageElement) return;
+  messageElement.textContent = message;
+  messageElement.classList.toggle("is-error", isError);
+  messageElement.classList.toggle("is-success", Boolean(message) && !isError);
+}
+
+function isWalkInTableAvailable(table) {
+  const chairs = getWalkInTableChairs(table);
+  return String(table?.status || "").trim().toLowerCase() === "vacant" &&
+    table?.has_active_reservation !== true &&
+    chairs.length > 0 &&
+    chairs.every((chair) => String(chair.status || "").trim().toLowerCase() === "vacant");
+}
+
+function getWalkInTableChairs(table) {
+  return staffSelectionChairs.filter(
+    (chair) => Number(chair.table_id ?? chair.tableId) === Number(table?.id)
+  );
+}
+
+function getWalkInTableStatus(table) {
+  const rawStatus = String(table?.status || "").trim().toLowerCase();
+  const chairs = getWalkInTableChairs(table);
+  if (
+    table?.has_active_reservation === true ||
+    ["reserved", "locked"].includes(rawStatus) ||
+    chairs.some((chair) => ["reserved", "locked"].includes(String(chair.status || "").toLowerCase()))
+  ) {
+    return staffTableStatuses.reserved;
+  }
+  if (
+    rawStatus === "vacant" &&
+    chairs.some((chair) => String(chair.status || "").toLowerCase() !== "vacant")
+  ) {
+    return staffTableStatuses.occupied;
+  }
+  return getStaffTableStatus(rawStatus);
+}
+
+async function loadStaffTableSelection() {
+  if (staffSelectionLoadPromise) {
+    staffSelectionReloadQueued = true;
+    return staffSelectionLoadPromise;
+  }
+
+  const floorPlan = document.getElementById("floorPlan");
+  if (!floorPlan) return;
+
+  floorPlan.setAttribute("aria-busy", "true");
+  staffSelectionLoadPromise = (async () => {
+    try {
+      const chairs = await apiRequest("/chairs");
+      const tables = await apiRequest("/tables");
+      if (!Array.isArray(tables) || !Array.isArray(chairs)) {
+        throw new Error("The tables response was not in the expected format.");
+      }
+
+      staffSelectionChairs = chairs.filter((chair) =>
+        Number.isSafeInteger(Number(chair.id)) &&
+        Number(chair.id) > 0 &&
+        chair.deleted_at == null
+      );
+      staffSelectionTables = tables.filter((table) =>
+        Number.isSafeInteger(Number(table.id)) &&
+        Number(table.id) > 0 &&
+        table.deleted_at == null
+      );
+      if (!staffSelectionTables.some((table) => Number(table.id) === selectedWalkInTableId)) {
+        selectedWalkInTableId = null;
+      }
+      renderStaffTableSelection();
+    } catch (error) {
+      staffSelectionTables = [];
+      staffSelectionChairs = [];
+      selectedWalkInTableId = null;
+      floorPlan.innerHTML = `<p class="floor-empty-message" role="alert">${escapeStaffHtml(error.message || "Tables could not be loaded.")}</p>`;
+      renderSelectedWalkInTable();
+      setWalkInTableMessage("Table data is unavailable. No occupancy action can be performed.", true);
+      if (window.lucide) window.lucide.createIcons();
+    } finally {
+      floorPlan.setAttribute("aria-busy", "false");
+    }
+  })();
+
+  try {
+    await staffSelectionLoadPromise;
+  } finally {
+    staffSelectionLoadPromise = null;
+    if (staffSelectionReloadQueued) {
+      staffSelectionReloadQueued = false;
+      void loadStaffTableSelection();
+    }
+  }
+}
+
+function renderStaffTableSelection() {
+  const floorPlan = document.getElementById("floorPlan");
+  if (!floorPlan) return;
+
+  floorPlan.dataset.floor = String(activeWalkInFloor);
+  floorPlan.innerHTML = "";
+  const configuredTables = [...staffSelectionTables].sort(
+    (first, second) => Number(first.id) - Number(second.id)
+  );
+  const tablesOnFloor = staffFloorPlanBlueprint.tables.filter(
+    (table) => table.floor === activeWalkInFloor
+  );
+  const floorOffset = activeWalkInFloor === 1 ? 0 : 10;
+  const floorTableSlots = configuredTables.slice(floorOffset, floorOffset + tablesOnFloor.length);
+  const usedTableIds = new Set();
+  let renderedTables = 0;
+
+  tablesOnFloor.forEach((blueprintTable) => {
+    const tableNameForSlot = `T${blueprintTable.id}`.toLowerCase();
+    const realTable = configuredTables.find((table) =>
+      !usedTableIds.has(Number(table.id)) &&
+      String(table.table_name || table.name || "").trim().toLowerCase() === tableNameForSlot
+    ) || configuredTables.find((table) =>
+      !usedTableIds.has(Number(table.id)) &&
+      Number(table.id) === blueprintTable.id
+    ) || floorTableSlots.find((table) => !usedTableIds.has(Number(table.id)));
+    if (!realTable) return;
+
+    const tableId = Number(realTable.id);
+    usedTableIds.add(tableId);
+    renderedTables += 1;
+    const tableName = realTable.table_name || realTable.name || `Table ${tableId}`;
+    const chairs = getWalkInTableChairs(realTable);
+    const status = getWalkInTableStatus(realTable);
+    const isAvailable = isWalkInTableAvailable(realTable);
+    const isSelected = selectedWalkInTableId === tableId;
+    const tableGroup = document.createElement("div");
+    tableGroup.className = "table-group";
+    tableGroup.style.left = `${blueprintTable.x}%`;
+    tableGroup.style.top = `${blueprintTable.y}%`;
+
+    const tableBox = document.createElement("button");
+    tableBox.type = "button";
+    tableBox.className = `table-box ${blueprintTable.shape} table-select${isAvailable ? "" : " unavailable"}${isSelected ? " selected" : ""}`;
+    tableBox.dataset.walkInTableId = String(tableId);
+    tableBox.setAttribute("aria-pressed", String(isSelected));
+    tableBox.title = `${tableName}: ${status.label}, ${chairs.length} seats`;
+    tableBox.innerHTML = `
+      <span>${escapeStaffHtml(tableName)}</span>
+      <small>${chairs.length} seats</small>
+      ${isAvailable ? "" : `<small class="table-status-label">${escapeStaffHtml(status.label)}</small>`}
+    `;
+    tableGroup.appendChild(tableBox);
+
+    chairs.forEach((chair, index) => {
+      const chairStatus = String(chair.status || "vacant").toLowerCase();
+      const visualStatus = chairStatus === "vacant"
+        ? "vacant"
+        : ["reserved", "locked"].includes(chairStatus)
+          ? "locked"
+          : "occupied";
+      const position = getStaffChairPosition(chairs.length, index, blueprintTable.shape);
+      const chairMarker = document.createElement("span");
+      chairMarker.className = `chair ${visualStatus}`;
+      chairMarker.textContent = chair.chair_label || `C${index + 1}`;
+      chairMarker.style.left = `calc(50% + ${position.x}px)`;
+      chairMarker.style.top = `calc(50% + ${position.y}px)`;
+      chairMarker.title = `${tableName} - Chair ${chair.chair_label || index + 1}: ${status.label}`;
+      chairMarker.setAttribute("aria-label", `${tableName}, chair ${chair.chair_label || index + 1}, ${status.label}`);
+      tableGroup.appendChild(chairMarker);
+    });
+
+    floorPlan.appendChild(tableGroup);
+  });
+
+  if (!renderedTables) {
+    floorPlan.innerHTML = `<p class="floor-empty-message">${staffSelectionTables.length
+      ? "No configured tables are available on this floor."
+      : "No active table records were returned from the database."}</p>`;
+  }
+
+  queueStaffFloorPlanScaleUpdate();
+  renderSelectedWalkInTable();
+}
+
+function getStaffChairPosition(chairCount, index, shape) {
+  const radiusX = shape === "rect-large" ? 112 : shape === "rect-medium" ? 100 : shape === "circle" ? 78 : 68;
+  const radiusY = shape === "rect-large" ? 70 : shape === "rect-medium" ? 64 : shape === "circle" ? 78 : 48;
+  const angle = (-Math.PI / 2) + (2 * Math.PI * index) / Math.max(chairCount, 1);
+  return {
+    x: Math.round(Math.cos(angle) * radiusX),
+    y: Math.round(Math.sin(angle) * radiusY),
+  };
+}
+
+function renderSelectedWalkInTable() {
+  const panel = document.getElementById("staffWalkInSelectedTable");
+  if (!panel) return;
+
+  const table = staffSelectionTables.find((item) => Number(item.id) === selectedWalkInTableId);
+  if (!table) {
+    panel.innerHTML = `
+      <div class="staff-table-selection-prompt">
+        <i data-lucide="mouse-pointer-2" aria-hidden="true"></i>
+        <strong>Select a table</strong>
+        <span>Its current availability and walk-in action will appear here.</span>
+      </div>
+    `;
+    if (window.lucide) window.lucide.createIcons();
+    return;
+  }
+
+  const status = getWalkInTableStatus(table);
+  const tableName = table.table_name || `Table ${table.id}`;
+  const canOccupy = isWalkInTableAvailable(table);
+  const chairCount = getWalkInTableChairs(table).length;
+  const note = canOccupy
+    ? "This table is available for walk-in guests."
+    : table.has_active_reservation === true || ["reserved", "locked"].includes(String(table.status || "").toLowerCase())
+      ? "An active reservation or hold protects this table. Staff cannot change its status manually."
+      : String(table.status || "").toLowerCase() === "occupied"
+        ? "This table is already occupied. Use the existing table-cleaning workflow after guests leave."
+        : "This table is not available for walk-in occupancy.";
+
+  panel.innerHTML = `
+    <div class="staff-selected-table-heading">
+      <span class="staff-selected-table-icon"><i data-lucide="${status.icon}" aria-hidden="true"></i></span>
+      <div>
+        <span class="section-kicker">SELECTED TABLE</span>
+        <h3>${escapeStaffHtml(tableName)}</h3>
+        <span class="staff-selected-table-id">Table ID ${Number(table.id)} · ${chairCount} seats</span>
+      </div>
+    </div>
+    <div class="staff-selected-table-status ${status.className}">
+      <span class="staff-status-indicator" aria-hidden="true"></span>
+      <span>${escapeStaffHtml(status.label)}</span>
+    </div>
+    <p class="staff-selected-table-note">${escapeStaffHtml(note)}</p>
+    ${canOccupy ? `
+      <div class="staff-selected-table-action">
+        <button class="staff-clean-button" type="button" data-occupy-table ${staffSelectionActionInProgress ? "disabled" : ""}>
+          <i data-lucide="${staffSelectionActionInProgress ? "loader-circle" : "users-round"}" aria-hidden="true"></i>
+          ${staffSelectionActionInProgress ? "Marking occupied…" : "Mark as Occupied"}
+        </button>
+      </div>
+    ` : ""}
+  `;
+  if (window.lucide) window.lucide.createIcons();
+}
+
+async function occupyWalkInTable() {
+  if (staffSelectionActionInProgress) return;
+  const table = staffSelectionTables.find((item) => Number(item.id) === selectedWalkInTableId);
+  if (!table || !isWalkInTableAvailable(table)) {
+    setWalkInTableMessage("This table is no longer available. Refresh the table list before trying again.", true);
+    void loadStaffTableSelection();
+    return;
+  }
+
+  const tableName = table.table_name || `Table ${table.id}`;
+  staffSelectionActionInProgress = true;
+  renderStaffTableSelection();
+
+  try {
+    const confirmed = await window.DineAriNotifications.confirm({
+      type: "warning",
+      title: "Mark this table as occupied?",
+      message: `Are you sure you want to mark Table ${Number(table.id)} as Occupied?`,
+      confirmLabel: "Confirm",
+    });
+    if (!confirmed) return;
+
+    const response = await apiRequest(`/tables/${Number(table.id)}/occupy`, {
+      method: "PATCH",
+    });
+    staffSelectionTables = staffSelectionTables.map((item) =>
+      Number(item.id) === Number(table.id)
+        ? { ...item, status: "occupied", has_active_reservation: false }
+        : item
+    );
+    renderStaffTableSelection();
+    setWalkInTableMessage(response.message || `${tableName} marked as occupied.`);
+    void loadStaffTableSelection();
+  } catch (error) {
+    setWalkInTableMessage(error.message || "The table could not be marked as occupied.", true);
+    void loadStaffTableSelection();
+  } finally {
+    staffSelectionActionInProgress = false;
+    renderStaffTableSelection();
+  }
 }
 
 async function loadTableCleaning() {

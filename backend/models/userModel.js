@@ -12,7 +12,7 @@ exports.findEmployees = async ({ search = "", role = "all", status = "all" } = {
   const result = await db.query(
     `SELECT id, full_name, username, email, role, deleted_at, created_at
      FROM restaurant.users
-     WHERE role IN ('admin', 'staff')
+     WHERE role IN ('admin', 'staff', 'cashier')
        AND ($1 = '' OR full_name ILIKE $1 OR username ILIKE $1 OR email ILIKE $1)
        AND ($2 = 'all' OR role = $2)
        AND (
@@ -27,7 +27,7 @@ exports.findEmployees = async ({ search = "", role = "all", status = "all" } = {
   return result.rows;
 };
 
-exports.createStaff = async ({ fullName, username, email, password }, actor) => {
+exports.createStaff = async ({ fullName, username, email, password, role = "staff" }, actor) => {
   const passwordHash = await bcrypt.hash(password, 12);
 
   return auditService.transaction(async (client, audit) => {
@@ -46,9 +46,9 @@ exports.createStaff = async ({ fullName, username, email, password }, actor) => 
     const result = await client.query(
       `INSERT INTO restaurant.users
          (full_name, username, email, password_hash, role)
-       VALUES ($1, $2, $3, $4, 'staff')
+       VALUES ($1, $2, $3, $4, $5)
        RETURNING id, full_name, username, email, role, deleted_at, created_at`,
-      [fullName, username, email, passwordHash]
+      [fullName, username, email, passwordHash, role]
     );
     const staff = result.rows[0];
 
@@ -75,7 +75,7 @@ exports.updateStaff = async (id, { fullName, username, email, role }, actor) => 
     const previousResult = await client.query(
       `SELECT id, full_name, username, email, role
        FROM restaurant.users
-       WHERE id = $1 AND role = 'staff'
+       WHERE id = $1 AND role IN ('staff', 'cashier')
        FOR UPDATE`,
       [id]
     );
@@ -102,7 +102,7 @@ exports.updateStaff = async (id, { fullName, username, email, role }, actor) => 
            email = $4,
            role = $5,
            updated_at = NOW()
-       WHERE id = $1 AND role = 'staff'
+       WHERE id = $1 AND role IN ('staff', 'cashier')
        RETURNING id, full_name, username, email, role, deleted_at, created_at`,
       [id, fullName, username, email, role,]
     );
@@ -138,7 +138,7 @@ exports.setStaffStatus = async (id, active, actor) => {
     const previousResult = await client.query(
       `SELECT id, full_name, username, email, role, deleted_at
        FROM restaurant.users
-       WHERE id = $1 AND role = 'staff'
+       WHERE id = $1 AND role IN ('staff', 'cashier')
        FOR UPDATE`,
       [id]
     );
@@ -152,7 +152,7 @@ exports.setStaffStatus = async (id, active, actor) => {
       `UPDATE restaurant.users
        SET deleted_at = CASE WHEN $2 THEN NULL ELSE NOW() END,
            updated_at = NOW()
-       WHERE id = $1 AND role = 'staff'
+       WHERE id = $1 AND role IN ('staff', 'cashier')
        RETURNING id, full_name, username, email, role, deleted_at, created_at`,
       [id, active]
     );

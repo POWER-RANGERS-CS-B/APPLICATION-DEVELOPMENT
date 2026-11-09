@@ -38,12 +38,134 @@ function parseTableId(tableId) {
 
 exports.findAll = async () => {
   const result = await db.query(
-    `SELECT *
-     FROM restaurant.restaurant_tables
-     WHERE deleted_at IS NULL
-     ORDER BY id`
+    `SELECT rt.*,
+            EXISTS (
+              SELECT 1
+              FROM restaurant.reservations r
+              WHERE r.table_id = rt.id
+                AND r.deleted_at IS NULL
+                AND r.status IN ('active', 'pending_verification', 'verified', 'confirmed')
+                AND (r.reservation_date IS NULL OR r.reservation_date >= CURRENT_DATE)
+            ) AS has_active_reservation,
+            (
+                SELECT COUNT(*)::int
+                FROM restaurant.chairs c
+                WHERE c.table_id = rt.id AND c.deleted_at IS NULL
+            ) AS capacity
+     FROM restaurant.restaurant_tables rt
+     WHERE rt.deleted_at IS NULL
+     ORDER BY rt.id`
   );
   return result.rows;
+};
+
+exports.markOccupiedForWalkIn = async (tableId, actor) => {
+  const id = parseTableId(tableId);
+  const client = await db.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const tableResult = await client.query(
+      `SELECT id, table_name, status
+       FROM restaurant.restaurant_tables
+       WHERE id = $1 AND deleted_at IS NULL
+       FOR UPDATE`,
+      [id]
+    );
+    const table = tableResult.rows[0];
+    if (!table) {
+      throw createTableError("Table not found.", 404);
+    }
+
+    if (table.status !== "vacant") {
+      const message = ["reserved", "locked"].includes(table.status)
+        ? "This table is reserved or held and cannot be occupied manually."
+        : `Cannot occupy this table while its status is ${table.status}.`;
+      throw createTableError(message, 409);
+    }
+
+    const reservationsResult = await client.query(
+      `SELECT id, status, reservation_date, reservation_time
+       FROM restaurant.reservations
+       WHERE table_id = $1
+         AND deleted_at IS NULL
+         AND status IN ('active', 'pending_verification', 'verified', 'confirmed')
+         AND (reservation_date IS NULL OR reservation_date >= CURRENT_DATE)
+       ORDER BY reservation_date, reservation_time, id
+       FOR UPDATE`,
+      [id]
+    );
+    if (reservationsResult.rows.length) {
+      throw createTableError(
+        "This table has an upcoming active reservation and cannot be occupied manually.",
+        409
+      );
+    }
+
+    const chairsResult = await client.query(
+      `SELECT id, status
+       FROM restaurant.chairs
+       WHERE table_id = $1 AND deleted_at IS NULL
+       ORDER BY id
+       FOR UPDATE`,
+      [id]
+    );
+    const chairs = chairsResult.rows;
+    if (!chairs.length || chairs.some((chair) => chair.status !== "vacant")) {
+      throw createTableError(
+        "This table has unavailable seats and cannot be occupied manually.",
+        409
+      );
+    }
+
+    await client.query(
+      `UPDATE restaurant.chairs
+       SET status = 'occupied', locked_until = NULL, updated_at = NOW()
+       WHERE table_id = $1 AND deleted_at IS NULL`,
+      [id]
+    );
+
+    const updatedResult = await client.query(
+      `UPDATE restaurant.restaurant_tables
+       SET status = 'occupied', updated_at = NOW()
+       WHERE id = $1 AND status = 'vacant' AND deleted_at IS NULL
+       RETURNING id, table_name, status, position_x, position_y, updated_at`,
+      [id]
+    );
+    const updatedTable = updatedResult.rows[0];
+    if (!updatedTable) {
+      throw createTableError("This table is no longer available. Refresh and try again.", 409);
+    }
+
+    await auditService.insert(client, {
+      userId: actor?.id || null,
+      actorName: actor?.email || null,
+      action: "TABLE_STATUS_CHANGED",
+      module: "tables",
+      entityId: updatedTable.id,
+      previousValues: {
+        table_status: table.status,
+        chairs,
+      },
+      newValues: {
+        table_status: "occupied",
+        occupancy_type: "walk_in",
+        chairs: chairs.map(({ id: chairId }) => ({
+          id: chairId,
+          status: "occupied",
+        })),
+      },
+    });
+
+    await client.query("COMMIT");
+    return { message: "Table marked as occupied for walk-in service.", table: updatedTable };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 async function transitionCleaningStatus(tableId, transitionName, actor) {
@@ -88,7 +210,9 @@ async function transitionCleaningStatus(tableId, transitionName, actor) {
       const reservationsResult = await client.query(
         `SELECT id, status
          FROM restaurant.reservations
-         WHERE table_id = $1 AND status = 'active' AND deleted_at IS NULL
+         WHERE table_id = $1
+           AND status IN ('active', 'confirmed', 'verified')
+           AND deleted_at IS NULL
          ORDER BY id
          FOR UPDATE`,
         [id]
@@ -107,7 +231,7 @@ async function transitionCleaningStatus(tableId, transitionName, actor) {
         `UPDATE restaurant.reservations
          SET status = 'completed', updated_at = NOW()
          WHERE table_id = $1
-           AND status = 'active'
+           AND status IN ('active', 'confirmed', 'verified')
            AND deleted_at IS NULL`,
         [id]
       );

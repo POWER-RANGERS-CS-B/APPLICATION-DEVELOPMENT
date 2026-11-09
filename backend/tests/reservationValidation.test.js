@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const express = require("express");
+const jwt = require("jsonwebtoken");
 const reservationModel = require("../models/reservationModel");
 const reservationRoutes = require("../routes/reservationRoutes");
 const db = require("../config/db");
@@ -15,7 +16,11 @@ async function withReservationApi(run) {
   try {
     await new Promise((resolve) => server.once("listening", resolve));
     const { port } = server.address();
-    await run(`http://127.0.0.1:${port}/api/reservations`);
+    const token = jwt.sign({ id: 27, role: "customer" }, process.env.JWT_SECRET);
+    await run(`http://127.0.0.1:${port}/api/reservations`, {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    });
   } finally {
     await new Promise((resolve, reject) => {
       server.close((error) => (error ? reject(error) : resolve()));
@@ -32,7 +37,7 @@ test("reservation API rejects missing customer information before persistence", 
   };
 
   try {
-    await withReservationApi(async (url) => {
+    await withReservationApi(async (url, authHeaders) => {
       for (const body of [
         {},
         { customer_name: "", contact_number: "+639171234567", contact_country: "ph" },
@@ -41,7 +46,7 @@ test("reservation API rejects missing customer information before persistence", 
       ]) {
         const response = await fetch(url, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: authHeaders,
           body: JSON.stringify(body),
         });
 
@@ -56,6 +61,46 @@ test("reservation API rejects missing customer information before persistence", 
   }
 });
 
+test("reservation API rejects customer names longer than 128 characters before persistence", async () => {
+  const originalCreate = reservationModel.create;
+  let createCalls = 0;
+  reservationModel.create = async () => {
+    createCalls += 1;
+    return {};
+  };
+
+  try {
+    await withReservationApi(async (url, authHeaders) => {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: authHeaders,
+        body: JSON.stringify({
+          customer_name: "A".repeat(129),
+          contact_number: "+639171234567",
+          contact_country: "ph",
+        }),
+      });
+
+      assert.equal(response.status, 400);
+      assert.match((await response.json()).message, /128 characters or fewer/i);
+      assert.equal(createCalls, 0);
+    });
+  } finally {
+    reservationModel.create = originalCreate;
+  }
+});
+
+test("reservation API requires an authenticated customer", async () => {
+  await withReservationApi(async (url) => {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    assert.equal(response.status, 401);
+  });
+});
+
 test("reservation API rejects invalid international contact numbers before persistence", async () => {
   const originalCreate = reservationModel.create;
   let createCalls = 0;
@@ -65,10 +110,10 @@ test("reservation API rejects invalid international contact numbers before persi
   };
 
   try {
-    await withReservationApi(async (url) => {
+    await withReservationApi(async (url, authHeaders) => {
       const response = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders,
         body: JSON.stringify({
           customer_name: "Customer Name",
           contact_number: "+123456789",
@@ -94,11 +139,12 @@ test("reservation API trims valid customer details before passing them to persis
   };
 
   try {
-    await withReservationApi(async (url) => {
+    await withReservationApi(async (url, authHeaders) => {
       const response = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders,
         body: JSON.stringify({
+          user_id: 999,
           chairIds: [1],
           reservation_date: "2026-11-04",
           reservation_time: "18:00",
@@ -109,6 +155,7 @@ test("reservation API trims valid customer details before passing them to persis
       });
 
       assert.equal(response.status, 201);
+      assert.equal(savedInput.userId, 27);
       assert.equal(savedInput.customerName, "Customer Name");
       assert.equal(savedInput.contactNumber, "+639171234567");
     });
@@ -126,7 +173,7 @@ test("reservation API validates and normalizes phone numbers for multiple countr
   };
 
   try {
-    await withReservationApi(async (url) => {
+    await withReservationApi(async (url, authHeaders) => {
       for (const [contact, country] of [
         ["+639171234567", "ph"],
         ["+14155552671", "us"],
@@ -134,7 +181,7 @@ test("reservation API validates and normalizes phone numbers for multiple countr
       ]) {
         const response = await fetch(url, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: authHeaders,
           body: JSON.stringify({
             customer_name: "Customer Name",
             contact_number: contact,
@@ -164,10 +211,10 @@ test("reservation API rejects phone numbers without a matching country selection
   };
 
   try {
-    await withReservationApi(async (url) => {
+    await withReservationApi(async (url, authHeaders) => {
       const response = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders,
         body: JSON.stringify({
           customer_name: "Customer Name",
           contact_number: "9171234567",
@@ -180,7 +227,7 @@ test("reservation API rejects phone numbers without a matching country selection
 
       const mismatchedCountryResponse = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders,
         body: JSON.stringify({
           customer_name: "Customer Name",
           contact_number: "+14155552671",
@@ -197,16 +244,149 @@ test("reservation API rejects phone numbers without a matching country selection
   }
 });
 
-test("reservation model saves and returns the normalized international number", async () => {
+test("reservation model rejects maintenance and cleaning tables before persistence", async () => {
   const originalConnect = db.connect;
   const originalInsertAudit = auditService.insert;
+  let insertCalled = false;
+
+  db.connect = async () => ({
+    async query(sql, values) {
+      if (sql === "BEGIN" || sql === "COMMIT" || sql === "ROLLBACK") {
+        return { rows: [] };
+      }
+      if (/SELECT table_id/.test(sql)) {
+        return { rows: [{ table_id: 8 }] };
+      }
+      if (/SELECT id, status\s+FROM restaurant\.restaurant_tables/.test(sql)) {
+        return { rows: [{ id: 8, status: "needs_cleaning" }] };
+      }
+      if (/INSERT INTO restaurant\.reservations/.test(sql)) {
+        insertCalled = true;
+        return { rows: [{ id: 1 }] };
+      }
+      return { rows: [] };
+    },
+    release() {},
+  });
+  auditService.insert = async () => {};
+
+  try {
+    await assert.rejects(
+      reservationModel.create({
+        chairIds: [81, 82],
+        reservationDate: "2026-11-04",
+        reservationTime: "18:00",
+        customerName: "Customer Name",
+        contactNumber: "+639171234567",
+        contactCountry: "ph",
+        paymentMethod: "GCash",
+        paymentReference: "GCASH-REF-TEST",
+        gcashSenderName: "Sender Name",
+      }),
+      (error) => error.message.includes("maintenance") || error.message.includes("unavailable")
+    );
+    assert.equal(insertCalled, false);
+  } finally {
+    db.connect = originalConnect;
+    auditService.insert = originalInsertAudit;
+  }
+});
+
+test("reservation model requires a GCash reference before opening a database connection", async () => {
+  const originalConnect = db.connect;
+  let connectCalled = false;
+  db.connect = async () => {
+    connectCalled = true;
+    throw new Error("Unexpected connection.");
+  };
+
+  try {
+    await assert.rejects(
+      reservationModel.create({
+        chairIds: [81, 82],
+        reservationDate: "2026-11-04",
+        reservationTime: "18:00",
+        customerName: "Customer Name",
+        contactNumber: "+639171234567",
+        contactCountry: "ph",
+        paymentMethod: "GCash",
+        paymentReference: "",
+      }),
+      /GCash reference number/
+    );
+    await assert.rejects(
+      reservationModel.create({
+        chairIds: [81, 82],
+        reservationDate: "2026-11-04",
+        reservationTime: "18:00",
+        customerName: "Customer Name",
+        contactNumber: "+639171234567",
+        contactCountry: "ph",
+        paymentMethod: "GCash",
+        paymentReference: "GCASH-REF-TEST",
+      }),
+      /sender/
+    );
+    assert.equal(connectCalled, false);
+  } finally {
+    db.connect = originalConnect;
+  }
+});
+
+test("reservation model rejects non-GCash payment before opening a database connection", async () => {
+  const originalConnect = db.connect;
+  let connectCalled = false;
+  db.connect = async () => {
+    connectCalled = true;
+    throw new Error("Unexpected connection.");
+  };
+
+  try {
+    await assert.rejects(
+      reservationModel.create({
+        chairIds: [81, 82],
+        reservationDate: "2026-11-04",
+        reservationTime: "18:00",
+        customerName: "Customer Name",
+        contactNumber: "+639171234567",
+        contactCountry: "ph",
+        paymentMethod: "Card",
+        paymentReference: "CARD-REF-TEST",
+        gcashSenderName: "Sender Name",
+      }),
+      /Reservations require online GCash payment/
+    );
+    assert.equal(connectCalled, false);
+  } finally {
+    db.connect = originalConnect;
+  }
+});
+
+test("reservation model saves and returns the normalized international number", async () => {
+  const originalConnect = db.connect;
+  const originalQuery = db.query;
+  const originalInsertAudit = auditService.insert;
   let insertedValues;
+  let insertedSql;
   let released = false;
   const returnedReservation = {
     id: 27,
     customer_name: "Customer Name",
     contact_number: "+819012345678",
+    gcash_reference: "GCASH-REF-27",
   };
+  db.query = async () => ({
+    rows: [
+      "reservation_code",
+      "qr_code",
+      "reservation_token",
+      "payment_status",
+      "payment_method",
+      "gcash_reference",
+      "gcash_sender_name",
+      "payment_proof_url",
+    ].map((column_name) => ({ column_name })),
+  });
 
   db.connect = async () => ({
     async query(sql, values) {
@@ -223,6 +403,7 @@ test("reservation model saves and returns the normalized international number", 
         return { rows: [{ id: 8, status: "vacant" }] };
       }
       if (/INSERT INTO restaurant\.reservations/.test(sql)) {
+        insertedSql = sql;
         insertedValues = values;
         return { rows: [returnedReservation] };
       }
@@ -242,14 +423,24 @@ test("reservation model saves and returns the normalized international number", 
       customerName: " Customer Name ",
       contactNumber: " +819012345678 ",
       contactCountry: "jp",
+      paymentMethod: "GCash",
+      paymentReference: "GCASH-REF-27",
+      gcashSenderName: "Sender Name",
     });
 
-    assert.equal(insertedValues[5], "Customer Name");
-    assert.equal(insertedValues[6], "+819012345678");
+    assert.equal(insertedValues[6], "Customer Name");
+    assert.equal(insertedValues[7], "+819012345678");
+    assert.match(insertedSql, /gcash_reference/);
+    assert.ok(insertedValues.includes("GCASH-REF-27"));
+    assert.ok(insertedValues.includes("Sender Name"));
+    assert.equal(insertedValues[3], "pending_verification");
+    assert.equal(insertedValues[11], "pending_verification");
+    assert.equal(insertedValues[9], null);
     assert.equal(reservation.contact_number, "+819012345678");
     assert.equal(released, true);
   } finally {
     db.connect = originalConnect;
+    db.query = originalQuery;
     auditService.insert = originalInsertAudit;
   }
 });

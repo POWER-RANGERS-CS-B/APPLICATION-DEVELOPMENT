@@ -6,8 +6,8 @@
   <link rel="icon" href="/images/icon/dineari-logo.ico" type="image/x-icon" />
   <title>Dine-Ari Admin Dashboard</title>
   <script src="js/theme.js?v=20261104-day-night-switch-2"></script>
-  <link rel="stylesheet" href="css/style.css?v=20261105-global-notifications-3" />
-  <link rel="stylesheet" href="css/design-system.css?v=20261105-global-notifications-4" />
+  <link rel="stylesheet" href="css/style.css?v=20261107-mobile-navigation-2" />
+  <link rel="stylesheet" href="css/design-system.css?v=20261109-separated-payment-inboxes-v1" />
   <script src="/vendor/chart.js/chart.umd.js"></script>
   <script src="/vendor/lucide/lucide.min.js?v=1.67.0"></script>
 </head>
@@ -20,11 +20,40 @@
         <source srcset="images/Logo/dineari-logo.webp" type="image/webp" />
         <img class="system-logo system-logo-admin" src="images/Logo/Dine-ari%20Chef%E2%80%99s%20Table%20Logo.png" alt="Dine-Ari Chef’s Table" width="1536" height="1024" decoding="async" />
       </picture>
+      <button
+        class="admin-sidebar-close"
+        type="button"
+        aria-label="Close navigation"
+        aria-controls="adminNavigation"
+        onclick="closeAdminNavigation()"
+      >
+        <i data-lucide="x" aria-hidden="true"></i>
+      </button>
     </div>
 
     <ul class="admin-sidebar-menu" id="adminNavigation">
       <li class="active" data-tab="tab-dashboard">
         <button onclick="switchTab('tab-dashboard')"><i data-lucide="layout-dashboard" aria-hidden="true"></i> Dashboard</button>
+      </li>
+      <li data-tab="tab-reservations">
+        <button onclick="switchTab('tab-reservations')">
+          <i data-lucide="calendar-check-2" aria-hidden="true"></i>
+          Reservation Requests
+          <span id="reservationRequestNavCount" class="reservation-request-count" aria-label="Pending reservation requests">0</span>
+        </button>
+      </li>
+      <li data-tab="tab-dine-in-payments">
+        <button onclick="switchTab('tab-dine-in-payments')">
+          <i data-lucide="wallet-cards" aria-hidden="true"></i>
+          Dine-in Payment Requests
+          <span id="dineInPaymentRequestNavCount" class="reservation-request-count" aria-label="Pending dine-in payment requests">0</span>
+        </button>
+      </li>
+      <li data-tab="tab-active-reservations">
+        <button onclick="switchTab('tab-active-reservations')">
+          <i data-lucide="calendar-days" aria-hidden="true"></i>
+          Active Reservations
+        </button>
       </li>
       <li data-tab="tab-forecasts">
         <button onclick="switchTab('tab-forecasts')"><i data-lucide="brain-circuit" aria-hidden="true"></i> Reservation Forecast</button>
@@ -193,6 +222,215 @@
 
     </section>
 
+    <section id="tab-reservations" class="tab-section">
+      <div class="card reservation-qr-validation-panel">
+        <div class="card-header">
+          <div>
+            <span class="section-kicker">Guest Check-In</span>
+            <h2>Validate Reservation QR</h2>
+            <p>Scan the reservation QR with a keyboard scanner or enter its code to confirm and check in a paid reservation.</p>
+          </div>
+        </div>
+        <form id="reservationQrValidationForm" class="reservation-qr-validation-form">
+          <label class="coolinput-field" for="reservationQrValidationCode">
+            <span class="text">Reservation QR code</span>
+            <input class="form-field-control" id="reservationQrValidationCode" type="text" maxlength="64" autocomplete="off" required />
+          </label>
+          <button id="reservationQrValidationButton" type="submit" class="primary">Validate and Check In</button>
+        </form>
+        <p id="reservationQrValidationResult" role="status" aria-live="polite"></p>
+      </div>
+      <div class="card reservation-requests-panel">
+        <div class="card-header">
+          <div>
+            <span class="section-kicker">Reservation Inbox</span>
+            <h2>Reservation Requests</h2>
+            <p>New submissions appear here automatically. This list refreshes with the dashboard data.</p>
+          </div>
+          <span id="reservationRequestCount" class="reservation-request-count reservation-request-count-large" aria-live="polite">0 pending</span>
+        </div>
+        <div class="admin-inbox-filters" aria-label="Reservation request filters">
+          <label class="search-container admin-inbox-search">
+            <i class="search-icon" data-lucide="search" aria-hidden="true"></i>
+            <input id="reservationRequestSearch" class="form-field-control" type="search" placeholder="Search customer, reservation, or contact" aria-label="Search reservation requests" />
+          </label>
+          <label>
+            <span class="reservation-filter-label">Request status</span>
+            <select id="reservationRequestStatusFilter" aria-label="Filter reservation requests by status">
+              <option value="pending_verification" selected>Pending verification</option>
+              <option value="all">All requests</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </label>
+          <label>
+            <span class="reservation-filter-label">Payment status</span>
+            <select id="reservationRequestPaymentFilter" aria-label="Filter reservation requests by payment status">
+              <option value="all" selected>All payment statuses</option>
+              <option value="pending_verification">Pending verification</option>
+              <option value="paid">Paid</option>
+              <option value="rejected">Rejected</option>
+              <option value="unpaid">Unpaid</option>
+            </select>
+          </label>
+          <button id="reservationRequestClearFilters" class="secondary" type="button">Clear Filters</button>
+        </div>
+        <div id="reservationRequests" class="reservation-requests-list" aria-live="polite">
+          <p class="muted">Loading reservation requests…</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-dine-in-payments" class="tab-section" aria-labelledby="dineInPaymentRequestsTitle">
+      <div class="card reservation-requests-panel">
+        <div class="card-header">
+          <div>
+            <span class="section-kicker">Dine-in Payment Inbox</span>
+            <h2 id="dineInPaymentRequestsTitle">Dine-in Payment Requests</h2>
+            <p>Review dine-in payments independently from reservation requests.</p>
+          </div>
+          <span id="dineInPaymentRequestCount" class="reservation-request-count reservation-request-count-large" aria-live="polite">0 pending</span>
+        </div>
+        <div class="admin-inbox-filters" aria-label="Dine-in payment request filters">
+          <label class="search-container admin-inbox-search">
+            <i class="search-icon" data-lucide="search" aria-hidden="true"></i>
+            <input id="dineInPaymentSearch" class="form-field-control" type="search" placeholder="Search customer, order, table, or reference" aria-label="Search dine-in payment requests" />
+          </label>
+          <label>
+            <span class="reservation-filter-label">Payment status</span>
+            <select id="dineInPaymentStatusFilter" aria-label="Filter dine-in payments by status">
+              <option value="pending_verification" selected>Pending verification</option>
+              <option value="all">All payment requests</option>
+              <option value="paid">Paid</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </label>
+          <button id="dineInPaymentClearFilters" class="secondary" type="button">Clear Filters</button>
+        </div>
+        <div id="dineInPaymentRequests" class="reservation-requests-list" aria-live="polite">
+          <p class="muted">Loading dine-in payment requests…</p>
+        </div>
+      </div>
+      <div class="card reservation-requests-panel">
+        <div class="card-header">
+          <div>
+            <span class="section-kicker">Dine-in Refunds</span>
+            <h2>Dine-in Refunds</h2>
+            <p>Review pending late-arrival refunds and completed payments recorded by cashiers.</p>
+          </div>
+          <span id="dineInRefundRequestCount" class="reservation-request-count reservation-request-count-large" aria-live="polite">0 pending · 0 completed</span>
+        </div>
+        <div id="dineInRefundRequests" class="reservation-requests-list" aria-live="polite">
+          <p class="muted">Loading dine-in refunds…</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-active-reservations" class="tab-section" aria-labelledby="activeReservationsTitle">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <span class="section-kicker">Reservation Management</span>
+            <h2 id="activeReservationsTitle">Active Reservations</h2>
+            <p>Search current reservations and review completed or cancelled reservation history.</p>
+          </div>
+        </div>
+
+        <div class="reservation-management-summary" aria-label="Reservation summary">
+          <article class="reservation-summary-card">
+            <span class="reservation-summary-label">Total Reservations</span>
+            <span class="reservation-summary-short" aria-hidden="true">Total</span>
+            <strong id="managementReservationTotal">—</strong>
+          </article>
+          <article class="reservation-summary-card">
+            <span class="reservation-summary-label">Active Reservations</span>
+            <span class="reservation-summary-short" aria-hidden="true">Active</span>
+            <strong id="managementReservationActive">—</strong>
+          </article>
+          <article class="reservation-summary-card">
+            <span class="reservation-summary-label">Pending Reservations</span>
+            <span class="reservation-summary-short" aria-hidden="true">Pending</span>
+            <strong id="managementReservationPending">—</strong>
+          </article>
+          <article class="reservation-summary-card">
+            <span class="reservation-summary-label">Confirmed Reservations</span>
+            <span class="reservation-summary-short" aria-hidden="true">Conf.</span>
+            <strong id="managementReservationConfirmed">—</strong>
+          </article>
+          <article class="reservation-summary-card">
+            <span class="reservation-summary-label">Completed Reservations</span>
+            <span class="reservation-summary-short" aria-hidden="true">Done</span>
+            <strong id="managementReservationCompleted">—</strong>
+          </article>
+          <article class="reservation-summary-card">
+            <span class="reservation-summary-label">Cancelled Reservations</span>
+            <span class="reservation-summary-short" aria-hidden="true">Cancel</span>
+            <strong id="managementReservationCancelled">—</strong>
+          </article>
+        </div>
+
+        <div class="reservation-management-filters" aria-label="Reservation filters">
+          <label class="search-container reservation-management-search">
+            <i class="search-icon" data-lucide="search" aria-hidden="true"></i>
+            <input id="reservationManagementSearch" class="form-field-control" type="search" placeholder="Search ID, customer, or contact" aria-label="Search reservations by ID, customer, or contact" />
+          </label>
+          <label>
+            <span class="reservation-filter-label">Status</span>
+            <select id="reservationManagementStatus" aria-label="Filter by reservation status">
+              <option value="all">All Reservations</option>
+              <option value="active">Active</option>
+              <option value="pending">Pending</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </label>
+          <label>
+            <span class="reservation-filter-label">Payment</span>
+            <select id="reservationManagementPayment" aria-label="Filter by payment status">
+              <option value="all">All Payment Statuses</option>
+              <option value="pending_verification">Pending Verification</option>
+              <option value="paid">Paid</option>
+              <option value="unpaid">Unpaid</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </label>
+          <label>
+            <span class="reservation-filter-label">Reservation date from</span>
+            <input id="reservationManagementDateFrom" type="date" aria-label="Reservation date from" />
+          </label>
+          <label>
+            <span class="reservation-filter-label">Reservation date to</span>
+            <input id="reservationManagementDateTo" type="date" aria-label="Reservation date to" />
+          </label>
+          <label class="reservation-history-toggle">
+            <input id="reservationManagementHistoryOnly" type="checkbox" />
+            <span>History only</span>
+          </label>
+          <button id="reservationManagementClear" class="secondary" type="button">Clear Filters</button>
+        </div>
+        <p id="reservationManagementStatusMessage" class="muted" role="status" aria-live="polite">Loading reservations…</p>
+        <div id="reservationManagementList" class="reservation-management-list" aria-live="polite"></div>
+        <nav id="reservationManagementPagination" class="reservation-management-pagination" aria-label="Reservation list pagination" hidden>
+          <label>
+            <span>Rows per page</span>
+            <select id="reservationManagementPageSize" aria-label="Rows per page">
+              <option value="10" selected>10</option>
+              <option value="15">15</option>
+              <option value="25">25</option>
+            </select>
+          </label>
+          <span id="reservationManagementPageSummary" aria-live="polite"></span>
+          <div class="reservation-management-page-actions">
+            <button id="reservationManagementPrevious" class="secondary" type="button" aria-label="Previous page">Previous</button>
+            <span id="reservationManagementPageNumber"></span>
+            <button id="reservationManagementNext" class="secondary" type="button" aria-label="Next page">Next</button>
+          </div>
+        </nav>
+      </div>
+    </section>
+
     <section id="tab-forecasts" class="tab-section">
       <div class="forecast-heading">
         <div>
@@ -312,10 +550,13 @@
         <button class="btn" onclick="openProductModal()"><i data-lucide="plus" aria-hidden="true"></i> Add Menu Item</button>
       </div>
       <div class="menu-search-toolbar">
-        <label class="menu-search-field staff-search-field">
-          <i data-lucide="search" aria-hidden="true"></i>
+        <label class="menu-search-field staff-search-field search-container">
+          <svg class="search-icon" fill="none" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+            <path d="M17.5 17.5 22 22" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+            <path d="M20 11a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" stroke="currentColor" stroke-linejoin="round" stroke-width="2"></path>
+          </svg>
           <span class="visually-hidden">Search menu items by name or category</span>
-          <input id="menuSearch" type="search" placeholder="Search menu items..." aria-controls="productTableBody" oninput="renderProducts()" />
+          <input class="form-field-control" id="menuSearch" type="search" placeholder="Search menu items..." aria-controls="productTableBody" oninput="renderProducts()" />
         </label>
         <button id="clearMenuSearch" class="menu-search-clear" type="button" aria-label="Clear menu search" onclick="clearMenuSearch()" hidden>
           <i data-lucide="x" aria-hidden="true"></i>
@@ -354,16 +595,20 @@
         </button>
       </div>
       <div class="staff-management-toolbar">
-        <label class="staff-search-field">
-          <i data-lucide="search" aria-hidden="true"></i>
+        <label class="staff-search-field search-container">
+          <svg class="search-icon" fill="none" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+            <path d="M17.5 17.5 22 22" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+            <path d="M20 11a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" stroke="currentColor" stroke-linejoin="round" stroke-width="2"></path>
+          </svg>
           <span class="visually-hidden">Search staff</span>
-          <input id="staffSearch" type="search" placeholder="Search name, username, or email" oninput="renderUsers()" />
+          <input class="form-field-control" id="staffSearch" type="search" placeholder="Search name, username, or email" oninput="renderUsers()" />
         </label>
         <label>
           <span class="visually-hidden">Filter by role</span>
           <select id="staffRoleFilter" onchange="renderUsers()">
             <option value="all">All roles</option>
             <option value="staff">Staff</option>
+            <option value="cashier">Staff + Cashier Access</option>
             <option value="admin">Administrator</option>
           </select>
         </label>
@@ -412,29 +657,40 @@
           </button>
         </div>
         <input id="staffRecordId" type="hidden" />
-        <label for="staffFullName">Full Name <span aria-hidden="true">*</span></label>
-        <input id="staffFullName" name="fullName" type="text" maxlength="120" autocomplete="name" required />
-        <label for="staffUsername">Username <span aria-hidden="true">*</span></label>
-        <input id="staffUsername" name="username" type="text" minlength="3" maxlength="32" pattern="[A-Za-z0-9][A-Za-z0-9._\-]{2,31}" autocomplete="off" required />
+        <div class="coolinput">
+          <label class="text" for="staffFullName">Full Name <span aria-hidden="true">*</span></label>
+          <input class="form-field-control" id="staffFullName" name="fullName" type="text" maxlength="120" autocomplete="name" required />
+        </div>
+        <div class="coolinput">
+          <label class="text" for="staffUsername">Username <span aria-hidden="true">*</span></label>
+          <input class="form-field-control" id="staffUsername" name="username" type="text" minlength="3" maxlength="32" pattern="[A-Za-z0-9][A-Za-z0-9._\-]{2,31}" autocomplete="off" required />
+        </div>
         <small class="staff-field-hint">3–32 letters, numbers, dots, underscores, or hyphens.</small>
-        <label for="staffAccountEmail">Email Address <span aria-hidden="true">*</span></label>
-        <input id="staffAccountEmail" name="email" type="email" maxlength="255" autocomplete="email" required />
+        <div class="coolinput">
+          <label class="text" for="staffAccountEmail">Email Address <span aria-hidden="true">*</span></label>
+          <input class="form-field-control" id="staffAccountEmail" name="email" type="email" maxlength="255" autocomplete="email" required />
+        </div>
         <label for="staffAccountRole">Staff Role <span aria-hidden="true">*</span></label>
         <select id="staffAccountRole" name="role" required>
           <option value="staff">Staff</option>
+          <option value="cashier">Staff + Cashier Access</option>
           <option value="admin">Administrator</option>
         </select>
-        <small class="staff-field-hint">Only the existing Staff and Administrator roles are available.</small>
+        <small class="staff-field-hint">Staff + Cashier Access keeps normal staff workspace access and adds refund management. Regular Staff cannot process or complete refunds.</small>
         <div id="staffPasswordFields">
-          <label for="staffAccountPassword">Password <span aria-hidden="true">*</span></label>
+          <div class="coolinput">
+            <label class="text" for="staffAccountPassword">Password <span aria-hidden="true">*</span></label>
           <div class="staff-password-control">
-            <input id="staffAccountPassword" name="password" type="password" minlength="12" maxlength="72" autocomplete="new-password" />
+            <input class="form-field-control" id="staffAccountPassword" name="password" type="password" minlength="12" maxlength="72" autocomplete="new-password" />
             <button type="button" aria-label="Show password" aria-pressed="false" onclick="togglePasswordVisibility('staffAccountPassword', this)"><i data-lucide="eye" aria-hidden="true"></i></button>
           </div>
-          <label for="staffConfirmPassword">Confirm Password <span aria-hidden="true">*</span></label>
+          </div>
+          <div class="coolinput">
+            <label class="text" for="staffConfirmPassword">Confirm Password <span aria-hidden="true">*</span></label>
           <div class="staff-password-control">
-            <input id="staffConfirmPassword" name="confirmPassword" type="password" minlength="12" maxlength="72" autocomplete="new-password" />
+            <input class="form-field-control" id="staffConfirmPassword" name="confirmPassword" type="password" minlength="12" maxlength="72" autocomplete="new-password" />
             <button type="button" aria-label="Show password" aria-pressed="false" onclick="togglePasswordVisibility('staffConfirmPassword', this)"><i data-lucide="eye" aria-hidden="true"></i></button>
+          </div>
           </div>
           <small class="staff-field-hint">Use at least 12 characters. Passwords are never shown or logged.</small>
         </div>
@@ -477,9 +733,13 @@
         </div>
       </div>
       <div class="card audit-filters">
-        <label>
-          Search
-          <input id="auditSearch" class="panel-input-control" type="search" placeholder="Search actor, action, module, record..." />
+        <label class="search-container audit-search-container">
+          <svg class="search-icon" fill="none" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+            <path d="M17.5 17.5 22 22" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+            <path d="M20 11a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" stroke="currentColor" stroke-linejoin="round" stroke-width="2"></path>
+          </svg>
+          <span class="visually-hidden">Search audit logs</span>
+          <input id="auditSearch" class="panel-input-control form-field-control" type="search" placeholder="Search actor, action, module, record..." aria-label="Search audit logs" />
         </label>
         <label>
           User
@@ -499,13 +759,13 @@
             <option value="">All modules</option>
           </select>
         </label>
-        <label>
-          From
-          <input id="auditStartDate" class="panel-input-control" type="date" />
+        <label class="coolinput-field">
+          <span class="text">From</span>
+          <input id="auditStartDate" class="panel-input-control form-field-control" type="date" />
         </label>
-        <label>
-          To
-          <input id="auditEndDate" class="panel-input-control" type="date" />
+        <label class="coolinput-field">
+          <span class="text">To</span>
+          <input id="auditEndDate" class="panel-input-control form-field-control" type="date" />
         </label>
         <button id="auditResetFilters" class="btn secondary" type="button">Reset filters</button>
       </div>
@@ -543,13 +803,13 @@
         </div>
       </div>
       <div class="card" style="max-width: 560px;">
-        <div style="margin-bottom: 14px;">
-          <label class="admin-settings-label">Restaurant App Name</label>
-          <input type="text" class="panel-input-control" value="Dine-Ari Gourmet" style="width: 100%; margin-top: 6px;" />
+        <div class="coolinput" style="margin-bottom: 14px;">
+          <label class="admin-settings-label text" for="restaurantAppName">Restaurant App Name</label>
+          <input class="panel-input-control form-field-control" id="restaurantAppName" type="text" value="Dine-Ari Gourmet" style="width: 100%;" />
         </div>
-        <div style="margin-bottom: 14px;">
-          <label class="admin-settings-label">Payment Gateway Webhook URL</label>
-          <input type="text" class="panel-input-control" value="https://api.dineari.com/v1/payments/webhook" style="width: 100%; margin-top: 6px;" />
+        <div class="coolinput" style="margin-bottom: 14px;">
+          <label class="admin-settings-label text" for="paymentGatewayWebhookUrl">Payment Gateway Webhook URL</label>
+          <input class="panel-input-control form-field-control" id="paymentGatewayWebhookUrl" type="text" value="https://api.dineari.com/v1/payments/webhook" style="width: 100%;" />
         </div>
         <button class="btn">Save Preferences</button>
       </div>
@@ -562,9 +822,9 @@
     <div class="modal-content card">
       <h2 id="productModalTitle">Add Menu Item</h2>
       <input type="hidden" id="editProductId" />
-      <div style="margin-bottom: 12px;">
-        <label>Menu Name</label>
-        <input type="text" id="prodName" style="width: 100%;" required />
+      <div class="coolinput" style="margin-bottom: 12px;">
+        <label class="text" for="prodName">Menu Name</label>
+        <input class="form-field-control" type="text" id="prodName" style="width: 100%;" required />
       </div>
       <div style="margin-bottom: 12px;">
         <label>Category</label>
@@ -575,21 +835,21 @@
           <option value="Desserts">Desserts</option>
         </select>
       </div>
-      <div style="margin-bottom: 12px;">
-        <label>Price (₱)</label>
-        <input type="number" id="prodPrice" step="0.01" style="width: 100%;" required />
+      <div class="coolinput" style="margin-bottom: 12px;">
+        <label class="text" for="prodPrice">Price (₱)</label>
+        <input class="form-field-control" type="number" id="prodPrice" step="0.01" style="width: 100%;" required />
       </div>
-      <div style="margin-bottom: 12px;">
-        <label>Initial Stock Amount</label>
-        <input type="number" id="prodStock" style="width: 100%;" required />
+      <div class="coolinput" style="margin-bottom: 12px;">
+        <label class="text" for="prodStock">Initial Stock Amount</label>
+        <input class="form-field-control" type="number" id="prodStock" style="width: 100%;" required />
       </div>
       <div style="margin-bottom: 12px;">
         <label>Upload Photo</label>
         <input type="file" id="prodImageFile" accept="image/*" style="width: 100%;" />
       </div>
-      <div style="margin-bottom: 16px;">
-        <label>Description</label>
-        <input type="text" id="prodRecipe" placeholder="e.g. Beef Tenderloin, Garlic, Butter" style="width: 100%;" />
+      <div class="coolinput" style="margin-bottom: 16px;">
+        <label class="text" for="prodRecipe">Description</label>
+        <input class="form-field-control" type="text" id="prodRecipe" placeholder="e.g. Beef Tenderloin, Garlic, Butter" style="width: 100%;" />
       </div>
       <div style="display: flex; gap: 10px; justify-content: flex-end;">
         <button type="button" class="secondary" onclick="closeProductModal()">Cancel</button>
@@ -598,9 +858,42 @@
     </div>
   </div>
 
+  <dialog id="reservationDetailsDialog" class="reservation-details-dialog" aria-labelledby="reservationDetailsTitle">
+    <div class="reservation-details-content">
+      <div class="card-header">
+        <div>
+          <span class="section-kicker">Reservation Request</span>
+          <h2 id="reservationDetailsTitle">Reservation Details</h2>
+        </div>
+        <button class="secondary" type="button" onclick="closeReservationDetails()" aria-label="Close reservation details">Close</button>
+      </div>
+      <div id="reservationDetailsBody" class="reservation-details-grid"></div>
+      <div id="reservationDetailsActions" class="admin-inline-actions"></div>
+    </div>
+  </dialog>
+
+  <dialog id="reservationRejectDialog" class="reservation-details-dialog" aria-labelledby="reservationRejectTitle">
+    <form id="reservationRejectForm" class="reservation-details-content">
+      <div>
+        <span class="section-kicker">Reservation Review</span>
+        <h2 id="reservationRejectTitle">Reject Reservation</h2>
+        <p>Provide a reason. The customer will be able to see it with their reservation status.</p>
+      </div>
+      <label class="coolinput-field" for="reservationRejectReason">
+        <span class="text">Rejection reason <span class="required-field-mark" aria-hidden="true">*</span></span>
+        <textarea class="form-field-control" id="reservationRejectReason" rows="4" maxlength="500" required></textarea>
+      </label>
+      <p id="reservationRejectError" class="reservation-reject-error" role="alert" hidden></p>
+      <div class="admin-inline-actions">
+        <button type="button" class="secondary" onclick="closeReservationRejectDialog()">Cancel</button>
+        <button id="submitReservationRejectButton" type="submit" class="danger">Reject Reservation</button>
+      </div>
+    </form>
+  </dialog>
+
   <script src="js/api.js"></script>
   <script>if (window.lucide) lucide.createIcons();</script>
   <script src="js/notifications.js?v=20261105-global-notifications-5"></script>
-  <script src="js/admin.js?v=20261105-global-notifications-4"></script>
+  <script src="js/admin.js?v=20261109-separated-payment-inboxes-v1"></script>
 </body>
 </html>

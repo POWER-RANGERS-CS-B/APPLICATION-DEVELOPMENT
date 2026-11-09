@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const orderModel = require("./models/orderModel");
 
 const app = express();
 
@@ -43,6 +44,14 @@ app.use(
 );
 
 app.use(
+  "/vendor/zxing",
+  express.static(
+    path.join(__dirname, "node_modules/@zxing/browser/umd"),
+    { maxAge: "1d" }
+  )
+);
+
+app.use(
   "/vendor/chart.js",
   express.static(
     path.join(__dirname, "node_modules/chart.js/dist"),
@@ -75,6 +84,7 @@ app.get("/", (req, res) => {
 ====================================== */
 
 app.use("/api/auth", require("./routes/authRoutes"));
+app.use("/api/customers", require("./routes/customerRoutes"));
 app.use("/api/menu", require("./routes/menuRoutes"));
 app.use("/api/orders", require("./routes/orderRoutes"));
 app.use("/api/reservations", require("./routes/reservationRoutes"));
@@ -98,6 +108,14 @@ if (require.main === module) {
     console.log(`Server listening on ${HOST}:${PORT}`);
     console.log(`Open Dine-Ari at http://localhost:${PORT}`);
   });
+
+  const expireUnarrivedDineIns = () => {
+    void orderModel.expireUnarrivedDineIns().catch((error) => {
+      console.error("Could not expire unarrived dine-in orders:", error);
+    });
+  };
+  expireUnarrivedDineIns();
+  setInterval(expireUnarrivedDineIns, 15000).unref();
 }
 
 module.exports = app;

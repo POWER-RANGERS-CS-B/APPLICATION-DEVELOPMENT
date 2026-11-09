@@ -12,13 +12,25 @@ exports.createOrder = async (req, res) => {
       });
     }
 
+    if (!req.user) {
+      return res.status(401).json({ message: "Customer authentication is required." });
+    }
+
+    if (req.user.role !== "customer") {
+      return res.status(403).json({ message: "Access denied." });
+    }
+
     const order = await orderModel.create({
-      userId: req.user?.id || null,
-      actorName: req.user?.email || null,
+      userId: req.user.id,
+      actorName: req.user.email,
       type,
       chairIds,
       items: req.body.items,
       paymentMethod: req.body.payment_method || "GCash",
+      gcashReference: req.body.gcash_reference || req.body.payment_reference || null,
+      gcashSenderName: req.body.gcash_sender_name || null,
+      gcashReference: req.body.gcash_reference || req.body.payment_reference || null,
+      gcashSenderName: req.body.gcash_sender_name || null,
       reservationDate: req.body.reservation_date,
       reservationTime: req.body.reservation_time,
       customerName: req.body.customer_name || req.body.customerName,
@@ -47,6 +59,75 @@ exports.updateStatus = async (req, res) => {
     res.json(await orderModel.updateStatus(req.params.id, req.body.status, req.user));
   } catch (error) {
     res.status(400).json({ message: error.message });
+  }
+};
+
+exports.getPendingPaymentOrders = async (_req, res) => {
+  try {
+    res.set("Cache-Control", "no-store");
+    res.json(await orderModel.findPendingPaymentOrders());
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getDineInPaymentRequests = async (_req, res) => {
+  try {
+    res.set("Cache-Control", "no-store");
+    res.json(await orderModel.findDineInPaymentRequests());
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getPendingDineInRefunds = async (_req, res) => {
+  try {
+    res.set("Cache-Control", "no-store");
+    res.json(await orderModel.findPendingDineInRefunds());
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getDineInRefunds = async (_req, res) => {
+  try {
+    res.set("Cache-Control", "no-store");
+    res.json(await orderModel.findDineInRefunds());
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.confirmPayment = async (req, res) => {
+  try {
+    const order = await orderModel.confirmPayment(
+      req.params.id,
+      req.user,
+      getPublicBaseUrl(req)
+    );
+    res.json(order);
+  } catch (error) {
+    const status = error.code === "PUBLIC_BASE_URL_CONFIGURATION_ERROR"
+      ? 500
+      : error.statusCode || 400;
+    res.status(status).json({ message: error.message });
+  }
+};
+
+exports.rejectPayment = async (req, res) => {
+  try {
+    res.json(await orderModel.rejectPayment(req.params.id, req.body?.reason, req.user));
+  } catch (error) {
+    res.status(error.statusCode || 400).json({ message: error.message });
+  }
+};
+
+exports.getCustomerPaymentStatus = async (req, res) => {
+  try {
+    res.set("Cache-Control", "no-store");
+    res.json(await orderModel.findCustomerPaymentStatus(req.params.id, req.user.id));
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ message: error.message });
   }
 };
 

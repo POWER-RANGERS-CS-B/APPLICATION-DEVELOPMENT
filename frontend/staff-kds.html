@@ -8,8 +8,9 @@
   <link rel="icon" href="/images/icon/dineari-logo.ico" type="image/x-icon" />
   <title>Dine-Ari Staff Workspace</title>
   <script src="js/theme.js?v=20261104-day-night-switch-2"></script>
-  <link rel="stylesheet" href="css/style.css?v=20261105-global-notifications-3" />
-  <link rel="stylesheet" href="css/design-system.css?v=20261105-global-notifications-4" />
+  <link rel="stylesheet" href="css/style.css?v=20261107-mobile-navigation-2" />
+  <link rel="stylesheet" href="css/design-system.css?v=20261109-cashier-workspace-1" />
+  <link rel="stylesheet" href="css/staff-arrival-scanner.css?v=20261109-shared-scanner-1" />
   <script src="/vendor/lucide/lucide.min.js?v=1.67.0"></script>
 </head>
 
@@ -35,9 +36,21 @@
         <span>Kitchen orders</span>
         <span class="staff-nav-count" id="staffSidebarOrderCount">0</span>
       </a>
+      <a class="staff-nav-link" href="#table-selection">
+        <i data-lucide="layout-grid" aria-hidden="true"></i>
+        <span>Table Selection</span>
+      </a>
+      <a class="staff-nav-link" href="#qr-scanner">
+        <i data-lucide="scan-qr-code" aria-hidden="true"></i>
+        <span>QR Scanner</span>
+      </a>
       <a class="staff-nav-link" href="#table-cleaning">
         <i data-lucide="brush-cleaning" aria-hidden="true"></i>
         <span>Table cleaning</span>
+      </a>
+      <a id="cashierRefundNavigation" class="staff-nav-link" href="#late-arrival-refunds" hidden>
+        <i data-lucide="banknote" aria-hidden="true"></i>
+        <span>Cashier / Refund Management</span>
       </a>
     </nav>
 
@@ -106,6 +119,22 @@
             </span>
             <i data-lucide="arrow-up-right" aria-hidden="true"></i>
           </a>
+          <a class="staff-overview-link" href="#table-selection">
+            <span class="staff-overview-link-icon"><i data-lucide="layout-grid" aria-hidden="true"></i></span>
+            <span class="staff-overview-link-copy">
+              <strong>Table Selection</strong>
+              <span>Manage walk-in table occupancy</span>
+            </span>
+            <i data-lucide="arrow-up-right" aria-hidden="true"></i>
+          </a>
+          <a class="staff-overview-link" href="#qr-scanner">
+            <span class="staff-overview-link-icon"><i data-lucide="scan-qr-code" aria-hidden="true"></i></span>
+            <span class="staff-overview-link-copy">
+              <strong>Customer arrival scanner</strong>
+              <span>Check in paid dine-in orders and reservations</span>
+            </span>
+            <i data-lucide="arrow-up-right" aria-hidden="true"></i>
+          </a>
           <a class="staff-overview-link" href="#table-cleaning">
             <span class="staff-overview-link-icon"><i data-lucide="brush-cleaning" aria-hidden="true"></i></span>
             <span class="staff-overview-link-copy">
@@ -139,6 +168,64 @@
               <i data-lucide="loader-circle" aria-hidden="true"></i>
               <span>Loading active kitchen orders…</span>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="table-selection" class="staff-page-section" aria-labelledby="staffTableSelectionTitle" hidden>
+        <div class="staff-page-heading">
+          <div>
+            <span class="section-kicker">DINING ROOM</span>
+            <h2 id="staffTableSelectionTitle">Table Selection</h2>
+            <p class="muted">Select an available table to mark it occupied for walk-in guests. Reserved tables are protected.</p>
+          </div>
+        </div>
+        <div class="staff-module staff-cleaning-module">
+          <div class="staff-cleaning-toolbar">
+            <div class="staff-module-heading">
+              <div>
+                <h3><i data-lucide="layout-grid" aria-hidden="true"></i> Restaurant tables</h3>
+                <p class="muted">Choose an available table to review its status and confirm walk-in occupancy.</p>
+              </div>
+            </div>
+            <button id="staffTableSelectionRefresh" class="secondary staff-tables-refresh" type="button">
+              <i data-lucide="refresh-cw" aria-hidden="true"></i>
+              Refresh
+            </button>
+          </div>
+
+          <p id="staffTableSelectionMessage" class="staff-cleaning-message" role="status" aria-live="polite"></p>
+
+          <div class="staff-cleaning-workspace">
+            <div class="staff-occupancy-floor">
+              <div class="floor-tabs staff-occupancy-floor-tabs" role="tablist" aria-label="Restaurant floor">
+                <button id="staffOccupancyFloor1Tab" class="floor-tab active" type="button" role="tab" aria-selected="true" aria-controls="floorPlan" data-staff-floor="1">
+                  Floor 1 <small>Standard tables</small>
+                </button>
+                <button id="staffOccupancyFloor2Tab" class="floor-tab" type="button" role="tab" aria-selected="false" aria-controls="floorPlan" data-staff-floor="2">
+                  Floor 2 <small>Group tables</small>
+                </button>
+              </div>
+              <div class="chair-legend" aria-label="Table status legend">
+                <span><i class="legend-swatch available"></i>Available</span>
+                <span><i class="legend-swatch selected"></i>Selected</span>
+                <span><i class="legend-swatch unavailable"></i>Occupied or reserved</span>
+              </div>
+              <div class="floor-scroll-wrapper staff-occupancy-floor-scroll">
+                <div class="floor-plan-scale-content">
+                  <div id="floorPlan" class="floor-plan" data-floor="1" aria-label="Restaurant table and seat availability" aria-live="polite" aria-busy="true">
+                    <p class="floor-empty-message">Loading restaurant tables…</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <aside id="staffWalkInSelectedTable" class="staff-selected-table" aria-live="polite" aria-label="Selected table details">
+              <div class="staff-table-selection-prompt">
+                <i data-lucide="mouse-pointer-2" aria-hidden="true"></i>
+                <strong>Select a table</strong>
+                <span>Its current availability and walk-in action will appear here.</span>
+              </div>
+            </aside>
           </div>
         </div>
       </section>
@@ -202,12 +289,138 @@
           </div>
         </div>
       </section>
+
+      <section id="qr-scanner" class="staff-page-section" aria-labelledby="arrivalScannerTitle" hidden>
+        <div class="staff-page-heading">
+          <div>
+            <span class="section-kicker">GUEST ARRIVALS</span>
+            <h2 id="arrivalScannerTitle">Customer Arrival Scanner</h2>
+            <p class="muted">Scan the customer's QR receipt to verify and confirm their arrival.</p>
+          </div>
+          <div class="arrival-scanner-live" role="status" aria-live="polite">
+            <span id="arrivalScannerStatusDot" class="arrival-scanner-status-dot" aria-hidden="true"></span>
+            <span id="arrivalScannerStatusLabel">Scanner stopped</span>
+          </div>
+        </div>
+
+        <div class="arrival-scanner-grid">
+          <section class="staff-module arrival-camera-module" aria-labelledby="arrivalCameraTitle">
+            <div class="staff-module-heading">
+              <div>
+                <h3 id="arrivalCameraTitle"><i data-lucide="scan-qr-code" aria-hidden="true"></i> Scan customer QR</h3>
+                <p class="muted">The camera starts automatically when this page opens. Staff confirmation is automatic only after the server verifies a scanned QR code.</p>
+              </div>
+            </div>
+            <div id="arrivalCameraFrame" class="arrival-camera-frame">
+              <video id="arrivalScannerVideo" playsinline muted aria-label="Live camera preview for scanning QR codes" hidden></video>
+              <div id="arrivalScannerPlaceholder" class="arrival-camera-placeholder">
+                <i data-lucide="camera" aria-hidden="true"></i>
+                <strong>Camera preview</strong>
+                <span>Opening the scanner will request camera access.</span>
+              </div>
+              <div class="arrival-camera-guide" aria-hidden="true"></div>
+            </div>
+            <div id="arrivalCameraSelection" class="arrival-camera-selection" hidden>
+              <label for="arrivalCameraSelect">Camera</label>
+              <select id="arrivalCameraSelect" aria-label="Choose a camera"></select>
+            </div>
+            <p id="arrivalCameraMessage" class="arrival-camera-message" role="status" aria-live="polite">
+              The camera will start when you open this page. Manual QR input is available if camera access is unavailable.
+            </p>
+            <div class="arrival-scanner-actions">
+              <button id="arrivalScannerStart" class="primary" type="button">
+                <i data-lucide="scan-line" aria-hidden="true"></i>
+                <span>Start Scanner</span>
+              </button>
+              <button id="arrivalScannerStop" class="secondary" type="button" disabled>
+                <i data-lucide="circle-stop" aria-hidden="true"></i>
+                <span>Stop Scanner</span>
+              </button>
+            </div>
+
+            <form id="arrivalManualForm" class="arrival-manual-form">
+              <label for="arrivalManualQr">Manual QR input</label>
+              <div class="arrival-manual-input-row">
+                <input id="arrivalManualQr" type="text" maxlength="2048" autocomplete="off" spellcheck="false"
+                  placeholder="Paste or type the QR receipt content" />
+                <button class="secondary" type="submit">
+                  <i data-lucide="search-check" aria-hidden="true"></i>
+                  <span>Validate QR</span>
+                </button>
+              </div>
+              <small>Use manual input only when the camera cannot be used.</small>
+            </form>
+          </section>
+
+          <section class="staff-module arrival-result-module" aria-labelledby="arrivalResultTitle">
+            <div class="staff-module-heading">
+              <div>
+                <h3 id="arrivalResultTitle"><i data-lucide="badge-check" aria-hidden="true"></i> Scan result</h3>
+                <p class="muted">Valid camera scans are checked in automatically after server verification.</p>
+              </div>
+            </div>
+            <div id="arrivalScannerResult" class="arrival-scanner-result is-idle" role="status" aria-live="polite">
+              <i data-lucide="scan-search" aria-hidden="true"></i>
+              <strong>Ready to scan</strong>
+              <span>Invalid or ineligible scans are rejected; successful check-ins appear here.</span>
+            </div>
+            <dl id="arrivalTransactionDetails" class="arrival-transaction-details" hidden></dl>
+            <button id="arrivalConfirmButton" class="primary arrival-confirm-button" type="button" hidden>
+              <i data-lucide="shield-check" aria-hidden="true"></i>
+              <span>Confirm Customer Arrival</span>
+            </button>
+            <section id="arrivalLastSuccess" class="arrival-last-success" aria-labelledby="arrivalLastSuccessTitle" hidden>
+              <h4 id="arrivalLastSuccessTitle"><i data-lucide="history" aria-hidden="true"></i> Last successful check-in</h4>
+              <p id="arrivalLastSuccessSummary"></p>
+              <time id="arrivalLastSuccessTime"></time>
+            </section>
+          </section>
+        </div>
+      </section>
+
+      <section id="late-arrival-refunds" class="staff-page-section" aria-labelledby="cashierRefundsTitle" hidden>
+        <div class="staff-page-heading">
+          <div>
+            <span class="section-kicker">CASHIER WORKSPACE</span>
+            <h2 id="cashierRefundsTitle">Late Arrival Refund Requests</h2>
+            <p class="muted">Review the payment, move requests into processing, and confirm only after handing cash to the customer.</p>
+          </div>
+          <button id="cashierRefundsRefresh" class="secondary" type="button">
+            <i data-lucide="refresh-cw" aria-hidden="true"></i>
+            Refresh
+          </button>
+        </div>
+        <p id="cashierRefundsMessage" class="staff-cleaning-message" role="status" aria-live="polite"></p>
+        <div class="cashier-refund-groups">
+          <section class="cashier-refund-group" aria-labelledby="cashierPendingTitle">
+            <h3 id="cashierPendingTitle">Pending Refunds <span id="cashierPendingCount" class="staff-module-count">0</span></h3>
+            <div id="cashierPendingRefunds" class="staff-orders-list" aria-live="polite" aria-busy="true">
+              <p class="muted">Loading pending refunds…</p>
+            </div>
+          </section>
+          <section class="cashier-refund-group" aria-labelledby="cashierProcessingTitle">
+            <h3 id="cashierProcessingTitle">Processing Refunds <span id="cashierProcessingCount" class="staff-module-count">0</span></h3>
+            <div id="cashierProcessingRefunds" class="staff-orders-list" aria-live="polite" aria-busy="true">
+              <p class="muted">Loading processing refunds…</p>
+            </div>
+          </section>
+          <section class="cashier-refund-group" aria-labelledby="cashierCompletedTitle">
+            <h3 id="cashierCompletedTitle">Completed Refunds <span id="cashierCompletedCount" class="staff-module-count">0</span></h3>
+            <p class="muted cashier-refund-history-label">Refund History</p>
+            <div id="cashierCompletedRefunds" class="staff-orders-list" aria-live="polite" aria-busy="true">
+              <p class="muted">Loading completed refunds…</p>
+            </div>
+          </section>
+        </div>
+      </section>
     </div>
   </main>
 
   <script src="js/notifications.js?v=20261105-global-notifications-5"></script>
   <script src="js/api.js"></script>
-  <script src="js/staff.js?v=20261105-global-notifications-3"></script>
+  <script src="/vendor/zxing/zxing-browser.min.js?v=0.2.1"></script>
+  <script src="js/staff.js?v=20261109-cashier-workspace-1"></script>
+  <script src="js/staff-arrival-scanner.js?v=20261109-auto-arrival-scan-1"></script>
   <script>if (window.lucide) lucide.createIcons();</script>
 </body>
 

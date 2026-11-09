@@ -27,7 +27,7 @@ function authenticate(req, res, next) {
       (typeof payload.id === "string" && payload.id.length > 0) ||
       Number.isSafeInteger(payload.id)
     ) ||
-    !["staff", "admin"].includes(payload.role)
+    !["staff", "cashier", "admin", "customer"].includes(payload.role)
   ) {
     return res.status(401).json({ message: "Invalid authentication token." });
   }

@@ -11,9 +11,14 @@ function showAuthMessage(message, isError = false, messageId = "authMessage") {
   );
 }
 
+function getCustomerPostAuthUrl() {
+  const flow = new URLSearchParams(window.location.search).get("flow");
+  return flow === "dine_in" ? "./choice.html?flow=dine_in" : "./choice.html";
+}
+
 async function login(accountType = "admin") {
 
-  const inputPrefix = accountType === "staff" ? "staff" : "admin";
+  const inputPrefix = accountType === "customer" ? "customer" : accountType === "staff" ? "staff" : "admin";
   const messageId = `${inputPrefix}AuthMessage`;
   const submitButton = document.getElementById(`${inputPrefix}LoginButton`);
 
@@ -67,10 +72,21 @@ async function login(accountType = "admin") {
       .toLowerCase();
 
     const isAdmin = role === "admin";
-    const isStaff = role === "staff";
+    const isStaff = role === "staff" || role === "cashier";
+    const isCustomer = role === "customer";
 
-    if ((accountType === "admin" && !isAdmin) || (accountType === "staff" && !isStaff)) {
-      showAuthMessage(`This account is not registered as ${accountType}. Use the ${isAdmin ? "Admin" : "Staff"} folder.`, true, messageId);
+    if (
+      (accountType === "admin" && !isAdmin) ||
+      (accountType === "staff" && !isStaff) ||
+      (accountType === "customer" && !isCustomer)
+    ) {
+      showAuthMessage(
+        accountType === "customer"
+          ? "This is not a customer account. Use the staff or administrator login."
+          : `This account is not registered as ${accountType}. Use the ${isAdmin ? "Admin" : "Staff or Cashier"} folder.`,
+        true,
+        messageId
+      );
       return;
     }
 
@@ -93,10 +109,14 @@ async function login(accountType = "admin") {
         return;
       }
 
-      if (role === "staff") {
+      if (role === "staff" || role === "cashier") {
         window.location.href =
           "./staff-kds.html";
         return;
+      }
+
+      if (role === "customer") {
+        window.location.href = getCustomerPostAuthUrl();
       }
     }, 400);
 
