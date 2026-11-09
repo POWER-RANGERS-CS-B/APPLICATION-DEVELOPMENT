@@ -8,6 +8,9 @@ function normalizeReservationCustomer(customerName, contactNumber, countryCode) 
   if (!name) {
     throw new Error("Full name is required.");
   }
+  if (name.length > 128) {
+    throw new Error("Full name must be 128 characters or fewer.");
+  }
 
   if (!contact) {
     throw new Error("Contact number is required.");

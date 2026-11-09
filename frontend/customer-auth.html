@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="/images/icon/dineari-logo.ico" type="image/x-icon" />
+  <title>Dine-Ari | Customer Account</title>
+  <script src="js/theme.js"></script>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="/vendor/intl-tel-input/css/intlTelInput.min.css" />
+  <link rel="stylesheet" href="css/design-system.css?v=20261106-auth-layout-2" />
+  <script src="/vendor/lucide/lucide.min.js?v=1.67.0"></script>
+</head>
+<body class="customer-auth-page">
+  <main class="page center-page">
+    <section class="auth-shell customer-auth-shell">
+      <header class="customer-auth-header">
+        <a class="customer-auth-back" href="choice.html">
+          <i data-lucide="arrow-left" aria-hidden="true"></i>
+          <span>Back</span>
+        </a>
+        <div class="customer-auth-brand" data-theme-switch-host>
+          <picture class="system-logo-picture">
+            <source srcset="images/Logo/dineari-logo.webp" type="image/webp" />
+            <img class="system-logo system-logo-login" src="images/Logo/Dine-ari%20Chef%E2%80%99s%20Table%20Logo.png" alt="Dine-Ari Chef’s Table" width="1536" height="1024" decoding="async" />
+          </picture>
+        </div>
+      </header>
+      <div class="auth-main">
+        <section class="auth-card customer-auth-card">
+          <p class="login-welcome">Welcome to Dine-Ari</p>
+          <p class="login-intro">Sign in or create an account to place Dine-In orders, make reservations, and manage your customer account.</p>
+
+          <nav class="customer-auth-tabs" role="tablist" aria-label="Customer account">
+            <a id="customerLoginTab" href="#login" role="tab" aria-controls="login" aria-selected="true">Login</a>
+            <a id="customerSignupTab" href="#signup" role="tab" aria-controls="signup" aria-selected="false">Sign Up</a>
+          </nav>
+
+          <section id="login" class="customer-auth-section" role="tabpanel" aria-labelledby="customerLoginTab">
+            <h1 class="logo-title">Customer Login</h1>
+            <form class="login-form" onsubmit="event.preventDefault(); login('customer')">
+              <div class="coolinput">
+                <label class="text" for="customerEmail">Email address</label>
+                <div class="input-wrapper">
+                  <i class="input-icon" data-lucide="mail" aria-hidden="true"></i>
+                  <input class="form-field-control" id="customerEmail" type="email" autocomplete="email" placeholder="e.g., juan@gmail.com" required />
+                </div>
+              </div>
+              <div class="coolinput">
+                <label class="text" for="customerPassword">Password</label>
+                <div class="input-wrapper customer-auth-password-control">
+                  <i class="input-icon" data-lucide="lock" aria-hidden="true"></i>
+                  <input class="form-field-control" id="customerPassword" type="password" autocomplete="current-password" placeholder="Enter your password" required />
+                  <button class="customer-auth-password-toggle" type="button" aria-label="Show password" aria-pressed="false" onclick="togglePasswordVisibility('customerPassword', this)"><i data-lucide="eye" aria-hidden="true"></i></button>
+                </div>
+              </div>
+              <button class="login-submit" id="customerLoginButton" type="submit">Sign In</button>
+              <p id="customerAuthMessage" class="login-auth-message" role="status" aria-live="polite"></p>
+            </form>
+            <p class="customer-auth-switch">Don't have an account? <a href="#signup" data-customer-auth-target="customerSignupTab">Sign up</a></p>
+          </section>
+
+          <section id="signup" class="customer-auth-section" role="tabpanel" aria-labelledby="customerSignupTab" hidden>
+            <h2 class="logo-title">Create Customer Account</h2>
+            <form id="customerRegistrationForm" class="login-form" novalidate>
+              <div class="coolinput">
+                <label class="text" for="customerFullName">Full Name</label>
+                <div class="input-wrapper">
+                  <i class="input-icon" data-lucide="user-round" aria-hidden="true"></i>
+                  <input class="form-field-control" id="customerFullName" type="text" maxlength="128" autocomplete="name" placeholder="e.g., Juan Dela Cruz" required />
+                </div>
+              </div>
+              <div class="coolinput">
+                <label class="text" for="customerRegistrationEmail">Email Address</label>
+                <div class="input-wrapper">
+                  <i class="input-icon" data-lucide="mail" aria-hidden="true"></i>
+                  <input class="form-field-control" id="customerRegistrationEmail" type="email" maxlength="255" autocomplete="email" placeholder="e.g., juan@gmail.com" required />
+                </div>
+              </div>
+              <div class="coolinput">
+                <label class="text" for="customerContactNumber">Contact Number</label>
+                <div class="input-wrapper customer-auth-phone-control">
+                  <i class="input-icon" data-lucide="phone" aria-hidden="true"></i>
+                  <input class="form-field-control" id="customerContactNumber" type="tel" maxlength="32" autocomplete="tel" inputmode="tel" placeholder="e.g., 09123456789" aria-describedby="customerContactNumberError" required />
+                </div>
+                <small id="customerContactNumberError" class="customer-phone-error" role="alert" hidden></small>
+              </div>
+              <div class="coolinput">
+                <label class="text" for="customerRegistrationPassword">Password</label>
+                <div class="input-wrapper customer-auth-password-control">
+                  <i class="input-icon" data-lucide="lock" aria-hidden="true"></i>
+                  <input class="form-field-control" id="customerRegistrationPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" placeholder="Create a password" required />
+                  <button class="customer-auth-password-toggle" type="button" aria-label="Show password" aria-pressed="false" onclick="togglePasswordVisibility('customerRegistrationPassword', this)"><i data-lucide="eye" aria-hidden="true"></i></button>
+                </div>
+              </div>
+              <div class="coolinput">
+                <label class="text" for="customerConfirmPassword">Confirm Password</label>
+                <div class="input-wrapper customer-auth-password-control">
+                  <i class="input-icon" data-lucide="lock-keyhole" aria-hidden="true"></i>
+                  <input class="form-field-control" id="customerConfirmPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" placeholder="Re-enter your password" required />
+                  <button class="customer-auth-password-toggle" type="button" aria-label="Show password" aria-pressed="false" onclick="togglePasswordVisibility('customerConfirmPassword', this)"><i data-lucide="eye" aria-hidden="true"></i></button>
+                </div>
+              </div>
+              <button class="login-submit" id="customerRegistrationButton" type="submit">Create Account</button>
+              <p id="customerRegistrationMessage" class="login-auth-message" role="status" aria-live="polite"></p>
+            </form>
+            <p class="customer-auth-switch">Have an Account? <a href="#login" data-customer-auth-target="customerLoginTab">Login Here!</a></p>
+          </section>
+        </section>
+      </div>
+    </section>
+  </main>
+  <script src="js/api.js?v=20261107-customer-dine-in-auth-1"></script>
+  <script src="js/auth.js?v=20261107-customer-dine-in-auth-1"></script>
+  <script src="/vendor/intl-tel-input/js/intlTelInput.min.js"></script>
+  <script src="js/customer-auth.js?v=20261107-customer-dine-in-auth-1"></script>
+  <script>if (window.lucide) lucide.createIcons();</script>
+</body>
+</html>

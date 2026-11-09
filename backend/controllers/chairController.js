@@ -11,6 +11,14 @@ exports.getChairs = async (req, res) => {
 
 exports.lockTable = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Customer authentication is required." });
+    }
+
+    if (req.user.role !== "customer") {
+      return res.status(403).json({ message: "Access denied." });
+    }
+
     const tableId = Number(req.body.tableId);
     if (!Number.isInteger(tableId) || tableId <= 0) {
       return res.status(400).json({ message: "A valid tableId is required." });

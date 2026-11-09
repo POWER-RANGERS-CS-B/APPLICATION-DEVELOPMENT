@@ -56,7 +56,7 @@ After running those commands:
 2. Keep `JWT_SECRET` set to a secure local value.
 3. Run `npm run dev` to start the server (runs on port 3000).
 
-The admin **Audit Logs** tab records successful and failed logins, logout, account and menu changes, inventory changes, table/chair activity, reservation creation, and order activity. Business-state mutations and their audit rows share a database transaction; authentication events are recorded immediately after the outcome. Logs can be searched and filtered through the admin-only audit endpoint. For an existing database, apply `database/migrations/20261103_audit_logging.sql` and `database/migrations/20261105_table_cleaning_statuses.sql` in pgAdmin Query Tool before starting the updated backend.
+The admin **Audit Logs** tab records successful and failed logins, logout, account and menu changes, inventory changes, table/chair activity, reservation creation, and order activity. Business-state mutations and their audit rows share a database transaction; authentication events are recorded immediately after the outcome. Logs can be searched and filtered through the admin-only audit endpoint. For an existing database, apply the required migrations in `database/migrations/` in date order, including `20261109_late_arrival_refunds.sql`, in pgAdmin Query Tool before starting the updated backend. This migration adds cashier authorization and completion metadata to the existing order refund fields; it does not create refund records or tables.
 
 ## Reservation Demand Forecasting
 

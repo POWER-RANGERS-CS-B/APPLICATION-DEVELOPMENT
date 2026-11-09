@@ -6,6 +6,59 @@ const jwt = require("jsonwebtoken");
 const authModel = require("../models/authModel");
 const auditService = require("../services/auditService");
 const { isValidEmailDomain } = require("../utils/emailValidation");
+const { parsePhoneNumberFromString } = require("libphonenumber-js/max");
+
+exports.registerCustomer = async (req, res) => {
+  const fullName = typeof req.body?.full_name === "string" ? req.body.full_name.trim() : "";
+  const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+  const contact = typeof req.body?.contact_number === "string" ? req.body.contact_number.trim() : "";
+  const password = req.body?.password;
+  const confirmPassword = req.body?.confirm_password;
+  if (!fullName || fullName.length > 128) {
+    return res.status(400).json({ message: "Enter your full name (128 characters or fewer)." });
+  }
+  if (!isValidEmailDomain(email)) {
+    return res.status(400).json({ message: "Enter a valid email address." });
+  }
+  const phone = parsePhoneNumberFromString(contact, "PH");
+  if (!phone || !phone.isValid()) {
+    return res.status(400).json({
+      message: "Enter a valid phone number (for example, 09171234567 or +639171234567).",
+    });
+  }
+  if (typeof password !== "string" || password.length < 8 || password.length > 128) {
+    return res.status(400).json({ message: "Password must be between 8 and 128 characters." });
+  }
+  if (password !== confirmPassword) {
+    return res.status(400).json({ message: "Passwords do not match." });
+  }
+
+  try {
+    const user = await authModel.createCustomer({
+      fullName,
+      email,
+      contactNumber: phone.format("E.164"),
+      passwordHash: await bcrypt.hash(password, 12),
+    });
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+    res.status(201).json({
+      token,
+      user: {
+        id: user.id,
+        fullName: user.full_name,
+        email: user.email,
+        contactNumber: user.contact_number,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ message: error.message });
+  }
+};
 
 exports.login = async (req, res) => {
   const submittedEmail =

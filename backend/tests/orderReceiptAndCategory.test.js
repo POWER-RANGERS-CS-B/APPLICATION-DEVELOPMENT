@@ -110,7 +110,8 @@ test("KDS order payload excludes receipt capabilities", async (t) => {
 
   await orderModel.findKdsOrders();
 
-  assert.match(queryText, /SELECT\s+id,\s+order_code,\s+type,\s+status/s);
+  assert.match(queryText, /SELECT\s+o\.id,\s+o\.order_code,\s+o\.type,\s+o\.table_id/s);
+  assert.match(queryText, /LEFT JOIN restaurant\.restaurant_tables t ON t\.id = o\.table_id/);
   assert.doesNotMatch(queryText, /receipt_token|qr_code|\*/);
 });
 

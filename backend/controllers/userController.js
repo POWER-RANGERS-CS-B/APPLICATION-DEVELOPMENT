@@ -26,8 +26,8 @@ function normalizeStaffDetails(body, { creating = false } = {}) {
 
   if (creating) {
     const { password, confirmPassword, role } = body;
-    if (role !== "staff") {
-      throw validationError("New accounts can only be created with the Staff role.");
+    if (!["staff", "cashier"].includes(role)) {
+      throw validationError("New accounts can only be created with the Staff or Cashier role.");
     }
     if (typeof password !== "string" || password.length < 12 || Buffer.byteLength(password, "utf8") > 72) {
       throw validationError("Password must be at least 12 characters and no more than 72 bytes.");
@@ -35,11 +35,11 @@ function normalizeStaffDetails(body, { creating = false } = {}) {
     if (password !== confirmPassword) {
       throw validationError("Password and confirmation do not match.");
     }
-    return { fullName, username, email, password };
+    return { fullName, username, email, password, role };
   }
 
   const role = body.role === undefined ? "staff" : body.role;
-  if (!["staff", "admin"].includes(role)) {
+  if (!["staff", "cashier", "admin"].includes(role)) {
     throw validationError("Choose a supported account role.");
   }
   return { fullName, username, email, role };
@@ -64,7 +64,7 @@ exports.getEmployees = async (req, res) => {
   const role = typeof req.query.role === "string" ? req.query.role : "all";
   const status = typeof req.query.status === "string" ? req.query.status : "all";
 
-  if (!["all", "admin", "staff"].includes(role) || !["all", "active", "inactive"].includes(status)) {
+  if (!["all", "admin", "staff", "cashier"].includes(role) || !["all", "active", "inactive"].includes(status)) {
     return res.status(400).json({ message: "Invalid staff list filter." });
   }
 

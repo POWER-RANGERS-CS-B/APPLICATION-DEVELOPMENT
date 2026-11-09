@@ -10,10 +10,15 @@ function redirectForAuthorizationFailure(status) {
   const pathname = window.location.pathname;
   const isAdminDashboard = pathname.endsWith("/admin-dashboard.html");
   const isStaffDashboard = pathname.endsWith("/staff-kds.html");
+  const isCustomerPage = pathname.endsWith("/choice.html") || pathname === "/";
 
   if (status === 401) {
     if (isAdminDashboard || isStaffDashboard) {
       window.location.replace("/login.html");
+    } else if (isCustomerPage) {
+      const flow = new URLSearchParams(window.location.search).get("flow");
+      const returnFlow = flow === "dine_in" ? "?flow=dine_in" : "";
+      window.location.replace(`/customer-auth.html${returnFlow}#login`);
     }
   } else if (status === 403 && isAdminDashboard) {
     window.location.replace("/choice.html");
@@ -62,6 +67,7 @@ async function apiRequest(path, options = {}) {
       data?.message || `Request failed with status ${response.status}`
     );
     error.status = response.status;
+    error.responseData = data;
     throw error;
   }
 

@@ -51,10 +51,39 @@ test("staff creation validates and normalizes required account data", async () =
       username: "alex.santos",
       email: "alex.santos@dinequeue.com",
       password: "A secure test passphrase 77",
+      role: "staff",
     });
     assert.equal(created.actor.id, 7);
     assert.equal(response.body.role, "staff");
     assert.equal("password_hash" in response.body, false);
+  } finally {
+    userModel.createStaff = originalCreate;
+  }
+});
+
+test("cashier accounts are supported without allowing cashier role creation through public registration", async () => {
+  const originalCreate = userModel.createStaff;
+  let created;
+  userModel.createStaff = async (details) => {
+    created = details;
+    return { id: 18, full_name: details.fullName, role: details.role };
+  };
+  try {
+    const response = responseCapture();
+    await userController.createStaff(
+      request({
+        fullName: "Casey Cashier",
+        username: "casey.cashier",
+        email: "casey@dinequeue.com",
+        password: "A secure cashier passphrase 77",
+        confirmPassword: "A secure cashier passphrase 77",
+        role: "cashier",
+      }),
+      response
+    );
+    assert.equal(response.statusCode, 201);
+    assert.equal(created.role, "cashier");
+    assert.equal(response.body.role, "cashier");
   } finally {
     userModel.createStaff = originalCreate;
   }

@@ -1,0 +1,458 @@
+.arrival-scanner-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  background: var(--surface-color);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.arrival-scanner-status-dot {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--text-secondary);
+}
+
+.arrival-scanner-live[data-status="scanning"] .arrival-scanner-status-dot {
+  background: var(--status-success);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--status-success) 16%, transparent);
+}
+
+.arrival-scanner-live[data-status="error"] .arrival-scanner-status-dot {
+  background: var(--status-danger);
+}
+
+.arrival-scanner-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 18px;
+  min-width: 0;
+}
+
+.arrival-scanner-grid > .staff-module {
+  min-width: 0;
+  padding: clamp(16px, 2.4vw, 24px);
+}
+
+.arrival-camera-frame {
+  position: relative;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  aspect-ratio: 4 / 3;
+  max-height: 520px;
+  overflow: hidden;
+  place-items: center;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: #171411;
+}
+
+.arrival-camera-frame video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.arrival-camera-frame video[hidden] {
+  display: none;
+}
+
+.arrival-camera-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  color: #f5f0e9;
+  text-align: center;
+}
+
+.arrival-camera-placeholder[hidden] {
+  display: none;
+}
+
+.arrival-camera-placeholder svg {
+  width: 34px;
+  height: 34px;
+  color: #d3b27e;
+}
+
+.arrival-camera-placeholder span {
+  max-width: 32ch;
+  color: #d3cbc1;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.arrival-camera-guide {
+  position: absolute;
+  inset: 18% 22%;
+  border: 2px solid rgba(245, 240, 233, 0.88);
+  border-radius: 14px;
+  box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.14);
+  pointer-events: none;
+}
+
+.arrival-camera-message {
+  min-height: 1.5em;
+  margin: 12px 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.arrival-camera-selection {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.arrival-camera-selection[hidden] {
+  display: none;
+}
+
+.arrival-camera-selection label {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.arrival-camera-selection select {
+  min-width: 0;
+  min-height: 42px;
+  padding: 8px 36px 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  background: var(--surface-color);
+}
+
+.arrival-camera-selection select:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+}
+
+.arrival-scanner-actions,
+.arrival-manual-input-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.arrival-scanner-actions button,
+.arrival-manual-input-row button,
+.arrival-confirm-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  margin: 0;
+}
+
+.arrival-scanner-actions button {
+  flex: 1 1 160px;
+}
+
+.arrival-scanner-actions svg,
+.arrival-manual-input-row svg,
+.arrival-confirm-button svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+}
+
+.arrival-scanner-actions button:disabled,
+.arrival-manual-input-row button:disabled,
+.arrival-confirm-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.arrival-manual-form {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-color);
+}
+
+.arrival-manual-form label {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.arrival-manual-input-row input {
+  flex: 1 1 240px;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  background: var(--surface-color);
+  font: inherit;
+}
+
+.arrival-manual-input-row input:focus-visible,
+.arrival-manual-input-row button:focus-visible,
+.arrival-scanner-actions button:focus-visible,
+.arrival-confirm-button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent-color) 45%, transparent);
+  outline-offset: 2px;
+}
+
+.arrival-manual-form small {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.arrival-scanner-result {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 4px 11px;
+  padding: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  color: var(--text-primary);
+  background: var(--surface-secondary);
+}
+
+.arrival-scanner-result > svg {
+  grid-row: span 2;
+  width: 21px;
+  height: 21px;
+  margin-top: 1px;
+}
+
+.arrival-scanner-result strong {
+  font-size: 14px;
+}
+
+.arrival-scanner-result span {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.arrival-scanner-result[data-status="valid"],
+.arrival-scanner-result[data-status="confirmed"],
+.arrival-scanner-result[data-status="already_checked_in"] {
+  border-color: color-mix(in srgb, var(--status-success) 42%, var(--border-color));
+  color: var(--status-success);
+  background: color-mix(in srgb, var(--status-success) 9%, var(--surface-color));
+}
+
+.arrival-scanner-result[data-status="confirmed"].arrival-scan-success {
+  animation: arrival-scan-success 700ms ease-out;
+}
+
+@keyframes arrival-scan-success {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--status-success) 45%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 14px transparent;
+  }
+}
+
+.arrival-scanner-result[data-status="invalid"],
+.arrival-scanner-result[data-status="not_found"],
+.arrival-scanner-result[data-status="cancelled"],
+.arrival-scanner-result[data-status="expired"],
+.arrival-scanner-result[data-status="pending_payment"] {
+  border-color: color-mix(in srgb, var(--status-danger) 38%, var(--border-color));
+  color: var(--status-danger);
+  background: color-mix(in srgb, var(--status-danger) 7%, var(--surface-color));
+}
+
+.arrival-scanner-result[data-status="valid"] > svg,
+.arrival-scanner-result[data-status="confirmed"] > svg,
+.arrival-scanner-result[data-status="already_checked_in"] > svg {
+  color: var(--status-success);
+}
+
+.arrival-scanner-result[data-status="invalid"] > svg,
+.arrival-scanner-result[data-status="not_found"] > svg,
+.arrival-scanner-result[data-status="cancelled"] > svg,
+.arrival-scanner-result[data-status="expired"] > svg,
+.arrival-scanner-result[data-status="pending_payment"] > svg {
+  color: var(--status-danger);
+}
+
+.arrival-transaction-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  margin: 14px 0 0;
+  padding: 0;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.arrival-transaction-details[hidden] {
+  display: none;
+}
+
+.arrival-transaction-details > div {
+  min-width: 0;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.arrival-transaction-details > div:nth-child(odd) {
+  border-right: 1px solid var(--border-color);
+}
+
+.arrival-transaction-details > div:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.arrival-transaction-details dt {
+  margin-bottom: 4px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.arrival-transaction-details dd {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.arrival-confirm-button {
+  width: 100%;
+  margin-top: 14px;
+}
+
+.arrival-confirm-button[hidden] {
+  display: none;
+}
+
+.arrival-last-success {
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--status-success) 34%, var(--border-color));
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--status-success) 7%, var(--surface-color));
+}
+
+.arrival-last-success[hidden] {
+  display: none;
+}
+
+.arrival-last-success h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  color: var(--status-success);
+  font-size: 13px;
+}
+
+.arrival-last-success h4 svg {
+  width: 16px;
+  height: 16px;
+}
+
+.arrival-last-success p,
+.arrival-last-success time {
+  display: block;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.arrival-last-success time {
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .arrival-scanner-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .arrival-scanner-live {
+    font-size: 12px;
+  }
+
+  .arrival-camera-frame {
+    aspect-ratio: 1 / 1;
+    max-height: 440px;
+  }
+
+  .arrival-camera-guide {
+    inset: 18%;
+  }
+
+  .arrival-scanner-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .arrival-scanner-actions button {
+    width: 100%;
+  }
+
+  .arrival-manual-input-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .arrival-manual-input-row button {
+    width: 100%;
+  }
+
+  .arrival-transaction-details {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .arrival-transaction-details > div,
+  .arrival-transaction-details > div:nth-child(odd),
+  .arrival-transaction-details > div:nth-last-child(-n + 2) {
+    border-right: 0;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .arrival-transaction-details > div:last-child {
+    border-bottom: 0;
+  }
+}
+.arrival-late-warning {
+  color: #b42318;
+  font-weight: 800;
+}

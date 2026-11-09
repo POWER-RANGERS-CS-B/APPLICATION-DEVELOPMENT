@@ -55,7 +55,7 @@
   });
 
   document.addEventListener("DOMContentLoaded", () => {
-    const host = document.querySelector(
+    const host = document.querySelector("[data-theme-switch-host]") || document.querySelector(
       ".home-topbar, .admin-top-bar, .topbar, .auth-shell, .receipt-download-card"
     );
     if (!host) return;
@@ -104,9 +104,9 @@
       host.appendChild(toggle);
     } else if (host.matches(".home-topbar")) {
       const actions = host.querySelector(".home-topbar-actions") || host;
-      const loginLink = actions.querySelector(".header-login-link");
-      if (loginLink) {
-        actions.insertBefore(toggle, loginLink);
+      const insertionTarget = actions.querySelector(".staff-login-link") || actions.lastElementChild;
+      if (insertionTarget) {
+        actions.insertBefore(toggle, insertionTarget);
       } else {
         actions.appendChild(toggle);
       }

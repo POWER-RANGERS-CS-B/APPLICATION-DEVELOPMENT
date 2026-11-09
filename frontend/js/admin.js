@@ -11,6 +11,10 @@ let auditPageCount = 1;
 let auditSearchTimer = null;
 let ordersCache = [];
 let allOrdersCache = [];
+let reservationRequestsCache = [];
+let dineInPaymentRequestsCache = [];
+let pendingDineInRefundsCache = [];
+let reservationManagementPage = 1;
 let revenueChartInstance = null;
 let ridgelineChartInstance = null;
 let categoryChartInstance = null;
@@ -18,6 +22,7 @@ let weeklyForecastChart = null;
 let hourlyForecastChart = null;
 let latestReservationForecast = null;
 let categoryChartRefreshPromise = null;
+let pendingRejectionReservationId = null;
 const pendingAdminMutations = new Set();
 
 function beginAdminMutation(key) {
@@ -114,11 +119,55 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   initAuditLogControls();
+  initReservationManagementControls();
+  initAdminInboxControls();
+  document.getElementById("reservationRejectForm")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void submitReservationRejection();
+  });
+  document.getElementById("reservationQrValidationForm")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void validateReservationQr();
+  });
 
   await loadAdminWorkspace();
   initCharts();
   setInterval(loadAdminWorkspace, 10000); // Live refresh every 10 seconds
 });
+
+async function validateReservationQr() {
+  const input = document.getElementById("reservationQrValidationCode");
+  const resultBox = document.getElementById("reservationQrValidationResult");
+  const button = document.getElementById("reservationQrValidationButton");
+  const code = input?.value.trim();
+  if (!input || !resultBox || !code) return;
+
+  const actionKey = `validate-reservation:${code}`;
+  if (!beginAdminMutation(actionKey)) return;
+  resultBox.textContent = "";
+  if (button) {
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+  }
+  try {
+    const reservation = await apiRequest(`/reservations/verify/${encodeURIComponent(code)}`, {
+      method: "POST",
+    });
+    resultBox.textContent =
+      `Checked in: ${reservation.customer_name} · ${reservation.table_name || "Table unavailable"} · ` +
+      `${reservation.reservation_date} ${reservation.reservation_time} · ${reservation.num_guests} guests.`;
+    input.value = "";
+    await loadAdminDashboardMetrics();
+  } catch (error) {
+    resultBox.textContent = error.message || "Reservation QR could not be validated.";
+  } finally {
+    endAdminMutation(actionKey);
+    if (button) {
+      button.disabled = false;
+      button.removeAttribute("aria-busy");
+    }
+  }
+}
 
 // Main orchestrator to load all workspace sections from PostgreSQL backend
 async function loadAdminWorkspace() {
@@ -142,6 +191,11 @@ async function loadAdminDashboardMetrics() {
   try {
     const orders = await apiRequest("/orders/kds");
     const reservations = await apiRequest("/reservations");
+    const dineInPayments = await apiRequest("/orders/payment-requests");
+    const pendingDineInRefunds = await apiRequest("/orders/refunds");
+    reservationRequestsCache = Array.isArray(reservations) ? reservations : [];
+    dineInPaymentRequestsCache = Array.isArray(dineInPayments) ? dineInPayments : [];
+    pendingDineInRefundsCache = Array.isArray(pendingDineInRefunds) ? pendingDineInRefunds : [];
     
     let history = [];
     try {
@@ -168,14 +222,18 @@ async function loadAdminDashboardMetrics() {
     const kpiConversion = document.getElementById("kpiConversion");
 
     if (orderCount) orderCount.textContent = orders.length;
-    if (reservationCount) reservationCount.textContent = reservations.length;
+    if (reservationCount) reservationCount.textContent = reservationRequestsCache.length;
     if (historyCount) historyCount.textContent = history.length;
     if (kpiRevenue) kpiRevenue.textContent = totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     if (kpiOrders) kpiOrders.textContent = totalAttempted;
     if (kpiConversion) kpiConversion.textContent = `${conversionRate}%`;
 
     renderLiveOrders(orders);
-    renderReservations(reservations);
+    renderReservations(reservationRequestsCache);
+    renderReservationRequests(reservationRequestsCache);
+    renderDineInPaymentRequests(dineInPaymentRequestsCache);
+    renderDineInRefundRequests(pendingDineInRefundsCache);
+    renderReservationManagement(reservationRequestsCache);
     renderOrderHistory(history);
 
     // Refresh charts with real data
@@ -183,8 +241,570 @@ async function loadAdminDashboardMetrics() {
   } catch (error) {
     console.error("Admin dashboard telemetry error:", error);
     document.querySelectorAll("#orders, #reservations, #history").forEach((el) => {
-      if (el) el.innerHTML = `<p class="muted">Unable to load telemetry data. ${error.message}</p>`;
+      if (el) el.textContent = `Unable to load telemetry data. ${error.message}`;
     });
+    const reservationRequests = document.getElementById("reservationRequests");
+    if (reservationRequests) {
+      reservationRequests.textContent = `Unable to load reservation requests. ${error.message}`;
+    }
+    const dineInRequests = document.getElementById("dineInPaymentRequests");
+    if (dineInRequests) {
+      dineInRequests.textContent = `Unable to load Dine-in payment requests. ${error.message}`;
+    }
+    const managementStatus = document.getElementById("reservationManagementStatusMessage");
+    if (managementStatus) {
+      managementStatus.textContent = `Unable to load reservations. ${error.message}`;
+      managementStatus.classList.add("reservation-management-error");
+    }
+  }
+}
+
+function updateReservationRequestCount(count) {
+  const navCount = document.getElementById("reservationRequestNavCount");
+  const sectionCount = document.getElementById("reservationRequestCount");
+  if (navCount) {
+    navCount.textContent = String(count);
+    navCount.setAttribute("aria-label", `${count} pending reservation requests`);
+    navCount.hidden = count === 0;
+  }
+  if (sectionCount) sectionCount.textContent = `${count} pending`;
+}
+
+function initAdminInboxControls() {
+  const reservationControls = [
+    document.getElementById("reservationRequestSearch"),
+    document.getElementById("reservationRequestStatusFilter"),
+    document.getElementById("reservationRequestPaymentFilter"),
+  ];
+  reservationControls.forEach((control) => {
+    control?.addEventListener("input", () => renderReservationRequests(reservationRequestsCache));
+    control?.addEventListener("change", () => renderReservationRequests(reservationRequestsCache));
+  });
+  document.getElementById("reservationRequestClearFilters")?.addEventListener("click", () => {
+    document.getElementById("reservationRequestSearch").value = "";
+    document.getElementById("reservationRequestStatusFilter").value = "pending_verification";
+    document.getElementById("reservationRequestPaymentFilter").value = "all";
+    renderReservationRequests(reservationRequestsCache);
+  });
+
+  const dineInControls = [
+    document.getElementById("dineInPaymentSearch"),
+    document.getElementById("dineInPaymentStatusFilter"),
+  ];
+  dineInControls.forEach((control) => {
+    control?.addEventListener("input", () => renderDineInPaymentRequests(dineInPaymentRequestsCache));
+    control?.addEventListener("change", () => renderDineInPaymentRequests(dineInPaymentRequestsCache));
+  });
+  document.getElementById("dineInPaymentClearFilters")?.addEventListener("click", () => {
+    document.getElementById("dineInPaymentSearch").value = "";
+    document.getElementById("dineInPaymentStatusFilter").value = "pending_verification";
+    renderDineInPaymentRequests(dineInPaymentRequestsCache);
+  });
+}
+
+function renderReservationRequests(reservations) {
+  const requestsBox = document.getElementById("reservationRequests");
+  if (!requestsBox) return;
+
+  const pendingCount = reservations.filter(
+    (reservation) => String(reservation.status || "").toLowerCase() === "pending_verification"
+  ).length;
+  updateReservationRequestCount(pendingCount);
+  const statusFilter = document.getElementById("reservationRequestStatusFilter")?.value || "pending_verification";
+  const paymentFilter = document.getElementById("reservationRequestPaymentFilter")?.value || "all";
+  const searchTerm = document.getElementById("reservationRequestSearch")?.value.trim().toLowerCase() || "";
+  const visibleReservations = reservations.filter((reservation) => {
+    const status = String(reservation.status || "").toLowerCase();
+    const paymentStatus = String(reservation.payment_status || "pending_verification").toLowerCase();
+    const matchesStatus = statusFilter === "all" ||
+      (statusFilter === "confirmed" ? ["confirmed", "verified", "active"].includes(status) : status === statusFilter);
+    const matchesPayment = paymentFilter === "all" || paymentStatus === paymentFilter;
+    const searchable = [
+      reservation.customer_name,
+      reservation.full_name,
+      reservation.reservation_code,
+      reservation.contact_number,
+      reservation.gcash_reference,
+      reservation.gcash_sender_name,
+      reservation.table_name,
+    ].join(" ").toLowerCase();
+    return matchesStatus && matchesPayment && searchable.includes(searchTerm);
+  });
+
+  if (!visibleReservations.length) {
+    const isDefaultPending = statusFilter === "pending_verification" && paymentFilter === "all" && !searchTerm;
+    requestsBox.innerHTML = `<p class="muted empty-state">${isDefaultPending ? "No pending reservation requests." : "No reservation requests match these filters."}</p>`;
+    return;
+  }
+
+  requestsBox.innerHTML = visibleReservations.map((reservation) => {
+    const id = Number(reservation.id);
+    if (!Number.isSafeInteger(id) || id <= 0) return "";
+    const status = String(reservation.status || "pending_verification").toLowerCase();
+    const canReview = status === "pending_verification";
+    const paymentStatus = String(reservation.payment_status || "pending_verification").replace(/_/g, " ");
+    const statusClass = status === "pending_verification" ? "pending" : status;
+    const submittedAt = reservation.created_at
+      ? new Date(reservation.created_at).toLocaleString()
+      : "Not recorded";
+    const paymentMethod = reservation.payment_method || "GCash";
+    const gcashReference = paymentMethod === "GCash"
+      ? (reservation.gcash_reference || "Missing")
+      : "Not applicable";
+
+    return `
+      <article class="admin-item reservation-request-card">
+        <div class="dashboard-card-head">
+          <h3>${escapeAdminHtml(reservation.customer_name || reservation.full_name || "Customer")}</h3>
+          <span class="status-badge status-${escapeAdminHtml(statusClass)}">${escapeAdminHtml(status.replace(/_/g, " ").toUpperCase())}</span>
+        </div>
+        <div class="reservation-request-summary">
+          <p><strong>Reservation:</strong> ${escapeAdminHtml(reservation.reservation_code || `#${id}`)}</p>
+          <p><strong>Contact:</strong> ${escapeAdminHtml(reservation.contact_number || "N/A")}</p>
+          <p><strong>Date:</strong> ${escapeAdminHtml(reservation.reservation_date || "N/A")}</p>
+          <p><strong>Time:</strong> ${escapeAdminHtml(reservation.reservation_time || "N/A")}</p>
+          <p><strong>Guests:</strong> ${escapeAdminHtml(reservation.num_guests ?? "N/A")}</p>
+          <p><strong>Table:</strong> ${escapeAdminHtml(reservation.table_name || "Not selected")}</p>
+          <p><strong>Payment:</strong> ${escapeAdminHtml(paymentMethod)}</p>
+          <p><strong>GCash reference:</strong> ${escapeAdminHtml(gcashReference)}</p>
+          <p><strong>Sender's name:</strong> ${escapeAdminHtml(reservation.gcash_sender_name || "Not provided")}</p>
+          <p><strong>Payment status:</strong> ${escapeAdminHtml(paymentStatus.toUpperCase())}</p>
+          ${reservation.payment_proof_url ? `<p><strong>Payment proof:</strong> <a href="${escapeAdminHtml(reservation.payment_proof_url)}" target="_blank" rel="noopener noreferrer">View submitted proof</a></p>` : ""}
+          <p><strong>Submitted:</strong> ${escapeAdminHtml(submittedAt)}</p>
+        </div>
+        ${canReview ? `<div class="admin-inline-actions">
+          <button type="button" class="secondary" onclick="viewReservationDetails(${id})">View Details</button>
+          <button type="button" class="primary" onclick="confirmReservation(${id})">Confirm Payment</button>
+          <button type="button" class="danger" onclick="rejectReservation(${id})">Reject Payment</button>
+        </div>` : ""}
+      </article>
+    `;
+  }).join("");
+  syncLucideIcons();
+}
+
+function initReservationManagementControls() {
+  const search = document.getElementById("reservationManagementSearch");
+  const status = document.getElementById("reservationManagementStatus");
+  const payment = document.getElementById("reservationManagementPayment");
+  const dateFrom = document.getElementById("reservationManagementDateFrom");
+  const dateTo = document.getElementById("reservationManagementDateTo");
+  const historyOnly = document.getElementById("reservationManagementHistoryOnly");
+  const clear = document.getElementById("reservationManagementClear");
+  const pageSize = document.getElementById("reservationManagementPageSize");
+  const previous = document.getElementById("reservationManagementPrevious");
+  const next = document.getElementById("reservationManagementNext");
+  [search, status, payment, dateFrom, dateTo, historyOnly].forEach((control) => {
+    const update = () => {
+      reservationManagementPage = 1;
+      renderReservationManagement(reservationRequestsCache);
+    };
+    control?.addEventListener("input", update);
+    control?.addEventListener("change", update);
+  });
+  pageSize?.addEventListener("change", () => {
+    reservationManagementPage = 1;
+    renderReservationManagement(reservationRequestsCache);
+  });
+  previous?.addEventListener("click", () => {
+    reservationManagementPage = Math.max(1, reservationManagementPage - 1);
+    renderReservationManagement(reservationRequestsCache);
+  });
+  next?.addEventListener("click", () => {
+    reservationManagementPage += 1;
+    renderReservationManagement(reservationRequestsCache);
+  });
+  clear?.addEventListener("click", () => {
+    if (search) search.value = "";
+    if (status) status.value = "all";
+    if (payment) payment.value = "all";
+    if (dateFrom) dateFrom.value = "";
+    if (dateTo) dateTo.value = "";
+    if (historyOnly) historyOnly.checked = false;
+    reservationManagementPage = 1;
+    renderReservationManagement(reservationRequestsCache);
+  });
+}
+
+function normalizedReservationStatus(status) {
+  const normalized = String(status || "").trim().toLowerCase();
+  if (normalized === "pending_verification") return "pending";
+  if (normalized === "verified") return "confirmed";
+  if (normalized === "canceled") return "cancelled";
+  return normalized;
+}
+
+function isHistoricalReservation(reservation) {
+  return ["completed", "cancelled", "canceled", "rejected"].includes(
+    String(reservation.status || "").toLowerCase()
+  );
+}
+
+function renderReservationManagement(reservations) {
+  const list = document.getElementById("reservationManagementList");
+  const message = document.getElementById("reservationManagementStatusMessage");
+  if (!list || !message) return;
+
+  const counts = {
+    total: reservations.length,
+    active: 0,
+    pending: 0,
+    confirmed: 0,
+    completed: 0,
+    cancelled: 0,
+  };
+  reservations.forEach((reservation) => {
+    const status = normalizedReservationStatus(reservation.status);
+    if (Object.hasOwn(counts, status)) counts[status] += 1;
+  });
+  Object.entries(counts).forEach(([key, count]) => {
+    const element = document.getElementById(`managementReservation${key[0].toUpperCase()}${key.slice(1)}`);
+    if (element) element.textContent = String(count);
+  });
+
+  const query = document.getElementById("reservationManagementSearch")?.value.trim().toLowerCase() || "";
+  const queryDigits = query.replace(/\D/g, "");
+  const statusFilter = document.getElementById("reservationManagementStatus")?.value || "all";
+  const paymentFilter = document.getElementById("reservationManagementPayment")?.value || "all";
+  const dateFrom = document.getElementById("reservationManagementDateFrom")?.value || "";
+  const dateTo = document.getElementById("reservationManagementDateTo")?.value || "";
+  const historyOnly = Boolean(document.getElementById("reservationManagementHistoryOnly")?.checked);
+
+  const filtered = reservations.filter((reservation) => {
+    const reservationStatus = normalizedReservationStatus(reservation.status);
+    const paymentStatus = String(reservation.payment_status || "").toLowerCase();
+    const reservationDate = String(reservation.reservation_date || "").slice(0, 10);
+    const searchText = [
+      reservation.id,
+      reservation.reservation_code,
+      reservation.customer_name,
+      reservation.full_name,
+      reservation.contact_number,
+    ].join(" ").toLowerCase();
+    const phoneDigits = String(reservation.contact_number || "").replace(/\D/g, "");
+
+    return (!query || searchText.includes(query) || (queryDigits && phoneDigits.includes(queryDigits))) &&
+      (statusFilter === "all" || reservationStatus === statusFilter) &&
+      (paymentFilter === "all" || paymentStatus === paymentFilter) &&
+      (!dateFrom || reservationDate >= dateFrom) &&
+      (!dateTo || reservationDate <= dateTo) &&
+      (!historyOnly || isHistoricalReservation(reservation));
+  });
+
+  if (!filtered.length) {
+    message.classList.remove("reservation-management-error");
+    message.textContent = `0 of ${reservations.length} reservations shown`;
+    list.innerHTML = `<p class="muted empty-state">No reservations match these filters.</p>`;
+    const pagination = document.getElementById("reservationManagementPagination");
+    if (pagination) pagination.hidden = true;
+    return;
+  }
+
+  const pageSizeControl = document.getElementById("reservationManagementPageSize");
+  const pageSize = Number(pageSizeControl?.value || 10);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  reservationManagementPage = Math.min(reservationManagementPage, pageCount);
+  const startIndex = (reservationManagementPage - 1) * pageSize;
+  const pageRecords = filtered.slice(startIndex, startIndex + pageSize);
+  const endIndex = Math.min(startIndex + pageRecords.length, filtered.length);
+  message.classList.remove("reservation-management-error");
+  message.textContent = `${filtered.length} matching reservations`;
+
+  const rows = pageRecords.map((reservation) => {
+    const id = Number(reservation.id);
+    if (!Number.isSafeInteger(id) || id <= 0) return "";
+    const status = normalizedReservationStatus(reservation.status);
+    const statusLabel = status ? status.replace(/_/g, " ") : "unknown";
+    const paymentStatus = String(reservation.payment_status || "unknown").replace(/_/g, " ");
+    const customer = reservation.customer_name || reservation.full_name || "N/A";
+    const createdAt = reservation.created_at ? new Date(reservation.created_at).toLocaleString() : "Not recorded";
+
+    return `
+      <tr>
+        <td><span class="reservation-management-cell-text reservation-management-cell-id" title="${escapeAdminHtml(reservation.reservation_code || `#${id}`)}">${escapeAdminHtml(reservation.reservation_code || `#${id}`)}</span></td>
+        <td><span class="reservation-management-cell-text reservation-management-cell-customer" title="${escapeAdminHtml(customer)}">${escapeAdminHtml(customer)}</span></td>
+        <td><span class="reservation-management-cell-text reservation-management-cell-contact" title="${escapeAdminHtml(reservation.contact_number || "N/A")}">${escapeAdminHtml(reservation.contact_number || "N/A")}</span></td>
+        <td>${escapeAdminHtml(String(reservation.reservation_date || "N/A").slice(0, 10))}</td>
+        <td>${escapeAdminHtml(reservation.reservation_time || "N/A")}</td>
+        <td>${escapeAdminHtml(reservation.num_guests ?? "N/A")}</td>
+        <td>${escapeAdminHtml(reservation.table_name || "Not assigned")}</td>
+        <td>
+          <span class="reservation-status-pill" data-status="${escapeAdminHtml(paymentStatus)}">${escapeAdminHtml(paymentStatus)}</span>
+          <small class="reservation-payment-method">${escapeAdminHtml(reservation.payment_method || "N/A")}</small>
+        </td>
+        <td><span class="reservation-status-pill" data-status="${escapeAdminHtml(status)}">${escapeAdminHtml(statusLabel)}</span></td>
+        <td>${escapeAdminHtml(createdAt)}</td>
+        <td>
+          <div class="reservation-management-row-actions">
+            <button type="button" class="secondary" onclick="viewReservationDetails(${id})">View</button>
+            ${isHistoricalReservation(reservation)
+              ? `<button type="button" class="danger" onclick="archiveHistoricalReservation(${id})">Remove</button>`
+              : ""}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  list.innerHTML = `
+    <div class="table-scroll reservation-management-table-scroll" role="region" tabindex="0" aria-label="Reservation records; scroll horizontally to view all columns">
+      <table class="workspace-data-table reservation-management-table">
+        <colgroup>
+          <col class="reservation-management-column-id" />
+          <col class="reservation-management-column-customer" />
+          <col class="reservation-management-column-contact" />
+          <col class="reservation-management-column-date" />
+          <col class="reservation-management-column-time" />
+          <col class="reservation-management-column-guests" />
+          <col class="reservation-management-column-table" />
+          <col class="reservation-management-column-payment" />
+          <col class="reservation-management-column-status" />
+          <col class="reservation-management-column-created" />
+          <col class="reservation-management-column-actions" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th scope="col">Reservation ID</th>
+            <th scope="col">Customer</th>
+            <th scope="col">Contact</th>
+            <th scope="col">Date</th>
+            <th scope="col">Time</th>
+            <th scope="col">Guests</th>
+            <th scope="col">Table</th>
+            <th scope="col">Payment Status</th>
+            <th scope="col">Reservation Status</th>
+            <th scope="col">Date Created</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+
+  const pagination = document.getElementById("reservationManagementPagination");
+  const pageSummary = document.getElementById("reservationManagementPageSummary");
+  const pageNumber = document.getElementById("reservationManagementPageNumber");
+  const previous = document.getElementById("reservationManagementPrevious");
+  const next = document.getElementById("reservationManagementNext");
+  if (pagination) pagination.hidden = filtered.length <= pageSize;
+  if (pageSummary) pageSummary.textContent = `Showing ${startIndex + 1}–${endIndex} of ${filtered.length}`;
+  if (pageNumber) pageNumber.textContent = `Page ${reservationManagementPage} of ${pageCount}`;
+  if (previous) previous.disabled = reservationManagementPage <= 1;
+  if (next) next.disabled = reservationManagementPage >= pageCount;
+}
+
+async function archiveHistoricalReservation(id) {
+  const reservation = reservationRequestsCache.find((item) => Number(item.id) === Number(id));
+  if (!reservation || !isHistoricalReservation(reservation)) {
+    window.DineAriNotifications.show({
+      type: "error",
+      description: "Only completed, cancelled, or rejected reservations can be removed from history.",
+    });
+    return;
+  }
+
+  const actionKey = `archive-reservation:${id}`;
+  if (!beginAdminMutation(actionKey)) return;
+  try {
+    const confirmed = await window.DineAriNotifications.confirm({
+      type: "warning",
+      title: "Remove reservation from history?",
+      message: `${reservation.reservation_code || `Reservation #${id}`} for ${reservation.customer_name || reservation.full_name || "this customer"} will be archived from this list. The reservation and audit history will be preserved.`,
+      confirmLabel: "Remove from history",
+    });
+    if (!confirmed) return;
+
+    await apiRequest(`/reservations/${id}`, { method: "DELETE" });
+    await loadAdminDashboardMetrics();
+    window.DineAriNotifications.show({
+      type: "success",
+      description: "Historical reservation archived.",
+    });
+  } catch (error) {
+    console.error("Failed to archive historical reservation:", error);
+    window.DineAriNotifications.show({
+      type: "error",
+      description: error.message || "The historical reservation could not be archived.",
+    });
+  } finally {
+    endAdminMutation(actionKey);
+  }
+}
+
+function escapeAdminHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  })[character]);
+}
+
+function viewReservationDetails(id) {
+  const reservation = reservationRequestsCache.find((item) => Number(item.id) === Number(id));
+  const dialog = document.getElementById("reservationDetailsDialog");
+  const body = document.getElementById("reservationDetailsBody");
+  const actions = document.getElementById("reservationDetailsActions");
+  if (!reservation || !dialog || !body || !actions) return;
+
+  const details = [
+    ["Reservation ID", reservation.id],
+    ["Reservation code", reservation.reservation_code || "N/A"],
+    ["Customer name", reservation.customer_name || reservation.full_name || "N/A"],
+    ["Customer email", reservation.email || "Not provided"],
+    ["Contact number", reservation.contact_number || "N/A"],
+    ["Reservation date", reservation.reservation_date || "N/A"],
+    ["Reservation time", reservation.reservation_time || "N/A"],
+    ["Number of guests", reservation.num_guests ?? "N/A"],
+    ["Selected table", reservation.table_name || "Not selected"],
+    ["Payment method", reservation.payment_method || "GCash"],
+    ["GCash reference", reservation.gcash_reference || "Not applicable"],
+    ["Sender's name", reservation.gcash_sender_name || "Not provided"],
+    ["Payment status", reservation.payment_status || "N/A"],
+    ["Payment verified at", reservation.verified_at ? new Date(reservation.verified_at).toLocaleString() : "Not verified"],
+    ["Reservation status", reservation.status || "N/A"],
+    ["Payment proof", reservation.payment_proof_url || "Not provided"],
+    ["Rejection reason", reservation.reservation_rejection_reason || "N/A"],
+    ["Submitted", reservation.created_at ? new Date(reservation.created_at).toLocaleString() : "N/A"],
+    ["Last updated", reservation.updated_at ? new Date(reservation.updated_at).toLocaleString() : "N/A"],
+  ];
+
+  body.replaceChildren();
+  details.forEach(([label, value]) => {
+    const row = document.createElement("div");
+    const heading = document.createElement("strong");
+    heading.textContent = label;
+    const content = document.createElement("span");
+    content.textContent = String(value ?? "N/A");
+    row.append(heading, content);
+    body.append(row);
+  });
+
+  actions.replaceChildren();
+  if (String(reservation.status).toLowerCase() === "pending_verification") {
+    const confirmButton = document.createElement("button");
+    confirmButton.type = "button";
+    confirmButton.className = "primary";
+    confirmButton.textContent = "Confirm Payment";
+    confirmButton.addEventListener("click", () => void confirmReservation(id));
+    const rejectButton = document.createElement("button");
+    rejectButton.type = "button";
+    rejectButton.className = "danger";
+    rejectButton.textContent = "Reject Payment";
+    rejectButton.addEventListener("click", () => void rejectReservation(id));
+    actions.append(confirmButton, rejectButton);
+  }
+
+  if (!dialog.open) dialog.showModal();
+}
+
+function closeReservationDetails() {
+  const dialog = document.getElementById("reservationDetailsDialog");
+  if (dialog?.open) dialog.close();
+}
+
+async function confirmReservation(id) {
+  const actionKey = `confirm-reservation:${id}`;
+  if (!beginAdminMutation(actionKey)) return;
+  try {
+    const reservation = reservationRequestsCache.find((item) => Number(item.id) === Number(id));
+    if (!reservation) throw new Error("Reservation details are no longer available. Refresh and try again.");
+    if (
+      reservation.payment_method === "GCash" &&
+      (!String(reservation.gcash_reference || "").trim() ||
+        !String(reservation.gcash_sender_name || "").trim())
+    ) {
+      throw new Error("This reservation cannot be confirmed without its GCash reference number and sender's name.");
+    }
+
+    const confirmed = await window.DineAriNotifications.confirm({
+      type: "warning",
+      title: "Confirm this reservation?",
+      message: "Confirm only after verifying the reservation details and payment.",
+      confirmLabel: "Confirm reservation",
+    });
+    if (!confirmed) return;
+
+    await apiRequest(`/reservations/${id}/confirm`, { method: "PATCH" });
+    closeReservationDetails();
+    await loadAdminDashboardMetrics();
+    window.DineAriNotifications.show({ type: "success", description: "Reservation confirmed." });
+  } catch (error) {
+    console.error("Failed to confirm reservation:", error);
+    window.DineAriNotifications.show({ type: "error", description: error.message || "The reservation could not be confirmed." });
+  } finally {
+    endAdminMutation(actionKey);
+  }
+}
+
+function rejectReservation(id) {
+  const reservation = reservationRequestsCache.find((item) => Number(item.id) === Number(id));
+  const dialog = document.getElementById("reservationRejectDialog");
+  const reasonInput = document.getElementById("reservationRejectReason");
+  const errorMessage = document.getElementById("reservationRejectError");
+  if (!reservation || !dialog || !reasonInput) return;
+  pendingRejectionReservationId = Number(id);
+  reasonInput.value = "";
+  if (errorMessage) {
+    errorMessage.hidden = true;
+    errorMessage.textContent = "";
+  }
+  closeReservationDetails();
+  if (!dialog.open) dialog.showModal();
+  reasonInput.focus();
+}
+
+function closeReservationRejectDialog() {
+  const dialog = document.getElementById("reservationRejectDialog");
+  if (dialog?.open) dialog.close();
+  pendingRejectionReservationId = null;
+}
+
+async function submitReservationRejection() {
+  const id = pendingRejectionReservationId;
+  const reasonInput = document.getElementById("reservationRejectReason");
+  const errorMessage = document.getElementById("reservationRejectError");
+  const submitButton = document.getElementById("submitReservationRejectButton");
+  if (!id || !reasonInput) return;
+
+  const reason = reasonInput.value.trim();
+  if (!reason) {
+    if (errorMessage) {
+      errorMessage.textContent = "Enter a rejection reason before continuing.";
+      errorMessage.hidden = false;
+    }
+    reasonInput.focus();
+    return;
+  }
+
+  const actionKey = `reject-reservation:${id}`;
+  if (!beginAdminMutation(actionKey)) return;
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.setAttribute("aria-busy", "true");
+  }
+  try {
+    await apiRequest(`/reservations/${id}/reject`, {
+      method: "PATCH",
+      body: JSON.stringify({ reason }),
+    });
+    closeReservationRejectDialog();
+    await loadAdminDashboardMetrics();
+    window.DineAriNotifications.show({ type: "warning", description: "Reservation rejected; the customer can see the reason in reservation status." });
+  } catch (error) {
+    console.error("Failed to reject reservation:", error);
+    if (errorMessage) {
+      errorMessage.textContent = error.message || "The reservation could not be rejected.";
+      errorMessage.hidden = false;
+    }
+  } finally {
+    endAdminMutation(actionKey);
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.removeAttribute("aria-busy");
+    }
   }
 }
 
@@ -214,6 +834,160 @@ function renderLiveOrders(orders) {
   syncLucideIcons();
 }
 
+function renderDineInPaymentRequests(orders) {
+  const requestsBox = document.getElementById("dineInPaymentRequests");
+  const count = document.getElementById("dineInPaymentRequestCount");
+  const navCount = document.getElementById("dineInPaymentRequestNavCount");
+  const pendingCount = orders.filter(
+    (order) => String(order.payment_status || "").toLowerCase() === "pending_verification"
+  ).length;
+  if (count) count.textContent = `${pendingCount} pending`;
+  if (navCount) {
+    navCount.textContent = String(pendingCount);
+    navCount.setAttribute("aria-label", `${pendingCount} pending dine-in payment requests`);
+    navCount.hidden = pendingCount === 0;
+  }
+  if (!requestsBox) return;
+  const statusFilter = document.getElementById("dineInPaymentStatusFilter")?.value || "pending_verification";
+  const searchTerm = document.getElementById("dineInPaymentSearch")?.value.trim().toLowerCase() || "";
+  const visibleOrders = orders.filter((order) => {
+    const status = String(order.payment_status || "unpaid").toLowerCase();
+    const matchesStatus = statusFilter === "all" || status === statusFilter;
+    const searchable = [
+      order.customer_name,
+      order.account_name,
+      order.order_code,
+      order.table_name,
+      order.gcash_reference,
+      order.gcash_sender_name,
+    ].join(" ").toLowerCase();
+    return matchesStatus && searchable.includes(searchTerm);
+  });
+  if (!visibleOrders.length) {
+    requestsBox.innerHTML = `<p class="muted empty-state">${statusFilter === "pending_verification" && !searchTerm ? "No pending Dine-in payment requests." : "No Dine-in payment requests match these filters."}</p>`;
+    return;
+  }
+  const paymentCards = visibleOrders.map((order) => {
+    const paymentStatus = String(order.payment_status || "unpaid").toLowerCase();
+    const canReview = paymentStatus === "pending_verification";
+    const statusClass = paymentStatus === "pending_verification" ? "pending" : paymentStatus;
+    const customerName = order.customer_name || order.account_name || "Name unavailable";
+    return `
+    <article class="admin-item reservation-request-card dine-in-payment-request-card">
+      <div class="dashboard-card-head">
+        <h3>${escapeAdminHtml(customerName)} · Order #${escapeAdminHtml(order.order_code || order.id)}</h3>
+        <span class="status-badge status-${escapeAdminHtml(statusClass)}">${escapeAdminHtml(paymentStatus.replace(/_/g, " ").toUpperCase())}</span>
+      </div>
+      <div class="reservation-request-summary">
+        <p><strong>Dine-in order:</strong> ${escapeAdminHtml(order.order_code || order.id)}</p>
+        <p><strong>Table:</strong> ${escapeAdminHtml(order.table_name || "Not assigned")}</p>
+        <p><strong>Payment method:</strong> ${escapeAdminHtml(order.payment_method || "GCash")}</p>
+        <p><strong>Amount:</strong> ₱${Number(order.total_amount || 0).toFixed(2)}</p>
+        <p><strong>Reference number:</strong> ${escapeAdminHtml(order.gcash_reference || "Missing")}</p>
+        <p><strong>Sender's name:</strong> ${escapeAdminHtml(order.gcash_sender_name || "Missing")}</p>
+        <p><strong>Payment proof:</strong> GCash reference submitted; no image receipt is stored for dine-in orders.</p>
+        <p><strong>Submitted:</strong> ${escapeAdminHtml(order.created_at ? new Date(order.created_at).toLocaleString() : "Not recorded")}</p>
+        ${order.payment_verified_at ? `<p><strong>Verified:</strong> ${escapeAdminHtml(new Date(order.payment_verified_at).toLocaleString())}</p>` : ""}
+      </div>
+      ${canReview ? `<div class="admin-inline-actions">
+        <button type="button" class="primary" onclick="confirmDineInPayment(${Number(order.id)})">Confirm Payment</button>
+        <button type="button" class="danger" onclick="rejectDineInPayment(${Number(order.id)})">Reject Payment</button>
+      </div>` : ""}
+    </article>
+  `;
+  }).join("");
+  requestsBox.innerHTML = paymentCards;
+  syncLucideIcons();
+}
+
+function renderDineInRefundRequests(refunds) {
+  const requestsBox = document.getElementById("dineInRefundRequests");
+  const count = document.getElementById("dineInRefundRequestCount");
+  if (!requestsBox) return;
+  const pendingCount = refunds.filter((refund) => refund.refund_status === "pending").length;
+  const processingCount = refunds.filter((refund) => refund.refund_status === "processing").length;
+  const completedCount = refunds.filter((refund) => refund.refund_status === "completed").length;
+  if (count) count.textContent = `${pendingCount} pending · ${processingCount} processing · ${completedCount} completed`;
+  if (!refunds.length) {
+    requestsBox.innerHTML = `<p class="muted empty-state">No Dine-in refunds have been recorded.</p>`;
+    return;
+  }
+  const refundCards = refunds.map((order) => `
+    <article class="admin-item reservation-request-card">
+      <div class="dashboard-card-head">
+        <h3>${escapeAdminHtml(order.customer_name || "Name unavailable")} · Order #${escapeAdminHtml(order.order_code || order.id)}</h3>
+        <span class="status-badge status-${escapeAdminHtml(order.refund_status)}">${escapeAdminHtml(order.refund_status.toUpperCase())}</span>
+      </div>
+      <p><strong>Original payment:</strong> ₱${Number(order.total_amount || 0).toFixed(2)}</p>
+      <p><strong>Refund amount:</strong> ₱${Number(order.refund_amount || 0).toFixed(2)}</p>
+      ${order.refund_status === "completed"
+        ? `<p><strong>Refund Completed — Marked Complete</strong></p>
+           <p><strong>Cashier:</strong> ${escapeAdminHtml(order.cashier_name || "Unavailable")}</p>
+           <p><strong>Completed:</strong> ${escapeAdminHtml(order.refund_completed_at ? new Date(order.refund_completed_at).toLocaleString() : "Not recorded")}</p>`
+        : order.refund_status === "processing"
+          ? `<p><strong>Processing cashier:</strong> ${escapeAdminHtml(order.processing_cashier_name || "Unavailable")}</p>
+             <p><strong>Started:</strong> ${escapeAdminHtml(order.refund_processing_started_at ? new Date(order.refund_processing_started_at).toLocaleString() : "Not recorded")}</p>`
+          : `<p><strong>Status:</strong> Pending refund</p>`}
+    </article>
+  `).join("");
+  requestsBox.innerHTML = refundCards;
+  syncLucideIcons();
+}
+
+async function confirmDineInPayment(id) {
+  const actionKey = `confirm-dine-in-payment:${id}`;
+  if (!beginAdminMutation(actionKey)) return;
+  try {
+    const order = dineInPaymentRequestsCache.find((item) => Number(item.id) === Number(id));
+    if (!order) throw new Error("Dine-in payment details are no longer available. Refresh and try again.");
+    if (!String(order.gcash_reference || "").trim() || !String(order.gcash_sender_name || "").trim()) {
+      throw new Error("A GCash reference number and sender's name are required before confirmation.");
+    }
+    const confirmed = await window.DineAriNotifications.confirm({
+      type: "warning",
+      title: "Confirm Dine-in payment?",
+      message: "Confirm only after verifying the GCash payment. The 30-minute arrival window will start after confirmation.",
+      confirmLabel: "Confirm payment",
+    });
+    if (!confirmed) return;
+    await apiRequest(`/orders/${id}/payment/confirm`, { method: "PATCH" });
+    await loadAdminDashboardMetrics();
+    window.DineAriNotifications.show({ type: "success", description: "Dine-in payment confirmed. The arrival countdown has started." });
+  } catch (error) {
+    console.error("Failed to confirm Dine-in payment:", error);
+    window.DineAriNotifications.show({ type: "error", description: error.message || "The Dine-in payment could not be confirmed." });
+  } finally {
+    endAdminMutation(actionKey);
+  }
+}
+
+async function rejectDineInPayment(id) {
+  const actionKey = `reject-dine-in-payment:${id}`;
+  if (!beginAdminMutation(actionKey)) return;
+  try {
+    const order = dineInPaymentRequestsCache.find((item) => Number(item.id) === Number(id));
+    if (!order) throw new Error("Dine-in payment details are no longer available. Refresh and try again.");
+    const confirmed = await window.DineAriNotifications.confirm({
+      type: "warning",
+      title: "Reject Dine-in payment?",
+      message: "The customer will be notified that the submitted payment could not be verified.",
+      confirmLabel: "Reject payment",
+    });
+    if (!confirmed) return;
+    await apiRequest(`/orders/${id}/payment/reject`, {
+      method: "PATCH",
+      body: JSON.stringify({ reason: "Payment could not be verified. Please contact the restaurant." }),
+    });
+    await loadAdminDashboardMetrics();
+    window.DineAriNotifications.show({ type: "warning", description: "Dine-in payment rejected. The customer has been notified." });
+  } catch (error) {
+    console.error("Failed to reject Dine-in payment:", error);
+    window.DineAriNotifications.show({ type: "error", description: error.message || "The Dine-in payment could not be rejected." });
+  } finally {
+    endAdminMutation(actionKey);
+  }
+}
+
 function renderReservations(reservations) {
   const reservationsBox = document.getElementById("reservations");
   if (!reservationsBox) return;
@@ -222,20 +996,24 @@ function renderReservations(reservations) {
     ? reservations.map((reservation) => `
         <div class="admin-item dashboard-card-row">
           <div class="dashboard-card-head">
-            <h3>${reservation.table_name || "Table " + reservation.table_id}</h3>
-            <span class="status-badge status-${reservation.status || "active"}">
-              ${String(reservation.status || "active").toUpperCase()}
+            <h3>${escapeAdminHtml(reservation.reservation_code || `Reservation #${reservation.id}`)}</h3>
+            <span class="status-badge status-${escapeAdminHtml(reservation.status || "active")}">
+              ${escapeAdminHtml(String(reservation.status || "active").toUpperCase())}
             </span>
           </div>
-
-          <p><strong>Customer:</strong> ${reservation.customer_name || reservation.full_name || "Customer"}</p>
-          <p><strong>Contact:</strong> ${reservation.contact_number || "N/A"}</p>
-          <p><strong>Guests:</strong> ${reservation.num_guests || reservation.number_of_guests || "N/A"}</p>
-          <p><strong>Date:</strong> ${reservation.reservation_date || "N/A"}</p>
-          <p><strong>Time:</strong> ${reservation.reservation_time || "N/A"}</p>
+          <p><strong>Customer:</strong> ${escapeAdminHtml(reservation.customer_name || reservation.full_name || "Customer")}</p>
+          <p><strong>Table:</strong> ${escapeAdminHtml(reservation.table_name || "Not selected")}</p>
+          <p><strong>Contact:</strong> ${escapeAdminHtml(reservation.contact_number || "N/A")}</p>
+          <p><strong>Guests:</strong> ${escapeAdminHtml(reservation.num_guests ?? "N/A")}</p>
+          <p><strong>Date:</strong> ${escapeAdminHtml(reservation.reservation_date || "N/A")}</p>
+          <p><strong>Time:</strong> ${escapeAdminHtml(reservation.reservation_time || "N/A")}</p>
+          <p><strong>Payment:</strong> ${escapeAdminHtml(reservation.payment_method || "GCash")}</p>
+          <p><strong>Payment status:</strong> ${escapeAdminHtml(String(reservation.payment_status || "N/A").toUpperCase())}</p>
+          <p><strong>GCash reference:</strong> ${escapeAdminHtml(reservation.gcash_reference || "N/A")}</p>
+          <p><strong>Submitted:</strong> ${escapeAdminHtml(reservation.created_at ? new Date(reservation.created_at).toLocaleString() : "N/A")}</p>
         </div>
       `).join("")
-    : `<p class="muted empty-state">No active database reservations.</p>`;
+    : `<p class="muted empty-state">No reservation history is available.</p>`;
 }
 
 function renderOrderHistory(history) {
@@ -504,12 +1282,12 @@ async function fetchUsers() {
 
     const kpiUsers = document.getElementById("kpiUsers");
     if (kpiUsers) {
-      kpiUsers.innerText = users.filter((user) => user.role === "staff" && user.status === "active").length;
+      kpiUsers.innerText = users.filter((user) => ["staff", "cashier"].includes(user.role) && user.status === "active").length;
     }
     if (status) {
       status.classList.remove("is-error");
       status.classList.remove("is-success");
-      status.textContent = `${users.filter((user) => user.role === "staff").length} staff accounts`;
+      status.textContent = `${users.filter((user) => ["staff", "cashier"].includes(user.role)).length} staff accounts`;
     }
   } catch {
     if (tbody && !users.length) {
@@ -547,11 +1325,11 @@ function renderUsers() {
       <td><span class="staff-table-name">${escapeStaffHtml(user.name)}</span></td>
       <td><span class="staff-table-username">${user.username ? `@${escapeStaffHtml(user.username)}` : "—"}</span></td>
       <td>${escapeStaffHtml(user.email)}</td>
-      <td><span class="staff-role-badge">${user.role === "admin" ? "Administrator" : "Staff"}</span></td>
+      <td><span class="staff-role-badge">${user.role === "admin" ? "Administrator" : user.role === "cashier" ? "Staff + Cashier Access" : "Staff"}</span></td>
       <td>${formatStaffCreatedDate(user.createdAt)}</td>
       <td><span class="staff-status-badge ${user.status === "active" ? "is-active" : ""}">${user.status === "active" ? "Active" : "Deactivated"}</span></td>
       <td>
-        ${user.role === "staff"
+        ${["staff", "cashier"].includes(user.role)
           ? `<div class="staff-row-actions">
               <button class="secondary" type="button" data-staff-id="${escapeStaffHtml(user.id)}" onclick="openStaffForm(this.dataset.staffId)"><i data-lucide="pencil" aria-hidden="true"></i>Edit</button>
               <button class="secondary" type="button" data-staff-id="${escapeStaffHtml(user.id)}" data-next-status="${user.status === "active" ? "inactive" : "active"}" onclick="toggleUserStatus(this.dataset.staffId, this.dataset.nextStatus)"><i data-lucide="${user.status === "active" ? "user-round-x" : "user-round-check"}" aria-hidden="true"></i>${user.status === "active" ? "Deactivate" : "Activate"}</button>
@@ -593,7 +1371,7 @@ function openStaffForm(id = "") {
   const dialog = document.getElementById("staffFormDialog");
   const form = document.getElementById("staffManagementForm");
   const editing = Boolean(id);
-  const user = editing ? users.find((item) => String(item.id) === String(id) && item.role === "staff") : null;
+  const user = editing ? users.find((item) => String(item.id) === String(id) && ["staff", "cashier"].includes(item.role)) : null;
   if (!dialog || !form || (editing && !user)) return;
 
   form.reset();
@@ -682,7 +1460,7 @@ async function submitStaffForm(event) {
 }
 
 async function toggleUserStatus(id, nextStatus) {
-  const user = users.find((item) => String(item.id) === String(id) && item.role === "staff");
+  const user = users.find((item) => String(item.id) === String(id) && ["staff", "cashier"].includes(item.role));
   if (!user || !["active", "inactive"].includes(nextStatus)) return;
   const actionKey = `staff-status:${id}:${nextStatus}`;
   if (!beginAdminMutation(actionKey)) return;
