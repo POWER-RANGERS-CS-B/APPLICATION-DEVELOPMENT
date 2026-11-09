@@ -75,7 +75,7 @@ app.use(
 
 app.get("/", (req, res) => {
   res.sendFile(
-    path.join(__dirname, "../frontend/choice.html")
+    path.join(__dirname, "../frontend/welcome.html")
   );
 });
 
