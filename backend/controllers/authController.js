@@ -33,6 +33,31 @@ exports.registerCustomer = async (req, res) => {
     return res.status(400).json({ message: "Passwords do not match." });
   }
 
+<<<<<<< HEAD
+// Helper function to validate allowed email domains
+const isValidEmailDomain = (email) => {
+  if (!email) return false;
+  
+  // PASTED HERE: Allows ANY domain as long as it has a valid format (e.g., text@domain.suffix)
+  const domainRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  
+  return domainRegex.test(email.trim());
+};
+
+exports.signup = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Reject signup if email is completely missing or lacks a valid @domain.suffix structure
+    if (!isValidEmailDomain(email)) {
+      return res.status(400).json({ 
+        message: "Invalid email format. Please provide a complete email address (e.g., user@example.com)." 
+      });
+    }
+
+    const user = await authModel.createUser(req.body);
+    res.status(201).json(user);
+=======
   try {
     const user = await authModel.createCustomer({
       fullName,
@@ -55,6 +80,7 @@ exports.registerCustomer = async (req, res) => {
         role: user.role,
       },
     });
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   } catch (error) {
     res.status(error.statusCode || 500).json({ message: error.message });
   }
@@ -69,17 +95,22 @@ exports.login = async (req, res) => {
 
     // Reject login if email lacks a valid @domain.suffix structure
     if (!isValidEmailDomain(email)) {
+<<<<<<< HEAD
+=======
       await auditService.record({
         actorName: submittedEmail,
         action: "LOGIN_FAILED",
         module: "auth",
         details: { reason: "invalid_email" },
       });
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
       return res.status(400).json({ 
         message: "Invalid email format. Please log in using a complete email address (e.g., user@example.com)." 
       });
     }
 
+<<<<<<< HEAD
+=======
     if (typeof password !== "string" || password.length === 0) {
       await auditService.record({
         actorName: submittedEmail,
@@ -90,6 +121,7 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password." });
     }
 
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     const user = await authModel.findByEmail(email.trim());
 
     if (!user) {

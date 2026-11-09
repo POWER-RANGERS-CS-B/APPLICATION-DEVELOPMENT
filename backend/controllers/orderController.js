@@ -12,6 +12,10 @@ exports.createOrder = async (req, res) => {
       });
     }
 
+<<<<<<< HEAD
+    const order = await orderModel.create({
+      userId: req.user?.id || null,
+=======
     if (!req.user) {
       return res.status(401).json({ message: "Customer authentication is required." });
     }
@@ -23,19 +27,26 @@ exports.createOrder = async (req, res) => {
     const order = await orderModel.create({
       userId: req.user.id,
       actorName: req.user.email,
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
       type,
       chairIds,
       items: req.body.items,
       paymentMethod: req.body.payment_method || "GCash",
+<<<<<<< HEAD
+=======
       gcashReference: req.body.gcash_reference || req.body.payment_reference || null,
       gcashSenderName: req.body.gcash_sender_name || null,
       gcashReference: req.body.gcash_reference || req.body.payment_reference || null,
       gcashSenderName: req.body.gcash_sender_name || null,
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
       reservationDate: req.body.reservation_date,
       reservationTime: req.body.reservation_time,
       customerName: req.body.customer_name || req.body.customerName,
       contactNumber: req.body.contact_number || req.body.contactNumber,
+<<<<<<< HEAD
+=======
       contactCountry: req.body.contact_country,
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
       receiptBaseUrl: getPublicBaseUrl(req),
     });
 

@@ -11,6 +11,14 @@ exports.createReservation = async (req, res) => {
     );
     const reservation = await reservationModel.create({
       userId: req.user?.id || null,
+<<<<<<< HEAD
+      chairIds: req.body.chairIds || [],
+      reservationDate: req.body.reservation_date,
+      reservationTime: req.body.reservation_time,
+      customerName: req.body.customer_name,
+      contactNumber: req.body.contact_number,
+      numGuests: req.body.num_guests,
+=======
       actorName: req.user?.email || null,
       chairIds: body.chairIds || [],
       reservationDate: body.reservation_date,
@@ -23,6 +31,7 @@ exports.createReservation = async (req, res) => {
       paymentReference: body.gcash_reference || body.payment_reference || null,
       gcashSenderName: body.gcash_sender_name || null,
       paymentProofUrl: body.payment_proof_url || null,
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     });
 
     res.status(201).json(reservation);
@@ -40,6 +49,19 @@ exports.getReservations = async (req, res) => {
   }
 };
 
+<<<<<<< HEAD
+exports.updateReservationStatus = async (req, res) => {
+  try {
+    const reservation = await reservationModel.updateStatus(
+      req.params.id,
+      String(req.body.status || "").toLowerCase()
+    );
+    res.json(reservation);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+=======
 exports.archiveHistoricalReservation = async (req, res) => {
   try {
     const reservation = await reservationModel.archiveHistoricalReservation(req.params.id, {
@@ -108,3 +130,4 @@ exports.validateReservationReceipt = async (req, res) => {
     res.status(error.statusCode || 400).json({ message: error.message });
   }
 };
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50

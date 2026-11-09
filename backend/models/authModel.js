@@ -1,15 +1,37 @@
 const db = require("../config/db");
 
+<<<<<<< HEAD
+exports.createUser = async ({ fullName, email, password, role = "customer" }) => {
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  const result = await db.query(
+    `INSERT INTO restaurant.users (full_name, email, password_hash, role)
+     VALUES ($1, $2, $3, $4)
+     RETURNING id, full_name, email, role`,
+    [fullName, email, passwordHash, role]
+  );
+
+  return result.rows[0];
+};
+
+=======
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 exports.findByEmail = async (email) => {
   const result = await db.query(
     `SELECT *
      FROM restaurant.users
+<<<<<<< HEAD
+     WHERE email = $1
+=======
      WHERE lower(email) = lower($1)
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
        AND deleted_at IS NULL`,
     [email]
   );
 
   return result.rows[0];
+<<<<<<< HEAD
+=======
 };
 
 exports.createCustomer = async ({ fullName, email, contactNumber, passwordHash }) => {
@@ -38,4 +60,5 @@ exports.revokeToken = async (userId, tokenId, expiresAt) => {
      ON CONFLICT (token_id) DO NOTHING`,
     [tokenId, userId, expiresAt]
   );
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 };

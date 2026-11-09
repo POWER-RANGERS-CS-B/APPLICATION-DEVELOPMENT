@@ -11,6 +11,12 @@ function showAuthMessage(message, isError = false, messageId = "authMessage") {
   );
 }
 
+<<<<<<< HEAD
+async function login(accountType = "admin") {
+
+  const inputPrefix = accountType === "staff" ? "staff" : "admin";
+  const messageId = `${inputPrefix}AuthMessage`;
+=======
 function getCustomerPostAuthUrl() {
   const flow = new URLSearchParams(window.location.search).get("flow");
   return flow === "dine_in" ? "./choice.html?flow=dine_in" : "./choice.html";
@@ -21,6 +27,7 @@ async function login(accountType = "admin") {
   const inputPrefix = accountType === "customer" ? "customer" : accountType === "staff" ? "staff" : "admin";
   const messageId = `${inputPrefix}AuthMessage`;
   const submitButton = document.getElementById(`${inputPrefix}LoginButton`);
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 
   const email =
     document.getElementById(`${inputPrefix}Email`)?.value.trim();
@@ -44,12 +51,15 @@ async function login(accountType = "admin") {
 
   try {
 
+<<<<<<< HEAD
+=======
     if (submitButton) {
       submitButton.disabled = true;
       submitButton.textContent = "Signing in...";
       submitButton.setAttribute("aria-busy", "true");
     }
 
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     showAuthMessage("Logging in...", false, messageId);
 
     const data = await apiRequest("/auth/login", {
@@ -71,6 +81,14 @@ async function login(accountType = "admin") {
       .trim()
       .toLowerCase();
 
+<<<<<<< HEAD
+    const isAdmin = role === "admin" || role.includes("admin");
+    const isStaff = role === "staff" || role.includes("staff") ||
+      role.includes("kitchen") || role.includes("employee") || role.includes("crew");
+
+    if ((accountType === "admin" && !isAdmin) || (accountType === "staff" && !isStaff)) {
+      showAuthMessage(`This account is not registered as ${accountType}. Use the ${isAdmin ? "Admin" : "Staff"} folder.`, true, messageId);
+=======
     const isAdmin = role === "admin";
     const isStaff = role === "staff" || role === "cashier";
     const isCustomer = role === "customer";
@@ -87,6 +105,7 @@ async function login(accountType = "admin") {
         true,
         messageId
       );
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
       return;
     }
 
@@ -98,7 +117,10 @@ async function login(accountType = "admin") {
     }
 
     showAuthMessage(`Login successful as ${role}. Redirecting...`, false, messageId);
+<<<<<<< HEAD
+=======
     redirecting = true;
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 
     setTimeout(() => {
 
@@ -115,13 +137,83 @@ async function login(accountType = "admin") {
         return;
       }
 
+<<<<<<< HEAD
+      // ===== CUSTOMER =====
+      window.location.href =
+        "/";
+
+=======
       if (role === "customer") {
         window.location.href = getCustomerPostAuthUrl();
       }
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     }, 400);
 
   } catch (error) {
 
+<<<<<<< HEAD
+    console.error("LOGIN ERROR:", error);
+
+      showAuthMessage(
+        error.message || "Login failed.",
+        true,
+        messageId
+      );
+  }
+}
+
+async function signup() {
+
+  const fullName =
+    document.getElementById("fullName")?.value?.trim()
+    || "Customer User";
+
+  const email =
+    document.getElementById("email")?.value.trim();
+
+  const password =
+    document.getElementById("password")?.value;
+
+  if (!email || !password) {
+
+    showAuthMessage(
+      "Please enter email and password before signing up.",
+      true
+    );
+
+    return;
+  }
+
+  try {
+
+    showAuthMessage("Creating account...");
+
+    await apiRequest("/auth/signup", {
+      method: "POST",
+      body: JSON.stringify({
+        fullName,
+        full_name: fullName,
+        email,
+        password,
+        role: "customer",
+      }),
+    });
+
+    showAuthMessage(
+      "Signup successful. You may now login."
+    );
+
+  } catch (error) {
+
+    console.error("Signup failed:", error);
+
+    showAuthMessage(
+      error.message || "Signup failed.",
+      true
+    );
+  }
+}
+=======
     if (![400, 401].includes(error?.status)) {
       console.error("Login request failed with status", error?.status || "network error");
     }
@@ -150,3 +242,4 @@ document.querySelectorAll(".login-form").forEach((form) => {
     if (message) message.textContent = "";
   });
 });
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50

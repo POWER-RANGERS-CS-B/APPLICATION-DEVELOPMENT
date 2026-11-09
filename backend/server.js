@@ -24,6 +24,9 @@ const staticImageOptions = {
 app.use(
   express.static(
     path.join(__dirname, "../frontend"),
+<<<<<<< HEAD
+    { index: false }
+=======
     { index: false, ...staticImageOptions }
   )
 );
@@ -56,12 +59,10 @@ app.use(
   express.static(
     path.join(__dirname, "node_modules/chart.js/dist"),
     { maxAge: "1d" }
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   )
 );
 
-/* ======================================
-   STATIC IMAGES
-====================================== */
 
 app.use(
   "/images",
@@ -75,7 +76,11 @@ app.use(
 
 app.get("/", (req, res) => {
   res.sendFile(
+<<<<<<< HEAD
+    path.join(__dirname, "../frontend/choice.html")
+=======
     path.join(__dirname, "../frontend/welcome.html")
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   );
 });
 
@@ -93,8 +98,22 @@ app.use("/api/history", require("./routes/historyRoutes"));
 app.use("/api/chairs", require("./routes/chairRoutes"));
 app.use("/api/tables", require("./routes/tableRoutes"));
 app.use("/api/staff", require("./routes/staffRoutes"));
+<<<<<<< HEAD
+
+// --- ADD THESE ALIAS ROUTES TO PREVENT 404 ERRORS IN ADMIN DASHBOARD ---
+app.get("/api/users", (req, res) => {
+  // Routes staff data to /api/users if admin dashboard expects it
+  req.url = "/";
+  require("./routes/staffRoutes")(req, res);
+});
+
+app.get("/api/audit-logs", (req, res) => {
+  res.json([]); // Returns empty audit log array safely until custom table is created
+});
+=======
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/audit-logs", require("./routes/auditRoutes"));
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 
 /* ======================================
    START SERVER
@@ -103,6 +122,12 @@ app.use("/api/audit-logs", require("./routes/auditRoutes"));
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || "0.0.0.0";
 
+<<<<<<< HEAD
+app.listen(PORT, HOST, () => {
+  console.log(`Server listening on ${HOST}:${PORT}`);
+  console.log(`Open Dine-Ari at http://localhost:${PORT}`);
+});
+=======
 if (require.main === module) {
   app.listen(PORT, HOST, () => {
     console.log(`Server listening on ${HOST}:${PORT}`);
@@ -119,3 +144,4 @@ if (require.main === module) {
 }
 
 module.exports = app;
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50

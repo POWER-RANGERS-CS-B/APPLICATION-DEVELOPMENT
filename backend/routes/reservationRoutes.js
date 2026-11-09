@@ -5,8 +5,11 @@ const { authenticate, allowRoles } = require("../middleware/auth");
 
 router.post(
     "/",
+<<<<<<< HEAD
+=======
     authenticate,
     allowRoles("customer"),
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     reservationController.createReservation
 );
 
@@ -34,6 +37,16 @@ router.get(
     reservationController.getReservations
 );
 
+<<<<<<< HEAD
+router.patch(
+    "/:id/status",
+    authenticate,
+    allowRoles("admin", "staff"),
+    reservationController.updateReservationStatus
+);
+
+module.exports = router;
+=======
 router.delete(
     "/:id",
     authenticate,
@@ -63,3 +76,4 @@ router.patch(
 );
 
 module.exports = router;
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50

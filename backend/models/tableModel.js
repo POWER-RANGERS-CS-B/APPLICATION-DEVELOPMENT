@@ -36,6 +36,78 @@ function parseTableId(tableId) {
   return parsedId;
 }
 
+<<<<<<< HEAD
+exports.findAll = async ({ reservationDate = null, reservationTime = null } = {}) => {
+  await db.query(
+    `UPDATE restaurant.chairs c
+     SET status = 'vacant', locked_until = NULL, updated_at = NOW()
+     WHERE c.deleted_at IS NULL
+      AND c.status = 'occupied'
+      AND EXISTS (
+         SELECT 1
+         FROM restaurant.reservations cancelled
+         WHERE cancelled.table_id = c.table_id
+           AND cancelled.status = 'cancelled'
+           AND cancelled.deleted_at IS NULL
+       )
+       AND NOT EXISTS (
+         SELECT 1
+         FROM restaurant.reservations checked_in
+         WHERE checked_in.table_id = c.table_id
+           AND checked_in.status = 'checked_in'
+           AND checked_in.deleted_at IS NULL
+       )`
+  );
+  await db.query(
+    `UPDATE restaurant.restaurant_tables t
+     SET status = 'vacant', updated_at = NOW()
+     WHERE t.deleted_at IS NULL
+      AND t.status = 'occupied'
+      AND EXISTS (
+         SELECT 1
+         FROM restaurant.reservations cancelled
+         WHERE cancelled.table_id = t.id
+           AND cancelled.status = 'cancelled'
+           AND cancelled.deleted_at IS NULL
+       )
+       AND NOT EXISTS (
+         SELECT 1
+         FROM restaurant.reservations checked_in
+         WHERE checked_in.table_id = t.id
+           AND checked_in.status = 'checked_in'
+           AND checked_in.deleted_at IS NULL
+       )`
+  );
+
+  const result = await db.query(
+    `SELECT t.*,
+       CASE
+         WHEN $1::date IS NOT NULL AND $2::time IS NOT NULL AND EXISTS (
+           SELECT 1
+           FROM restaurant.reservations r
+           WHERE r.table_id = t.id
+             AND r.deleted_at IS NULL
+             AND r.status IN ('active', 'confirmed', 'checked_in')
+             AND r.reservation_date = $1::date
+             AND r.reservation_time = $2::time
+         ) THEN 'reserved'
+         ELSE t.status
+       END AS effective_status
+     FROM restaurant.restaurant_tables t
+     WHERE t.deleted_at IS NULL
+     ORDER BY t.id`,
+    [reservationDate, reservationTime]
+  );
+  return result.rows;
+};
+
+exports.markCleaned = async (tableId) => {
+  const parsedTableId = Number(tableId);
+  if (!Number.isSafeInteger(parsedTableId) || parsedTableId <= 0) {
+    throw new Error("A valid table ID is required.");
+  }
+
+=======
 exports.findAll = async () => {
   const result = await db.query(
     `SELECT rt.*,
@@ -61,23 +133,55 @@ exports.findAll = async () => {
 
 exports.markOccupiedForWalkIn = async (tableId, actor) => {
   const id = parseTableId(tableId);
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   const client = await db.connect();
 
   try {
     await client.query("BEGIN");
 
+<<<<<<< HEAD
+    // Reset table status to vacant
+    const tableResult = await client.query(
+      `UPDATE restaurant.restaurant_tables
+       SET status = 'vacant', updated_at = NOW()
+       WHERE id = $1 AND deleted_at IS NULL
+       RETURNING id`,
+      [parsedTableId]
+=======
     const tableResult = await client.query(
       `SELECT id, table_name, status
        FROM restaurant.restaurant_tables
        WHERE id = $1 AND deleted_at IS NULL
        FOR UPDATE`,
       [id]
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     );
     const table = tableResult.rows[0];
     if (!table) {
       throw createTableError("Table not found.", 404);
     }
 
+<<<<<<< HEAD
+    if (!tableResult.rowCount) {
+      throw new Error(`Table #${parsedTableId} was not found.`);
+    }
+
+    // Reset all chairs belonging to this table to vacant
+    await client.query(
+      `UPDATE restaurant.chairs
+       SET status = 'vacant', locked_until = NULL, updated_at = NOW()
+       WHERE table_id = $1`,
+      [parsedTableId]
+    );
+
+    // Complete active reservations for this table using a valid constraint status ('completed')
+    await client.query(
+      `UPDATE restaurant.reservations
+       SET status = 'completed', updated_at = NOW()
+       WHERE table_id = $1
+         AND status = 'active'`,
+      [parsedTableId]
+=======
     if (table.status !== "vacant") {
       const message = ["reserved", "locked"].includes(table.status)
         ? "This table is reserved or held and cannot be occupied manually."
@@ -95,6 +199,7 @@ exports.markOccupiedForWalkIn = async (tableId, actor) => {
        ORDER BY reservation_date, reservation_time, id
        FOR UPDATE`,
       [id]
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     );
     if (reservationsResult.rows.length) {
       throw createTableError(

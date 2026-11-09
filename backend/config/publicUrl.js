@@ -1,11 +1,14 @@
 const os = require("os");
 
+<<<<<<< HEAD
+=======
 function configurationError(message) {
   const error = new Error(message);
   error.code = "PUBLIC_BASE_URL_CONFIGURATION_ERROR";
   return error;
 }
 
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 function isLoopbackHost(hostname = "") {
   const normalized = String(hostname).toLowerCase().replace(/^\[|\]$/g, "");
   return normalized === "localhost" || normalized === "::1" || normalized === "127.0.0.1";
@@ -17,6 +20,8 @@ function isPrivateIpv4(address = "") {
     /^172\.(1[6-9]|2\d|3[01])\./.test(address);
 }
 
+<<<<<<< HEAD
+=======
 function getConfiguredBaseUrl(value, { production = false } = {}) {
   let url;
   try {
@@ -49,6 +54,7 @@ function getConfiguredBaseUrl(value, { production = false } = {}) {
   return url.origin;
 }
 
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 function findLanIpv4() {
   const interfaces = Object.values(os.networkInterfaces()).flat();
   const candidates = interfaces.filter((network) =>
@@ -61,6 +67,24 @@ function findLanIpv4() {
   return candidates[0]?.address || null;
 }
 
+<<<<<<< HEAD
+function getPublicBaseUrl(req) {
+  const configuredUrls = [
+    process.env.PUBLIC_BASE_URL,
+    process.env.BASE_URL,
+    process.env.FRONTEND_URL,
+  ].filter(Boolean);
+
+  const configuredUrl = configuredUrls.find((value) => {
+    try {
+      return !isLoopbackHost(new URL(value).hostname);
+    } catch {
+      return false;
+    }
+  });
+
+  if (configuredUrl) return configuredUrl.replace(/\/+$/, "");
+=======
 function getPublicBaseUrl(req, environment = process.env) {
   const production = environment.NODE_ENV === "production";
   const publicBaseUrl = environment.PUBLIC_BASE_URL?.trim();
@@ -92,6 +116,7 @@ function getPublicBaseUrl(req, environment = process.env) {
       continue;
     }
   }
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 
   const requestHost = req.get("host");
   const requestHostname = req.hostname || requestHost?.split(":")[0];
@@ -103,6 +128,22 @@ function getPublicBaseUrl(req, environment = process.env) {
 
   const lanAddress = findLanIpv4();
   if (lanAddress) {
+<<<<<<< HEAD
+    const port = process.env.PORT || 3000;
+    return `${protocol}://${lanAddress}:${port}`;
+  }
+
+  if (configuredUrls.length) {
+    return configuredUrls[0].replace(/\/+$/, "");
+  }
+
+  return requestHost
+    ? `${protocol}://${requestHost}`
+    : `${protocol}://localhost:${process.env.PORT || 3000}`;
+}
+
+module.exports = { getPublicBaseUrl };
+=======
     const port = environment.PORT || 3000;
     return `${protocol}://${lanAddress}:${port}`;
   }
@@ -120,3 +161,4 @@ function buildReceiptUrl(baseUrl, orderCode, receiptToken) {
 }
 
 module.exports = { buildReceiptUrl, getPublicBaseUrl };
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50

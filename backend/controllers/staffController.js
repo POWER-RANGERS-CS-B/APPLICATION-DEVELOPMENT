@@ -26,6 +26,8 @@ exports.getKitchenDisplay = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
+<<<<<<< HEAD
+=======
 };
 
 exports.validateArrivalQr = async (req, res) => {
@@ -76,4 +78,5 @@ exports.completeLateArrivalRefund = async (req, res) => {
   } catch (error) {
     res.status(error.statusCode || 500).json({ message: error.message });
   }
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 };

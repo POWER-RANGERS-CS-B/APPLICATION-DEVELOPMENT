@@ -5,6 +5,86 @@
   <script src="js/transitions.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<<<<<<< HEAD
+  <title>Dine-Ari | Home</title>
+<<<<<<< Updated upstream
+  <link rel="stylesheet" href="css/style.css?v=floating-cart-dialog" />
+</head>
+
+<body>
+=======
+  <script>document.documentElement.dataset.welcome = sessionStorage.getItem("dineari-welcome-entered") === "true" ? "false" : "true";</script>
+  <script src="js/theme.js?v=20261104-day-night-switch-2"></script>
+  <link rel="preload" as="image" href="images/backgrounds/restaurant-bg.webp" type="image/webp" fetchpriority="high" />
+  <link rel="stylesheet" href="css/style.css?v=20261107-mobile-floor-scroll-1" />
+  <link rel="stylesheet" href="/vendor/intl-tel-input/css/intlTelInput.min.css" />
+  <link rel="stylesheet" href="css/design-system.css?v=20261105-global-notifications-4" />
+  <link rel="stylesheet" href="css/welcome-landing.css?v=welcome-feature-19" />
+  <script src="/vendor/lucide/lucide.min.js?v=1.67.0"></script>
+</head>
+
+<body class="customer-app-layout">
+  <section id="welcomeLanding" class="welcome-landing" aria-labelledby="welcomeTitle">
+    <div class="welcome-hero">
+      <video class="welcome-background-video" autoplay muted loop playsinline preload="metadata" aria-hidden="true" tabindex="-1">
+        <source src="images/backgrounds/Background3.mp4" type="video/mp4" />
+      </video>
+      <header class="welcome-topbar">
+        <a class="welcome-brand" href="/" aria-label="Dine-Ari home">
+          <picture class="system-logo-picture"><source srcset="images/Logo/dineari-logo.webp" type="image/webp" /><img src="images/Logo/Dine-ari%20Chef%E2%80%99s%20Table%20Logo.png" alt="Dine-Ari Chef’s Table" /></picture>
+          <span class="welcome-established">EST. 2026</span>
+        </a>
+      </header>
+      <main class="welcome-content">
+        <div class="welcome-copy">
+          <span class="welcome-kicker">Welcome to Dine-Ari</span>
+          <h1 id="welcomeTitle"><span>A Better Way</span><span>to Enjoy Your</span><span>Dining Experience.</span></h1>
+          <p>Choose your table, explore the menu, and enjoy a smoother visit from the first click to your last bite.</p>
+          <div class="welcome-actions">
+            <button type="button" class="welcome-primary" data-enter-app>Explore Dine-Ari <i data-lucide="arrow-right" aria-hidden="true"></i></button>
+            <button type="button" class="welcome-secondary" data-open-learn>Learn More</button>
+          </div>
+          <p class="welcome-flow-hint"><span>Choose a table</span><i data-lucide="arrow-right" aria-hidden="true"></i><span>Order your food</span><i data-lucide="arrow-right" aria-hidden="true"></i><span>Pay and get your receipt</span></p>
+        </div>
+      </main>
+    </div>
+    <section id="welcomeFeatured" class="welcome-featured" aria-labelledby="welcomeFeaturedTitle">
+      <div class="welcome-featured-inner">
+        <div class="welcome-featured-media" aria-hidden="true">
+          <div class="welcome-featured-image-frame"><img id="welcomeFeaturedImage" src="images/menu-images/chicken-wings.webp" alt="" fetchpriority="high" /></div>
+        </div>
+        <div class="welcome-featured-copy" aria-live="polite" aria-atomic="true">
+          <span class="welcome-featured-eyebrow">Featured Selection</span>
+          <div class="welcome-featured-progress" aria-label="Dish 1 of 5">
+            <span id="welcomeFeaturedCurrent">01</span><span class="welcome-featured-progress-divider">/</span><span>05</span>
+          </div>
+          <h2 id="welcomeFeaturedTitle">Chicken Wings</h2>
+          <p id="welcomeFeaturedDescription" class="welcome-featured-description">Buffalo-style chicken wings with dip.</p>
+          <div class="welcome-featured-meta"><span id="welcomeFeaturedCategory">Appetizers</span></div>
+          <p class="welcome-featured-price" id="welcomeFeaturedPrice">₱180.00</p>
+          <div class="welcome-featured-controls" role="group" aria-label="Browse featured dishes">
+            <button type="button" id="welcomeFeaturedPrevious" class="welcome-featured-nav welcome-featured-previous" aria-label="Previous featured dish"><i data-lucide="arrow-left" aria-hidden="true"></i><span>Previous</span></button>
+            <div class="welcome-featured-dots" aria-hidden="true"><span class="is-active"></span><span></span><span></span><span></span><span></span></div>
+            <button type="button" id="welcomeFeaturedNext" class="welcome-featured-nav welcome-featured-next" aria-label="Next featured dish"><span>Next</span><i data-lucide="arrow-right" aria-hidden="true"></i></button>
+          </div>
+        </div>
+      </div>
+    </section>
+    <dialog class="welcome-dialog" aria-labelledby="welcomeDialogTitle">
+      <div class="welcome-dialog-panel">
+        <button class="welcome-dialog-close" type="button" aria-label="Close Learn More">×</button>
+        <span class="welcome-kicker">Your visit, made simple</span><h2 id="welcomeDialogTitle">A thoughtful dining journey</h2>
+        <div class="welcome-benefits">
+          <article><i data-lucide="utensils" aria-hidden="true"></i><div><h3>Dine-In</h3><p>Choose your preferred table and start ordering.</p></div></article>
+          <article><i data-lucide="calendar-days" aria-hidden="true"></i><div><h3>Reservation</h3><p>Book your table in advance.</p></div></article>
+          <article><i data-lucide="shopping-bag" aria-hidden="true"></i><div><h3>Easy Ordering</h3><p>Enjoy a simple and convenient ordering journey.</p></div></article>
+        </div>
+        <button type="button" class="welcome-primary" data-enter-app>Explore Dine-Ari <i data-lucide="arrow-right" aria-hidden="true"></i></button>
+      </div>
+    </dialog>
+  </section>
+>>>>>>> Stashed changes
+=======
   <link rel="icon" href="/images/icon/dineari-logo.ico" type="image/x-icon" />
   <link rel="icon" href="/public/uni-logo-circle.png" type="image/png">
   <title>Dine-Ari | Home</title>
@@ -17,12 +97,32 @@
 </head>
 
 <body class="customer-app-layout">
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   <div class="main-container">
     <div class="content-wrapper">
 
       <main class="page">
         <div class="topbar home-topbar">
           <div class="home-brand">
+<<<<<<< HEAD
+<<<<<<< Updated upstream
+            <span class="section-kicker">Customer Workspace</span>
+            <h1 class="logo-title">Dine-Ari</h1>
+=======
+            <a class="home-brand-link" href="#welcome" aria-label="Return to Dine-Ari welcome page">
+            <picture class="system-logo-picture">
+              <source srcset="images/Logo/dineari-logo.webp" type="image/webp" />
+              <img class="system-logo system-logo-header" src="images/Logo/Dine-ari%20Chef%E2%80%99s%20Table%20Logo.png" alt="Dine-Ari Chef’s Table" width="1536" height="1024" decoding="async" />
+            </picture></a>
+          </div>
+          <div id="currentStepLabel" class="current-step-label" aria-live="polite">Step 1 of 5 · Choose Mode</div>
+          <div class="home-topbar-actions">
+            <a class="header-login-link" href="login.html" aria-label="Staff and admin login" title="Staff and admin login">
+              <i data-lucide="user-round" aria-hidden="true"></i>
+              <span>Staff login</span>
+            </a>
+>>>>>>> Stashed changes
+=======
             <picture class="system-logo-picture">
               <source srcset="images/Logo/dineari-logo.webp" type="image/webp" />
               <img class="system-logo system-logo-header" src="images/Logo/Dine-ari%20Chef%E2%80%99s%20Table%20Logo.png" alt="Dine-Ari Chef’s Table" width="1536" height="1024" decoding="async" />
@@ -81,6 +181,7 @@
                 </div>
               </div>
             </div>
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
           </div>
         </div>
 
@@ -91,11 +192,19 @@
 
             <div class="flow-steps">
               <div class="flow-step active">
+<<<<<<< HEAD
+                <strong>1</strong>
+                <span>Choose Mode</span>
+              </div>
+              <div class="flow-step">
+                <strong>2</strong>
+=======
                 <strong>1<i data-lucide="check" aria-hidden="true"></i></strong>
                 <span>Choose Mode</span>
               </div>
               <div class="flow-step">
                 <strong>2<i data-lucide="check" aria-hidden="true"></i></strong>
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
                 <span>Select Table</span>
               </div>
               <div class="flow-step">
@@ -103,11 +212,19 @@
                 <span>Order Food</span>
               </div>
               <div class="flow-step">
+<<<<<<< HEAD
+                <strong>4</strong>
+                <span>Payment</span>
+              </div>
+              <div class="flow-step">
+                <strong>5</strong>
+=======
                 <strong>4<i data-lucide="check" aria-hidden="true"></i></strong>
                 <span>Payment</span>
               </div>
               <div class="flow-step">
                 <strong>5<i data-lucide="check" aria-hidden="true"></i></strong>
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
                 <span>Receipt</span>
               </div>
             </div>
@@ -117,10 +234,13 @@
             <section id="choicePanel" class="card">
               <div class="choice-hero">
                 <div class="choice-copy">
+<<<<<<< HEAD
+=======
                   <picture class="system-logo-picture">
                     <source srcset="images/Logo/dineari-logo.webp" type="image/webp" />
                     <img class="choice-hero-logo" src="images/Logo/Dine-ari%20Chef%E2%80%99s%20Table%20Logo.png" alt="Dine-Ari Chef’s Table" width="1536" height="1024" decoding="async" />
                   </picture>
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
                   <span class="section-kicker">Start Your Order</span>
                   <h2>Welcome to Dine-Ari</h2>
                   <p class="page-subtitle">
@@ -129,6 +249,16 @@
                 </div>
 
                 <div class="choice-buttons">
+<<<<<<< HEAD
+                  <button class="choice-card-btn" onclick="chooseType('dine_in')">
+                    <span>Dine-In</span>
+                    <small>Select your preferred table and start ordering.</small>
+                  </button>
+
+                  <button class="choice-card-btn reservation-choice" onclick="showReservationSection()">
+                    <span>Reservation</span>
+                    <small>Book your table by choosing a date, time, and seating.</small>
+=======
                   <button type="button" class="choice-card-btn" onclick="chooseType('dine_in')">
                     <span class="front">
                       <span class="choice-card-title">
@@ -147,6 +277,7 @@
                       </span>
                       <small>Book your table by choosing a date, time, and seating.</small>
                     </span>
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
                   </button>
                 </div>
               </div>
@@ -182,10 +313,38 @@
                     <small id="reservationNameError" class="field-error" role="alert" hidden></small>
                   </label>
 
+<<<<<<< HEAD
+                  <label>
+                    Reservation Time
+                    <input id="reservationTime" type="time" />
+                  </label>
+
+                  <label>
+                    Guest Name
+                    <input id="reservationName" type="text" placeholder="Enter customer name" />
+                  </label>
+
+                  <label>
+                    Contact Number
+                    <span class="phone-number-field">
+                      <span aria-hidden="true">+63</span>
+                      <input
+                        id="reservationContact"
+                        type="tel"
+                        inputmode="numeric"
+                        autocomplete="tel-national"
+                        maxlength="10"
+                        pattern="9[0-9]{9}"
+                        aria-label="10-digit Philippine mobile number without country code"
+                        placeholder="9XXXXXXXXX"
+                      />
+                    </span>
+=======
                   <label class="coolinput-field" for="reservationContact">
                     <span class="text">Contact Number <span class="required-field-mark" aria-hidden="true">*</span></span>
                     <input class="form-field-control" id="reservationContact" type="tel" autocomplete="tel" inputmode="tel" required aria-describedby="reservationContactError" />
                     <small id="reservationContactError" class="field-error" role="alert" hidden></small>
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
                   </label>
                   <p id="reservationProfileMessage" class="muted" role="status" hidden></p>
 
@@ -229,6 +388,8 @@
                 <button id="floor2Tab" class="floor-tab" type="button" role="tab" aria-selected="false" aria-controls="floorPlan" onclick="switchFloor(2)">
                   Floor 2 <small>Group tables</small>
                 </button>
+<<<<<<< HEAD
+=======
               </div>
 
               <div class="chair-legend" aria-label="Table status legend">
@@ -242,6 +403,7 @@
                 <button id="floorPlanZoomOut" type="button" aria-label="Zoom out" title="Zoom out">-</button>
                 <button id="floorPlanZoomIn" type="button" aria-label="Zoom in" title="Zoom in">+</button>
                 <button id="floorPlanZoomFit" type="button" aria-label="Fit floor plan to screen">Fit</button>
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
               </div>
 
               <div class="floor-scroll-wrapper">
@@ -251,6 +413,15 @@
               </div>
 
               <div class="cart-actions floor-selection-actions">
+<<<<<<< HEAD
+                <div class="chair-legend" aria-label="Chair status legend">
+                  <span><i class="legend-swatch available"></i>Available</span>
+                  <span><i class="legend-swatch selected"></i>Selected</span>
+                  <span><i class="legend-swatch unavailable"></i>Unavailable</span>
+                </div>
+                <button id="lockChairsButton" onclick="lockSelectedChairs()" disabled>Select a table to continue</button>
+                <button class="secondary" onclick="showChoicePanel()">Back</button>
+=======
                 <button id="lockChairsButton" type="button" onclick="continueFromTableSelection()" disabled>Select a table to continue</button>
                 <button id="chairSelectionBackButton" class="secondary" type="button" onclick="showChoicePanel()">Back to Choose Mode</button>
               </div>
@@ -309,6 +480,7 @@
                     <button class="secondary" type="button" onclick="backToReservationTableSelection()">Back to Table Selection</button>
                   </div>
                 </aside>
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
               </div>
             </section>
 
@@ -328,7 +500,11 @@
               <div class="menu-shell menu-only-shell">
                 <main class="menu-main-area">
                   <div class="category-tabs" role="tablist" aria-label="Menu categories">
+<<<<<<< HEAD
+                    <button type="button" role="tab" aria-selected="false" onclick="filterMenuCategory('All', this)">All</button>
+=======
                     <button class="active" type="button" role="tab" aria-selected="true" onclick="filterMenuCategory('All', this)">All</button>
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
                     <button type="button" role="tab" aria-selected="false" onclick="filterMenuCategory('Appetizers', this)">Appetizers</button>
                     <button type="button" role="tab" aria-selected="false" onclick="filterMenuCategory('Main Course', this)">Main Course</button>
                     <button type="button" role="tab" aria-selected="false" onclick="filterMenuCategory('Rice Meals', this)">Rice Meals</button>
@@ -374,6 +550,23 @@
               </section>
 
               <div class="payment-layout">
+<<<<<<< HEAD
+                <div class="payment-methods">
+                  <label class="payment-method-card active">
+                    <input type="radio" name="paymentMethod" value="GCash" checked onchange="selectPaymentCard(this)" />
+                    <div>
+                      <h3>GCash</h3>
+                      <p>Pay using your GCash mobile wallet.</p>
+                    </div>
+                  </label>
+
+                  <label class="payment-method-card">
+                    <input type="radio" name="paymentMethod" value="Card" onchange="selectPaymentCard(this)" />
+                    <div>
+                      <h3>Card</h3>
+                      <p>Pay using debit or credit card.</p>
+                    </div>
+=======
                 <div id="dineInPaymentPanel" class="dine-in-payment-panel">
                   <div class="dine-in-qr-caption"><i data-lucide="qr-code" aria-hidden="true"></i><span>Scan to pay with GCash</span></div>
                   <img class="dine-in-gcash-qr" src="images/gcash-QR-code/gcashqrcode.jpg" alt="Dine-Ari GCash payment QR code" />
@@ -386,6 +579,7 @@
                     <span class="text"><i data-lucide="user-round" aria-hidden="true"></i> Sender's Name <span class="required-field-mark" aria-hidden="true">*</span></span>
                     <input class="form-field-control" id="dineInGcashSenderName" type="text" maxlength="128" placeholder="Name shown on the payment" autocomplete="name" required aria-describedby="dineInGcashSenderNameError" />
                     <small id="dineInGcashSenderNameError" class="field-error" role="alert" hidden></small>
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
                   </label>
                   <div class="payment-actions">
                     <button id="confirmPaymentButton" type="button" onclick="confirmPaymentAndOrder()"><i data-lucide="shield-check" aria-hidden="true"></i><span>Confirm Payment</span></button>
@@ -581,6 +775,16 @@
     </div>
   </div>
 
+<<<<<<< HEAD
+  <button class="floating-login-btn" type="button" aria-label="Staff and admin login" title="Staff and admin login" onclick="window.location.href='login.html'">
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2" />
+      <path d="M4 21c0-4.1 3.6-7 8-7s8 2.9 8 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+    </svg>
+  </button>
+
+=======
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   <button id="floatingCartButton" class="floating-cart-btn" type="button" aria-label="Open your cart" aria-controls="cartDialog" aria-expanded="false" title="Open your cart" hidden onclick="openCartDialog()">
     <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M3 4h2l2.1 10.1a2 2 0 0 0 2 1.6h8.7a2 2 0 0 0 1.9-1.4L22 8H6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
@@ -597,7 +801,11 @@
           <span class="section-kicker">Your Selection</span>
           <h2 id="cartDialogTitle">Your Cart</h2>
         </div>
+<<<<<<< HEAD
+        <button class="cart-dialog-close" type="button" aria-label="Close cart and return to menu" title="Close cart" onclick="closeCartDialog()">×</button>
+=======
         <button class="cart-dialog-close" type="button" aria-label="Close cart and return to menu" title="Close cart" onclick="closeCartDialog()"><i data-lucide="x" aria-hidden="true"></i></button>
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
       </header>
 
       <div id="cartItems" class="cart-dialog-items"></div>
@@ -608,6 +816,18 @@
       </div>
     </section>
   </dialog>
+<<<<<<< HEAD
+
+  <script src="js/api.js"></script>
+<<<<<<< Updated upstream
+  <script src="js/choice.js?v=scheduled-reservation-slots-20261103"></script>
+=======
+  <script src="/vendor/intl-tel-input/js/intlTelInput.min.js"></script>
+  <script src="js/choice.js?v=20261105-global-notifications-3"></script>
+  <script src="js/welcome-landing.js"></script>
+  <script>if (window.lucide) lucide.createIcons();</script>
+>>>>>>> Stashed changes
+=======
   <dialog id="customerAccountDialog" class="customer-account-dialog" aria-labelledby="customerAccountDialogTitle">
     <section class="customer-account-dialog-panel">
       <header class="customer-account-dialog-header">
@@ -701,6 +921,7 @@
   <script src="/vendor/intl-tel-input/js/intlTelInput.min.js"></script>
   <script src="js/choice.js?v=20261109-customer-notification-management-2"></script>
   <script>if (window.lucide) lucide.createIcons();</script>
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 </body>
 
 </html>

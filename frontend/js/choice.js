@@ -8,6 +8,8 @@ let activeFloor = 1;
 let floorChairs = [];
 let floorTables = [];
 let selectedTableId = null;
+<<<<<<< HEAD
+=======
 let dineInHeldTableId = null;
 let reservationPhoneInput = null;
 let reservationPhoneUtilsReady = false;
@@ -40,6 +42,7 @@ let floorPlanResizeObserver = null;
 let floorPlanResizeFrame = 0;
 let floorPlanFallbackResizeHandler = null;
 let floorPlanScalingAbortController = null;
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 
 const FLOOR_PLAN_DESIGN_WIDTH = 760;
 const FLOOR_PLAN_ZOOM_LEVELS = [1, 1.25, 1.5, 1.75, 2, 2.25, 2.5];
@@ -255,7 +258,10 @@ function showChoicePanel() {
   orderType = null;
   selectedChairIds = [];
   selectedTableId = null;
+<<<<<<< HEAD
+=======
   dineInHeldTableId = null;
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   cart = [];
   reservationDetails = null;
 
@@ -292,7 +298,10 @@ function showReservationSection() {
   orderType = "reservation";
   selectedChairIds = [];
   selectedTableId = null;
+<<<<<<< HEAD
+=======
   dineInHeldTableId = null;
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   reservationDetails = null;
   updateChairSelectionUI();
   updateCartTotal();
@@ -509,10 +518,19 @@ async function continueReservationToChairs() {
 
   const date = document.getElementById("reservationDate")?.value;
   const time = document.getElementById("reservationTime")?.value;
+<<<<<<< HEAD
+  const name =
+    document.getElementById("reservationName")?.value.trim() ||
+    localStorage.getItem("full_name") ||
+    "Customer";
+  const contactInput = document.getElementById("reservationContact");
+  const localMobileNumber = contactInput?.value.trim() || "";
+=======
   const name = document.getElementById("reservationName")?.value.trim();
   const contact = reservationPhoneInput?.getNumber();
   const selectedCountry = reservationPhoneInput?.getSelectedCountry();
   const contactCountry = selectedCountry?.iso2;
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 
   if (!date || !time) {
     alert("Please select reservation date and time.");
@@ -525,6 +543,14 @@ async function continueReservationToChairs() {
     document.getElementById("reservationContact")?.focus();
     return;
   }
+
+  if (!/^9\d{9}$/.test(localMobileNumber)) {
+    alert("Enter a valid 10-digit Philippine mobile number starting with 9.");
+    contactInput?.focus();
+    return;
+  }
+
+  const contact = `+63${localMobileNumber}`;
 
   reservationDetails = {
     date,
@@ -597,7 +623,10 @@ async function chooseType(type) {
   orderType = type;
   selectedChairIds = [];
   selectedTableId = null;
+<<<<<<< HEAD
+=======
   dineInHeldTableId = null;
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   cart = [];
   updateChairSelectionUI();
   updateCartTotal();
@@ -640,6 +669,54 @@ const restaurantBlueprint = {
   ]
 };
 
+<<<<<<< HEAD
+function getChairPosition(chairCount, index) {
+  const positions = {
+    2: [
+      { x: -55, y: 0 },
+      { x: 55, y: 0 }
+    ],
+
+    4: [
+      { x: 0, y: -65 },
+      { x: 65, y: 0 },
+      { x: 0, y: 65 },
+      { x: -65, y: 0 }
+    ],
+
+    6: [
+      { x: -75, y: -40 },
+      { x: 0, y: -55 },
+      { x: 75, y: -40 },
+      { x: -75, y: 40 },
+      { x: 0, y: 55 },
+      { x: 75, y: 40 }
+    ],
+
+    8: [
+      { x: -85, y: -55 },
+      { x: -28, y: -55 },
+      { x: 28, y: -55 },
+      { x: 85, y: -55 },
+      { x: -85, y: 55 },
+      { x: -28, y: 55 },
+      { x: 28, y: 55 },
+      { x: 85, y: 55 }
+    ],
+
+    10: [
+      { x: -48, y: -65 },
+      { x: 0, y: -65 },
+      { x: 48, y: -65 },
+      { x: -48, y: 65 },
+      { x: 0, y: 65 },
+      { x: 48, y: 65 },
+      { x: -105, y: 0 },
+      { x: 105, y: 0 },
+      { x: -85, y: -65 },
+      { x: 85, y: 65 }
+    ]
+=======
 function getChairPosition(chairCount, index, shape) {
   const radiusX = shape === "rect-large" ? 112 : shape === "rect-medium" ? 100 : shape === "circle" ? 78 : 68;
   const radiusY = shape === "rect-large" ? 70 : shape === "rect-medium" ? 64 : shape === "circle" ? 78 : 48;
@@ -647,6 +724,7 @@ function getChairPosition(chairCount, index, shape) {
   return {
     x: Math.round(Math.cos(angle) * radiusX),
     y: Math.round(Math.sin(angle) * radiusY)
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   };
 }
 
@@ -655,10 +733,15 @@ async function loadFloorPlan() {
   let tables = [];
 
   try {
-    const [chairData, tableData] = await Promise.all([
-      request("/chairs"),
-      request("/tables")
-    ]);
+    const tableQuery = new URLSearchParams();
+    if (orderType === "reservation" && reservationDetails?.date && reservationDetails?.time) {
+      tableQuery.set("reservation_date", reservationDetails.date);
+      tableQuery.set("reservation_time", reservationDetails.time);
+    }
+    const tableQueryString = tableQuery.toString();
+    const tablePath = tableQueryString ? `/tables?${tableQueryString}` : "/tables";
+    const chairData = await request("/chairs");
+    const tableData = await request(tablePath);
 
     floorChairs = Array.isArray(chairData) ? chairData : [];
     floorTables = Array.isArray(tableData) ? tableData : [];
@@ -692,6 +775,22 @@ function renderFloorPlan() {
   floorPlan.dataset.floor = String(activeFloor);
   floorPlan.innerHTML = "";
 
+<<<<<<< HEAD
+  const tablesOnFloor = restaurantBlueprint.tables.filter(
+    (table) => table.floor === activeFloor
+  );
+
+  tablesOnFloor.forEach((blueprintTable) => {
+    const realTable =
+      floorTables.find((t) => Number(t.id ?? t.table_id) === Number(blueprintTable.id)) || {
+        id: blueprintTable.id,
+        table_id: blueprintTable.id,
+        table_name: `T${blueprintTable.id}`
+      };
+
+    const tableChairs = floorChairs.filter(
+      (c) => Number(c.table_id ?? c.tableId) === Number(blueprintTable.id)
+=======
   const configuredTables = [...floorTables].sort(
     (first, second) => Number(first.id ?? first.table_id) - Number(second.id ?? second.table_id)
   );
@@ -722,12 +821,18 @@ function renderFloorPlan() {
 
     const tableChairs = floorChairs.filter(
       (c) => Number(c.table_id ?? c.tableId) === realTableId
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     );
 
     const chairSource = tableChairs;
 
     const isAvailable =
       String(realTable.status || "vacant").toLowerCase() === "vacant" &&
+      chairSource.length > 0 &&
+      chairSource.every((chair) => String(chair.status || "vacant").toLowerCase() === "vacant");
+
+    const isAvailable =
+      String(realTable.effective_status || realTable.status || "vacant").toLowerCase() === "vacant" &&
       chairSource.length > 0 &&
       chairSource.every((chair) => String(chair.status || "vacant").toLowerCase() === "vacant");
 
@@ -739,6 +844,19 @@ function renderFloorPlan() {
     const tableBox = document.createElement("button");
     tableBox.type = "button";
     tableBox.className = `table-box ${blueprintTable.shape} table-select`;
+<<<<<<< HEAD
+    tableBox.dataset.tableId = blueprintTable.id;
+    tableBox.classList.toggle("selected", selectedTableId === Number(blueprintTable.id));
+    tableBox.classList.toggle("unavailable", !isAvailable);
+    tableBox.disabled = !isAvailable;
+    tableBox.setAttribute("aria-pressed", String(selectedTableId === Number(blueprintTable.id)));
+    tableBox.title = isAvailable
+      ? `Select ${realTable.table_name || realTable.name || `Table ${blueprintTable.id}`} with ${chairSource.length} seats`
+      : `${realTable.table_name || realTable.name || `Table ${blueprintTable.id}`} is unavailable`;
+    tableBox.innerHTML = `<span>${realTable.table_name || realTable.name || `Table ${blueprintTable.id}`}</span><small>${chairSource.length} seats</small>`;
+    if (isAvailable) {
+      tableBox.addEventListener("click", () => selectTable(blueprintTable, chairSource));
+=======
     tableBox.dataset.tableId = realTableId;
     tableBox.classList.toggle("selected", selectedTableId === realTableId);
     tableBox.classList.toggle("unavailable", !isAvailable);
@@ -751,6 +869,7 @@ function renderFloorPlan() {
     tableBox.innerHTML = `<span>${realTable.table_name || realTable.name || `Table ${realTableId}`}</span><small>${chairSource.length} seats</small>${occupiedLabel}`;
     if (isAvailable) {
       tableBox.addEventListener("click", () => selectTable(realTable, chairSource));
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     }
 
     tableGroup.appendChild(tableBox);
@@ -758,11 +877,24 @@ function renderFloorPlan() {
     chairSource.forEach((chair, index) => {
       const status = String(chair.status || "vacant").toLowerCase();
 
+<<<<<<< HEAD
+      const pos = getChairPosition(chairSource.length, index);
+=======
       const pos = getChairPosition(chairSource.length, index, blueprintTable.shape);
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 
       const chairEl = document.createElement("span");
       chairEl.type = "button";
       chairEl.className = `chair ${status}`;
+<<<<<<< HEAD
+      if (selectedTableId === Number(blueprintTable.id)) chairEl.classList.add("selected");
+      chairEl.textContent = `C${index + 1}`;
+      chairEl.style.left = `calc(50% + ${pos.x}px)`;
+      chairEl.style.top = `calc(50% + ${pos.y}px)`;
+      chairEl.title = `Table ${blueprintTable.id} - Chair ${index + 1}`;
+      chairEl.dataset.tableId = blueprintTable.id;
+      chairEl.setAttribute("aria-hidden", "true");
+=======
       if (selectedTableId === realTableId) chairEl.classList.add("selected");
       chairEl.textContent = chair.chair_label || `C${index + 1}`;
       chairEl.style.left = `calc(50% + ${pos.x}px)`;
@@ -771,12 +903,52 @@ function renderFloorPlan() {
       chairEl.dataset.tableId = realTableId;
       chairEl.setAttribute("aria-label", `${realTable.table_name || `Table ${realTableId}`}, chair ${chair.chair_label || index + 1}, ${status}`);
       chairEl.tabIndex = 0;
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 
       tableGroup.appendChild(chairEl);
     });
 
     floorPlan.appendChild(tableGroup);
   });
+<<<<<<< HEAD
+
+  if (!tablesOnFloor.length) {
+    floorPlan.innerHTML = `<p class="floor-empty-message">No tables are configured on Floor ${activeFloor} yet.</p>`;
+  }
+}
+
+function selectTable(table, chairs) {
+  selectedTableId = Number(table.id);
+  selectedChairIds = chairs.map((chair) => chair.id);
+  renderFloorPlan();
+  updateChairSelectionUI();
+}
+
+function updateChairSelectionUI() {
+  const selectedTable = restaurantBlueprint.tables.find(
+    (table) => Number(table.id) === Number(selectedTableId)
+  );
+  const realTable = selectedTable && floorTables.find(
+    (table) => Number(table.id ?? table.table_id) === Number(selectedTableId)
+  );
+  const selectedTableLabel = document.getElementById("selectedTableLabel");
+  const lockButton = document.getElementById("lockChairsButton");
+
+  if (selectedTableLabel) {
+    selectedTableLabel.textContent = selectedTable
+      ? `${realTable?.table_name || realTable?.name || `Table ${selectedTable.id}`} · ${selectedChairIds.length} seats`
+      : "None";
+  }
+  if (lockButton) {
+    lockButton.textContent = selectedTable
+      ? `Reserve Table ${selectedTable.id} & continue`
+      : "Select a table to continue";
+    lockButton.disabled = !selectedTable;
+  }
+}
+
+async function lockSelectedChairs() {
+=======
 
   if (!renderedTables) {
     floorPlan.innerHTML = `<p class="floor-empty-message">No restaurant tables are configured on Floor ${activeFloor}. Add tables and chairs in the database, then reload this page.</p>`;
@@ -939,6 +1111,7 @@ function updateChairSelectionUI() {
 async function lockSelectedChairs() {
   if (chairHoldInProgress) return;
 
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   if (!selectedTableId) {
     alert("Please select an available table.");
     return;
@@ -959,6 +1132,11 @@ async function lockSelectedChairs() {
   try {
     const lockedChairs = await request("/chairs/lock", {
       method: "POST",
+<<<<<<< HEAD
+      body: JSON.stringify({ tableId: selectedTableId })
+    });
+    selectedChairIds = lockedChairs.map((chair) => chair.id);
+=======
       body: JSON.stringify({ tableId: selectedTableId, orderType })
     });
     selectedChairIds = lockedChairs.map((chair) => chair.id);
@@ -970,14 +1148,21 @@ async function lockSelectedChairs() {
     dineInHeldTableId = Number(selectedTableId);
     showSection("menuSection", 3);
     await loadMenu();
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   } catch (error) {
     alert("Cannot reserve table: " + error.message);
     selectedTableId = null;
     selectedChairIds = [];
+<<<<<<< HEAD
+    updateChairSelectionUI();
+    await loadFloorPlan();
+    return;
+=======
     await loadFloorPlan();
   } finally {
     chairHoldInProgress = false;
     updateChairSelectionUI();
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   }
 }
 
@@ -1968,6 +2153,15 @@ function renderMenu(items) {
 
   menuGrid.innerHTML = filtered.map((item, index) => {
     const name = getItemName(item);
+<<<<<<< HEAD
+    // Existing catalog images use local filename mappings; admin uploads use
+    // backend-relative paths, so resolve those against the API server origin.
+    const backendOrigin = `${window.location.protocol === "https:" ? "https:" : "http:"}//${window.location.hostname || "localhost"}:3000/`;
+    const uploadedImageUrl = item.image_url
+      ? new URL(item.image_url, backendOrigin).href
+      : "";
+    const imageUrl = foodImages[name] || uploadedImageUrl || "images/menu-images/default-food.png";
+=======
     const fallbackImageUrl = foodImages[name] || "";
     const storedImageUrl = item.image_url || "";
     const staleLocalJpeg = /^\/?images\/menu-images\/.+\.jpe?g$/i.test(storedImageUrl);
@@ -1979,6 +2173,7 @@ function renderMenu(items) {
       ? `${localPngImage[1]}.webp${localPngImage[2] || ""}`
       : selectedImageUrl;
     const imageFallbackUrl = localPngImage ? selectedImageUrl : fallbackImageUrl;
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     const stock = Number(item.stock_count ?? item.stock ?? 99);
     const price = Number(item.price || 0);
     const description = getItemDescription(item);
@@ -2128,6 +2323,23 @@ function closeCartDialogOnBackdrop(event) {
   if (event.target === event.currentTarget) closeCartDialog();
 }
 
+function openCartDialog() {
+  const dialog = document.getElementById("cartDialog");
+  if (!dialog || dialog.open) return;
+  dialog.showModal();
+  document.getElementById("floatingCartButton")?.setAttribute("aria-expanded", "true");
+}
+
+function closeCartDialog() {
+  const dialog = document.getElementById("cartDialog");
+  if (dialog?.open) dialog.close();
+  document.getElementById("floatingCartButton")?.setAttribute("aria-expanded", "false");
+}
+
+function closeCartDialogOnBackdrop(event) {
+  if (event.target === event.currentTarget) closeCartDialog();
+}
+
 function openPaymentPanel() {
   if (!cart.length) {
     alert("Please add at least one item before proceeding to payment.");
@@ -2203,6 +2415,16 @@ function selectPaymentCard(input) {
   input.closest(".payment-method-card")?.classList.add("active");
 }
 
+<<<<<<< HEAD
+function confirmPaymentAndOrder() {
+  const selectedPayment =
+    document.querySelector('input[name="paymentMethod"]:checked')?.value || "GCash";
+
+  if (selectedPayment === "Cash") {
+    alert("Cash payment is no longer available. Please choose GCash or Card.");
+    return;
+  }
+=======
 function validateDineInPaymentFields() {
   const referenceInput = document.getElementById("dineInGcashReference");
   const senderInput = document.getElementById("dineInGcashSenderName");
@@ -2212,6 +2434,7 @@ function validateDineInPaymentFields() {
   const senderError = document.getElementById("dineInGcashSenderNameError");
   const referenceValid = Boolean(reference) && reference.length <= 128;
   const senderValid = Boolean(senderName) && senderName.length <= 128;
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 
   if (referenceError) {
     referenceError.textContent = referenceValid
@@ -2516,7 +2739,7 @@ function downloadQrCode() {
   document.body.removeChild(link);
 }
 
-async function placeOrder() {
+function placeOrder() {
   if (!cart.length) {
     alert("Please add at least one item.");
     return;
@@ -2539,22 +2762,37 @@ async function placeOrder() {
     ? "GCash"
     : document.querySelector('input[name="paymentMethod"]:checked')?.value || "Cash";
 
+<<<<<<< HEAD
+  // Gigamit nato ang anonymous async function module aron ma-process ang await nga walay error 🌟
+  (async () => {
+    try {
+      order = await request("/orders", {
+=======
   try {
       const order = await request("/orders", {
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
         method: "POST",
         body: JSON.stringify({
           type: orderType || (selectedChairIds.length ? "dine_in" : null),
           chairIds: selectedChairIds,
           payment_method: selectedPayment,
+<<<<<<< HEAD
+          
+          // MAP RES DETAILS APIL ARON DILI MAG-NULL SA DATABASE 🌟
+=======
           gcash_reference: isDineIn ? document.getElementById("dineInGcashReference").value.trim() : null,
           gcash_sender_name: isDineIn ? document.getElementById("dineInGcashSenderName").value.trim() : null,
           
           // Include reservation details so the database receives the selected booking.
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
           reservation_date: reservationDetails ? reservationDetails.date : null,
           reservation_time: reservationDetails ? reservationDetails.time : null,
           customer_name: reservationDetails ? reservationDetails.name : null,
           contact_number: reservationDetails ? reservationDetails.contact : null,
+<<<<<<< HEAD
+=======
           contact_country: reservationDetails ? reservationDetails.contactCountry : null,
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
           num_guests: selectedChairIds.length || 1,
 
           items: cart.map((item) => ({
@@ -2564,11 +2802,14 @@ async function placeOrder() {
         })
       });
 
+<<<<<<< HEAD
+=======
       if (isDineIn) {
         showDineInOrderPending(order);
         return;
       }
 
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
       // Human malampuson ang request, ipadayon ang UI workflow
       const receiptTitle = document.getElementById("receiptTitle");
       if (receiptTitle) {
@@ -2580,16 +2821,38 @@ async function placeOrder() {
         receiptIntro.textContent = "Show this QR code to the staff to view the official receipt.";
       }
 
+<<<<<<< HEAD
+      showSection("receiptSection", 4);
+
+      const qrBox = document.querySelector(".receipt-qr-box");
+      if (qrBox) {
+        qrBox.style.display = "block";
+=======
       showSection("receiptSection", 5);
 
       const qrBox = document.querySelector(".receipt-qr-box");
       if (qrBox) {
         qrBox.hidden = false;
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
       }
 
       const qrImage = document.getElementById("qrImage");
 
       if (order.qr_code && qrImage) {
+<<<<<<< HEAD
+        qrImage.style.display = "block";
+        qrImage.src = order.qr_code;
+        qrImage.dataset.qr = order.qr_code;
+      }
+
+      document.getElementById("thankYouMessage").textContent =
+        `Thank you for dining with Dine-Ari! Your order has been placed successfully using ${selectedPayment}. Please show the QR code to the staff to view your receipt.`;
+
+    } catch (error) {
+      alert("Cannot place order: " + error.message);
+    }
+  })();
+=======
         qrImage.hidden = false;
         qrImage.style.display = "block";
         qrImage.src = order.qr_code;
@@ -2622,19 +2885,45 @@ async function placeOrder() {
       confirmButton.textContent = originalButtonText || "Confirm Payment";
     }
   }
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 }
 
 
 document.addEventListener("DOMContentLoaded", () => {
+<<<<<<< HEAD
+=======
   initializeFloorPlanScaling();
   window.addEventListener("pageshow", (event) => {
     if (event.persisted) initializeFloorPlanScaling();
   });
 
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   const cartDialog = document.getElementById("cartDialog");
   cartDialog?.addEventListener("close", () => {
     document.getElementById("floatingCartButton")?.setAttribute("aria-expanded", "false");
   });
+<<<<<<< HEAD
+
+  updateCartTotal();
+
+  setInterval(() => {
+    const floorSection = document.getElementById("floorSection");
+    if (floorSection && floorSection.style.display !== "none") {
+      loadFloorPlan();
+    }
+  }, 5000);
+
+  if (
+    !localStorage.getItem("token") &&
+    !localStorage.getItem("dinequeue_token") &&
+    !location.pathname.includes("index.html")
+  ) {
+    console.warn("No token found. If auth redirects are handled by api.js, ignore this warning.");
+  }
+
+  showChoicePanel();
+});
+=======
   document.getElementById("customerAuthMenuButton")?.addEventListener("click", (event) => {
     const button = event.currentTarget;
     const shouldOpen = button.getAttribute("aria-expanded") !== "true";
@@ -2788,3 +3077,4 @@ document.addEventListener("DOMContentLoaded", () => {
     void chooseType("dine_in");
   }
 });
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50

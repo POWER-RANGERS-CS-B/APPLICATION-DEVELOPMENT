@@ -1,4 +1,6 @@
 const API_BASE = `${window.location.origin}/api`;
+<<<<<<< HEAD
+=======
 
 function formatCurrency(value) {
     const amount = Number(value);
@@ -136,6 +138,7 @@ function renderReceipt(receipt, container) {
 
     container.replaceChildren(receiptElement);
 }
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 
 async function loadReceipt() {
     const params = new URLSearchParams(window.location.search);

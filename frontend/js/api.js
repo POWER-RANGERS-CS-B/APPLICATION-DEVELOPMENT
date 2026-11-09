@@ -118,10 +118,13 @@ async function logoutTo(destination) {
   }
 }
 
+<<<<<<< HEAD
+=======
 function logout() {
   void logoutTo("index.html");
 }
 
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 function togglePasswordVisibility(inputId, toggleButton) {
   const passwordInput = document.getElementById(inputId);
 
@@ -132,6 +135,8 @@ function togglePasswordVisibility(inputId, toggleButton) {
   toggleButton.setAttribute("aria-label", isVisible ? "Show password" : "Hide password");
   toggleButton.setAttribute("aria-pressed", String(!isVisible));
 
+<<<<<<< HEAD
+=======
   const icon = toggleButton.querySelector("svg");
   if (icon && window.lucide) {
     icon.outerHTML = `<i data-lucide="${isVisible ? "eye" : "eye-off"}" aria-hidden="true"></i>`;
@@ -139,6 +144,7 @@ function togglePasswordVisibility(inputId, toggleButton) {
     return;
   }
 
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   const svg = toggleButton.querySelector("svg");
   if (svg) {
     if (isVisible) {

@@ -19,3 +19,16 @@ function switchLoginFolder(accountType) {
   inactiveTab.classList.remove("active");
   inactiveTab.setAttribute("aria-selected", "false");
 }
+<<<<<<< HEAD
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || !event.target.matches("input")) return;
+
+  const panel = event.target.closest(".login-folder-panel");
+  if (!panel) return;
+
+  event.preventDefault();
+  login(panel.id === "staffPanel" ? "staff" : "admin");
+});
+=======
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50

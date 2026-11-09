@@ -118,6 +118,10 @@ exports.create = async ({
       throw new Error("Selected chair does not exist.");
     }
 
+<<<<<<< HEAD
+    // Serialize bookings for this table while checking the requested date/time.
+=======
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     const tableStateResult = await client.query(
       `SELECT id, status
        FROM restaurant.restaurant_tables
@@ -126,6 +130,30 @@ exports.create = async ({
       [tableId]
     );
 
+<<<<<<< HEAD
+    if (!tableStateResult.rows[0] || tableStateResult.rows[0].status !== "reserved") {
+      throw new Error("The selected table is no longer available. Please choose another table.");
+    }
+
+    const conflictingReservation = await client.query(
+      `SELECT id
+       FROM restaurant.reservations
+       WHERE table_id = $1
+         AND deleted_at IS NULL
+         AND status IN ('active', 'confirmed', 'checked_in')
+         AND reservation_date = $2::date
+         AND reservation_time = $3::time
+       LIMIT 1`,
+      [tableId, reservationDate, reservationTime]
+    );
+
+    if (conflictingReservation.rowCount) {
+      throw new Error("That table is already reserved for this date and time. Please choose another table or time.");
+    }
+
+    const tableChairsResult = await client.query(
+      `SELECT id, status, (locked_until > NOW()) AS hold_active
+=======
     if (!tableStateResult.rows[0]) {
       throw new Error("The selected table is no longer available. Please choose another table.");
     }
@@ -141,6 +169,7 @@ exports.create = async ({
 
     const tableChairsResult = await client.query(
       `SELECT id, status
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
        FROM restaurant.chairs
        WHERE table_id = $1 AND deleted_at IS NULL
        ORDER BY id
@@ -150,7 +179,11 @@ exports.create = async ({
 
     const requestedChairIds = [...new Set(chairIds.map(Number))].sort((a, b) => a - b);
     const activeTableChairIds = tableChairsResult.rows.map((chair) => Number(chair.id)).sort((a, b) => a - b);
+<<<<<<< HEAD
+    
+=======
 
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     const ownsWholeTable =
       requestedChairIds.length === activeTableChairIds.length &&
       requestedChairIds.every((id, index) => id === activeTableChairIds[index]);
@@ -159,6 +192,35 @@ exports.create = async ({
       throw new Error("Your table hold expired or is no longer available. Please choose a table again.");
     }
 
+<<<<<<< HEAD
+    if (tableChairsResult.rows.some((chair) => chair.status !== "reserved" || !chair.hold_active)) {
+      throw new Error("Your table hold expired or is no longer available. Please choose a table again.");
+    }
+
+    const reservationResult = await client.query(
+      `INSERT INTO restaurant.reservations
+       (
+         user_id,
+         table_id,
+         num_guests,
+         status,
+         reservation_date,
+         reservation_time,
+         customer_name,
+         contact_number
+       )
+       VALUES ($1, $2, $3, 'confirmed', $4, $5, $6, $7)
+       RETURNING *`,
+      [
+        userId,
+        tableId,
+        numGuests || chairIds.length,
+        reservationDate,
+        reservationTime,
+        customerName || "Customer",
+        contactNumber || "N/A",
+      ]
+=======
     const columns = await getReservationColumns();
     if (
       paymentMethod === "GCash" &&
@@ -232,11 +294,16 @@ exports.create = async ({
     const reservationResult = await client.query(
       `INSERT INTO restaurant.reservations (${insertFields.join(", ")}) VALUES (${placeholders}) RETURNING *`,
       insertValues
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     );
 
     await client.query(
       `UPDATE restaurant.chairs
+<<<<<<< HEAD
+       SET status = 'vacant',
+=======
        SET status = 'occupied',
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
            locked_until = NULL,
            updated_at = NOW()
        WHERE table_id = $1 AND deleted_at IS NULL`,
@@ -245,9 +312,14 @@ exports.create = async ({
 
     await client.query(
       `UPDATE restaurant.restaurant_tables
+<<<<<<< HEAD
+       SET status = 'vacant', updated_at = NOW()
+       WHERE id = $1 AND status = 'reserved'`,
+=======
        SET status = 'occupied',
            updated_at = NOW()
        WHERE id = $1`,
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
       [tableId]
     );
 
@@ -717,12 +789,126 @@ exports.findAll = async () => {
      LEFT JOIN restaurant.users u ON u.id = r.user_id
      LEFT JOIN restaurant.restaurant_tables rt ON rt.id = r.table_id
      WHERE r.deleted_at IS NULL
-     ORDER BY r.created_at DESC`
+     ORDER BY r.reservation_date ASC, r.reservation_time ASC, r.created_at DESC`
   );
 
   return result.rows;
 };
 
+<<<<<<< HEAD
+exports.updateStatus = async (reservationId, status) => {
+  if (!Number.isSafeInteger(Number(reservationId)) || Number(reservationId) <= 0) {
+    throw new Error("A valid reservation ID is required.");
+  }
+  if (!["checked_in", "cancelled", "completed"].includes(status)) {
+    throw new Error("Invalid reservation status.");
+  }
+
+  const client = await db.connect();
+  try {
+    await client.query("BEGIN");
+
+    const reservationResult = await client.query(
+      `SELECT id, table_id, status
+       FROM restaurant.reservations
+       WHERE id = $1 AND deleted_at IS NULL
+       FOR UPDATE`,
+      [Number(reservationId)]
+    );
+    const reservation = reservationResult.rows[0];
+    if (!reservation) throw new Error("Reservation not found.");
+
+    const currentStatus = String(reservation.status).toLowerCase();
+    const openStatuses = ["active", "confirmed", "checked_in"];
+    if (!openStatuses.includes(currentStatus)) {
+      throw new Error("This reservation has already been closed.");
+    }
+
+    if (status === "checked_in") {
+      if (currentStatus === "checked_in") {
+        await client.query("COMMIT");
+        return { ...reservation, status: "checked_in" };
+      }
+
+      const tableResult = await client.query(
+        `UPDATE restaurant.restaurant_tables
+         SET status = 'occupied', updated_at = NOW()
+         WHERE id = $1 AND deleted_at IS NULL AND status = 'vacant'
+         RETURNING id`,
+        [reservation.table_id]
+      );
+      if (!tableResult.rowCount) {
+        throw new Error("This table is currently occupied. It cannot be checked in yet.");
+      }
+
+      await client.query(
+        `UPDATE restaurant.chairs
+         SET status = 'occupied', locked_until = NULL, updated_at = NOW()
+         WHERE table_id = $1 AND deleted_at IS NULL`,
+        [reservation.table_id]
+      );
+    }
+
+    if (status === "completed" || status === "cancelled") {
+      if (currentStatus === "checked_in") {
+        if (status === "cancelled") {
+          throw new Error("A checked-in guest must be marked completed after their visit.");
+        }
+
+        const openOrder = await client.query(
+          `SELECT id
+           FROM restaurant.orders
+           WHERE reservation_id = $1
+             AND deleted_at IS NULL
+             AND status <> 'completed'
+           LIMIT 1`,
+          [Number(reservationId)]
+        );
+        if (openOrder.rowCount) {
+          throw new Error("Complete the linked food order before completing this reservation.");
+        }
+
+        await client.query(
+          `UPDATE restaurant.chairs
+           SET status = 'vacant', locked_until = NULL, updated_at = NOW()
+           WHERE table_id = $1 AND deleted_at IS NULL`,
+          [reservation.table_id]
+        );
+        await client.query(
+          `UPDATE restaurant.restaurant_tables
+           SET status = 'vacant', updated_at = NOW()
+           WHERE id = $1 AND deleted_at IS NULL`,
+          [reservation.table_id]
+        );
+      }
+    }
+
+    if (status === "cancelled") {
+      await client.query(
+        `UPDATE restaurant.chairs
+         SET status = 'vacant', locked_until = NULL, updated_at = NOW()
+         WHERE table_id = $1 AND deleted_at IS NULL`,
+        [reservation.table_id]
+      );
+      await client.query(
+        `UPDATE restaurant.restaurant_tables
+         SET status = 'vacant', updated_at = NOW()
+         WHERE id = $1 AND deleted_at IS NULL`,
+        [reservation.table_id]
+      );
+    }
+
+    const updated = await client.query(
+      `UPDATE restaurant.reservations
+       SET status = $2, updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [Number(reservationId), status]
+    );
+
+    await client.query("COMMIT");
+    return updated.rows[0];
+=======
 exports.archiveHistoricalReservation = async (reservationId, { actorId, actorName } = {}) => {
   const id = parseReservationId(reservationId);
   const historicalStatuses = ["completed", "cancelled", "canceled", "rejected"];
@@ -778,6 +964,7 @@ exports.archiveHistoricalReservation = async (reservationId, { actorId, actorNam
 
     await client.query("COMMIT");
     return archivedResult.rows[0];
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
@@ -785,6 +972,8 @@ exports.archiveHistoricalReservation = async (reservationId, { actorId, actorNam
     client.release();
   }
 };
+<<<<<<< HEAD
+=======
 
 exports.findForecastHistory = async (asOf) => {
   const result = await db.query(
@@ -805,3 +994,4 @@ exports.findForecastHistory = async (asOf) => {
 
   return result.rows;
 };
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
