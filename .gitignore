@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 .env
 .env.*
 !.env.example
@@ -5,3 +6,25 @@ node_modules/
 dist/
 coverage/
 *.log
+=======
+# Secrets and local environment files
+.env
+.env.*
+!.env.example
+
+# Node.js dependencies
+node_modules/
+backend/node_modules/
+
+# Logs
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+
+.venv/
+.venv-win/
+
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50

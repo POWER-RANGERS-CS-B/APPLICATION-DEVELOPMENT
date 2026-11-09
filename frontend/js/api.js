@@ -1,9 +1,30 @@
-const API_BASE = `${window.location.protocol}//${window.location.hostname}:3000/api`;
+const API_BASE = `${window.location.origin}/api`;
 
 function getToken() {
   const token = localStorage.getItem("token");
   if (!token || token === "undefined" || token === "null") return "";
   return token;
+}
+
+function redirectForAuthorizationFailure(status) {
+  const pathname = window.location.pathname;
+  const isAdminDashboard = pathname.endsWith("/admin-dashboard.html");
+  const isStaffDashboard = pathname.endsWith("/staff-kds.html");
+  const isCustomerPage = pathname.endsWith("/choice.html") || pathname === "/";
+
+  if (status === 401) {
+    if (isAdminDashboard || isStaffDashboard) {
+      window.location.replace("/login.html");
+    } else if (isCustomerPage) {
+      const flow = new URLSearchParams(window.location.search).get("flow");
+      const returnFlow = flow === "dine_in" ? "?flow=dine_in" : "";
+      window.location.replace(`/customer-auth.html${returnFlow}#login`);
+    }
+  } else if (status === 403 && isAdminDashboard) {
+    window.location.replace("/choice.html");
+  } else if (status === 403 && isStaffDashboard) {
+    window.location.replace("/login.html");
+  }
 }
 
 async function apiRequest(path, options = {}) {
@@ -27,7 +48,7 @@ async function apiRequest(path, options = {}) {
     });
   } catch (error) {
     throw new Error(
-      "Cannot connect to backend. Make sure your server is running at http://localhost:3000"
+      `Cannot connect to backend at ${API_BASE}. Make sure the server is running.`
     );
   }
 
@@ -41,9 +62,13 @@ async function apiRequest(path, options = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(
+    redirectForAuthorizationFailure(response.status);
+    const error = new Error(
       data?.message || `Request failed with status ${response.status}`
     );
+    error.status = response.status;
+    error.responseData = data;
+    throw error;
   }
 
   return data;
@@ -71,19 +96,35 @@ function saveSession(data) {
   }
 
   localStorage.setItem("user", JSON.stringify(user));
-  localStorage.setItem("role", user.role || "customer");
+  localStorage.setItem("role", user.role || "");
   localStorage.setItem("user_id", user.id || user.user_id || "");
-  localStorage.setItem("full_name", user.fullName || user.full_name || user.name || "Customer");
+  localStorage.setItem("full_name", user.fullName || user.full_name || user.name || "");
   localStorage.setItem("email", user.email || "");
 
   return user;
 }
 
-function logout() {
-  localStorage.clear();
-  location.href = "index.html";
+async function logoutTo(destination) {
+  try {
+    if (getToken()) {
+      await apiRequest("/auth/logout", { method: "POST" });
+    }
+  } catch {
+    console.error("Logout audit event could not be confirmed.");
+  } finally {
+    localStorage.clear();
+    sessionStorage.clear();
+    location.href = destination;
+  }
 }
 
+<<<<<<< HEAD
+=======
+function logout() {
+  void logoutTo("index.html");
+}
+
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 function togglePasswordVisibility(inputId, toggleButton) {
   const passwordInput = document.getElementById(inputId);
 
@@ -94,6 +135,16 @@ function togglePasswordVisibility(inputId, toggleButton) {
   toggleButton.setAttribute("aria-label", isVisible ? "Show password" : "Hide password");
   toggleButton.setAttribute("aria-pressed", String(!isVisible));
 
+<<<<<<< HEAD
+=======
+  const icon = toggleButton.querySelector("svg");
+  if (icon && window.lucide) {
+    icon.outerHTML = `<i data-lucide="${isVisible ? "eye" : "eye-off"}" aria-hidden="true"></i>`;
+    window.lucide.createIcons();
+    return;
+  }
+
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   const svg = toggleButton.querySelector("svg");
   if (svg) {
     if (isVisible) {

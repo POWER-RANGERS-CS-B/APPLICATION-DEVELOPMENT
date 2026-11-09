@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+<<<<<<< HEAD
   <script src="js/transitions.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -92,14 +93,123 @@
           </div>
 
           <a class="back-home-link" href="/">Back to Dine-Ari home</a>
+=======
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="/images/icon/dineari-logo.ico" type="image/x-icon" />
+  <link rel="preload" as="image" href="images/backgrounds/restaurant-bg.webp" type="image/webp" fetchpriority="high" />
+  <script src="js/transitions.js"></script>
+  <title>Dine-Ari Staff Login</title>
+  <script src="js/theme.js?v=20261104-day-night-switch-2"></script>
+  <link rel="stylesheet" href="css/style.css?v=20261105-global-notifications-3" />
+  <link rel="stylesheet" href="css/design-system.css?v=20261106-cool-input-5" />
+  <script src="/vendor/lucide/lucide.min.js?v=1.67.0"></script>
+</head>
+
+<body class="staff-login-page">
+  <main class="page center-page">
+    <section class="auth-shell">
+      <div class="auth-brand" aria-hidden="true"></div>
+      <div class="auth-main">
+        <section class="auth-card login-folders" aria-label="Staff and administrator sign in">
+          <picture class="system-logo-picture">
+            <source srcset="images/Logo/dineari-logo.webp" type="image/webp" />
+            <img class="system-logo system-logo-login" src="images/Logo/Dine-ari%20Chef%E2%80%99s%20Table%20Logo.png" alt="Dine-Ari Chef’s Table" width="1536" height="1024" decoding="async" />
+          </picture>
+          <p class="login-welcome">Welcome back</p>
+          <p class="login-intro">Sign in with your assigned account credentials.</p>
+
+          <div class="login-folder-tabs" role="tablist" aria-label="Account type">
+            <button class="login-folder-tab active" id="staffTab" type="button" role="tab" aria-selected="true" aria-controls="staffPanel" onfocus="switchLoginFolder('staff')" onclick="switchLoginFolder('staff')">
+              <i data-lucide="user-round" aria-hidden="true"></i> Staff
+            </button>
+            <button class="login-folder-tab" id="adminTab" type="button" role="tab" aria-selected="false" aria-controls="adminPanel" onfocus="switchLoginFolder('admin')" onclick="switchLoginFolder('admin')">
+              <i data-lucide="shield-check" aria-hidden="true"></i> Admin
+            </button>
+          </div>
+
+          <div class="login-folder-panel active" id="staffPanel" role="tabpanel" aria-labelledby="staffTab">
+            <h1 class="logo-title">Staff Login</h1>
+            <p class="login-panel-description">Access your Dine-Ari staff workspace.</p>
+            <form class="login-form" onsubmit="event.preventDefault(); login('staff')">
+              <div class="coolinput">
+                <label class="text" for="staffEmail">Email address</label>
+                <div class="login-input-wrap">
+                  <i data-lucide="mail" aria-hidden="true"></i>
+                  <input class="form-field-control" id="staffEmail" type="email" placeholder="name@restaurant.com" autocomplete="username" required />
+                </div>
+              </div>
+              <div class="coolinput">
+                <label class="text" for="staffPassword">Password</label>
+                <div class="password-field login-input-wrap">
+                  <i data-lucide="lock-keyhole" aria-hidden="true"></i>
+                  <input class="form-field-control" id="staffPassword" type="password" placeholder="Enter your password" autocomplete="current-password" required />
+                  <button
+                    class="password-toggle"
+                    type="button"
+                    aria-label="Show password"
+                    aria-pressed="false"
+                    onclick="togglePasswordVisibility('staffPassword', this)"
+                  >
+                    <i data-lucide="eye" aria-hidden="true"></i>
+                  </button>
+                </div>
+              </div>
+              <button class="login-submit" id="staffLoginButton" type="submit">Sign In</button>
+              <p id="staffAuthMessage" class="login-auth-message" role="status" aria-live="polite"></p>
+            </form>
+          </div>
+
+          <div class="login-folder-panel" id="adminPanel" role="tabpanel" aria-labelledby="adminTab" aria-hidden="true" inert>
+            <h1 class="logo-title">Admin Login</h1>
+            <p class="login-panel-description">Access your Dine-Ari administration workspace.</p>
+            <form class="login-form" onsubmit="event.preventDefault(); login('admin')">
+              <div class="coolinput">
+                <label class="text" for="adminEmail">Email address</label>
+                <div class="login-input-wrap">
+                  <i data-lucide="mail" aria-hidden="true"></i>
+                  <input class="form-field-control" id="adminEmail" type="email" placeholder="name@restaurant.com" autocomplete="username" required />
+                </div>
+              </div>
+              <div class="coolinput">
+                <label class="text" for="adminPassword">Password</label>
+                <div class="password-field login-input-wrap">
+                  <i data-lucide="lock-keyhole" aria-hidden="true"></i>
+                  <input class="form-field-control" id="adminPassword" type="password" placeholder="Enter your password" autocomplete="current-password" required />
+                  <button
+                    class="password-toggle"
+                    type="button"
+                    aria-label="Show password"
+                    aria-pressed="false"
+                    onclick="togglePasswordVisibility('adminPassword', this)"
+                  >
+                    <i data-lucide="eye" aria-hidden="true"></i>
+                  </button>
+                </div>
+              </div>
+              <button class="login-submit" id="adminLoginButton" type="submit">Sign In</button>
+              <p id="adminAuthMessage" class="login-auth-message" role="status" aria-live="polite"></p>
+            </form>
+          </div>
+
+          <a class="back-home-link" href="/choice.html">Back to Customer Order Flow</a>
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
         </section>
       </div>
     </section>
   </main>
 
+<<<<<<< HEAD
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/login-folders.js"></script>
+=======
+  <script src="js/notifications.js?v=20261105-global-notifications-5"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/login-folders.js"></script>
+  <script>if (window.lucide) lucide.createIcons();</script>
+>>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 </body>
 
 </html>
