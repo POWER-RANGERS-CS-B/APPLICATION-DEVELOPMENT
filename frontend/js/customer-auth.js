@@ -4,6 +4,7 @@ const customerPhoneError = document.getElementById("customerContactNumberError")
 const googleIdentityScriptUrl = "https://accounts.google.com/gsi/client?hl=en";
 let googleIdentityInitPromise = null;
 let googleIdentityInitialized = false;
+let googleTokenClient = null;
 let googleAuthPending = false;
 let googleAuthIntent = null;
 let googleThemeListenerRegistered = false;
@@ -20,14 +21,14 @@ function setGoogleAuthMessage(sectionId, message, isError = false) {
 }
 
 function setGoogleAuthBusy(isBusy) {
-  document.querySelectorAll(".customer-google-button-slot").forEach((slot) => {
-    slot.classList.toggle("is-loading", isBusy);
-    slot.setAttribute("aria-busy", String(isBusy));
+  document.querySelectorAll(".customer-google-button").forEach((button) => {
+    button.disabled = isBusy;
+    button.setAttribute("aria-busy", String(isBusy));
   });
 }
 
 function loadGoogleIdentityServices() {
-  if (window.google?.accounts?.id) return Promise.resolve();
+  if (window.google?.accounts?.oauth2) return Promise.resolve();
 
   const existingScript = document.querySelector(`script[src="${googleIdentityScriptUrl}"]`);
   const script = existingScript || document.createElement("script");
@@ -49,68 +50,59 @@ function loadGoogleIdentityServices() {
 }
 
 function renderGoogleAuthButtons() {
-  if (!googleIdentityInitialized || !window.google?.accounts?.id) return;
-
-  const isDarkTheme = document.documentElement.dataset.theme === "dark";
-  const buttonTheme = isDarkTheme ? "filled_black" : "outline";
-  [
-    { id: "customerGoogleLoginButton", section: "Login" },
-    { id: "customerGoogleSignupButton", section: "Signup" },
-  ].forEach(({ id, section }) => {
-    const slot = document.getElementById(id);
-    if (!slot || slot.closest("[hidden]")) return;
-    if (
-      slot.dataset.googleButtonRendered === "true" &&
-      slot.dataset.googleButtonTheme === buttonTheme
-    ) return;
-
-    const width = Math.floor(slot.getBoundingClientRect().width);
-    if (width < 1) return;
-
-    slot.replaceChildren();
-    window.google.accounts.id.renderButton(slot, {
-      type: "standard",
-      theme: buttonTheme,
-      size: "large",
-      shape: "rectangular",
-      text: "continue_with",
-      locale: "en",
-      logo_alignment: "center",
-      width: Math.min(width, 400),
-    });
-    if (slot.dataset.googleIntentListeners !== "true") {
-      const intent = section.toLowerCase();
-      const rememberIntent = () => {
-        googleAuthIntent = intent;
-      };
-      slot.addEventListener("pointerdown", rememberIntent);
-      slot.addEventListener("click", rememberIntent);
-      slot.dataset.googleIntentListeners = "true";
-    }
-    slot.dataset.googleButtonRendered = "true";
+  const buttonTheme = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+  document.querySelectorAll(".customer-google-button-slot").forEach((slot) => {
     slot.dataset.googleButtonTheme = buttonTheme;
-    setGoogleAuthMessage(section, "");
   });
 }
 
-function handleGoogleCredential(response) {
-  if (googleAuthPending) return;
-  const activeSection = document.querySelector(".customer-auth-section:not([hidden])");
-  const isSignup = (googleAuthIntent || activeSection?.id) === "signup";
+function handleGoogleAuthError(error) {
+  const intent = googleAuthIntent;
   googleAuthIntent = null;
-  const sectionName = isSignup ? "Signup" : "Login";
-  const message = isSignup
+  googleAuthPending = false;
+  setGoogleAuthBusy(false);
+  if (intent) {
+    const sectionName = intent === "signup" ? "Signup" : "Login";
+    const reason = error?.reason ? ` (${error.reason})` : "";
+    const userCancelled = ["cancelled", "popup_closed"].includes(error?.type) ||
+      (error?.type === "skipped" && ["user_cancel", "tap_outside"].includes(error.reason));
+    const message = userCancelled
+      ? "Google sign-in was cancelled."
+      : error?.type === "popup_failed_to_open"
+        ? "Google sign-in popup was blocked. Allow popups for this site and try again."
+        : `Google sign-in could not be opened${reason}. Check the browser console and the OAuth client's authorized origin.`;
+    setGoogleAuthMessage(sectionName, message, !userCancelled);
+  }
+}
+
+function handleGoogleTokenResponse(response) {
+  const intent = googleAuthIntent;
+  googleAuthIntent = null;
+  if (!intent) {
+    googleAuthPending = false;
+    setGoogleAuthBusy(false);
+    return;
+  }
+
+  const sectionName = intent === "signup" ? "Signup" : "Login";
+  if (response.error || typeof response.access_token !== "string" || !response.access_token) {
+    googleAuthPending = false;
+    setGoogleAuthBusy(false);
+    setGoogleAuthMessage(sectionName, "Google sign-in was not completed. Please try again.", true);
+    return;
+  }
+
+  const message = intent === "signup"
     ? "Creating your account with Google..."
     : "Signing in with Google...";
-  googleAuthPending = true;
-  setGoogleAuthBusy(true);
   setGoogleAuthMessage(sectionName, message);
 
   apiRequest("/auth/google", {
     method: "POST",
+    headers: { "X-Requested-With": "XmlHttpRequest" },
     body: JSON.stringify({
-      credential: response.credential,
-      intent: isSignup ? "signup" : "login",
+      accessToken: response.access_token,
+      intent,
     }),
   })
     .then((data) => {
@@ -119,13 +111,38 @@ function handleGoogleCredential(response) {
       window.location.replace(getCustomerPostAuthUrl());
     })
     .catch((error) => {
-      const fallback = isSignup
+      const fallback = intent === "signup"
         ? "Google sign-up failed. Please try again or use the registration form."
         : "Google sign-in failed. Please try again or use your email and password.";
       setGoogleAuthMessage(sectionName, error.message || fallback, true);
       googleAuthPending = false;
       setGoogleAuthBusy(false);
     });
+}
+
+function startGoogleAuth(intent) {
+  if (googleAuthPending) return;
+  if (!googleIdentityInitialized || !googleTokenClient) {
+    setGoogleAuthMessage(
+      intent === "signup" ? "Signup" : "Login",
+      "Google sign-in did not initialize. Check the diagnostic message above and try reloading.",
+      true
+    );
+    return;
+  }
+
+  googleAuthIntent = intent;
+  googleAuthPending = true;
+  setGoogleAuthBusy(true);
+  setGoogleAuthMessage(
+    intent === "signup" ? "Signup" : "Login",
+    "Waiting for Google account selection..."
+  );
+  try {
+    googleTokenClient.requestAccessToken({ prompt: "select_account" });
+  } catch (error) {
+    handleGoogleAuthError({ type: "prompt_error", reason: error.message });
+  }
 }
 
 function initializeGoogleAuth() {
@@ -136,36 +153,50 @@ function initializeGoogleAuth() {
     const signupMessage = "Signup";
     setGoogleAuthMessage(loginMessage, "Loading Google sign-in...");
     setGoogleAuthMessage(signupMessage, "Loading Google sign-up...");
+    renderGoogleAuthButtons();
+    if (!googleThemeListenerRegistered) {
+      window.addEventListener("dineari:themechange", renderGoogleAuthButtons);
+      googleThemeListenerRegistered = true;
+    }
+    document.querySelectorAll(".customer-google-button").forEach((button) => {
+      if (button.dataset.googleHandlerRegistered === "true") return;
+      button.addEventListener("click", () => startGoogleAuth(button.dataset.googleIntent));
+      button.dataset.googleHandlerRegistered = "true";
+    });
 
     try {
       const config = await apiRequest("/auth/google/client-id");
-      if (typeof config?.clientId !== "string" || !config.clientId.trim()) {
-        throw new Error("Google sign-in is not configured. Please use email and password for now.");
+      if (
+        typeof config?.clientId !== "string" ||
+        !config.clientId.trim() ||
+        config.enabled === false
+      ) {
+        throw new Error("Google sign-in is not configured. Set GOOGLE_CLIENT_ID in the backend environment.");
       }
 
       await loadGoogleIdentityServices();
       if (!googleIdentityInitialized) {
-        window.google.accounts.id.initialize({
+        if (!window.google?.accounts?.oauth2) {
+          throw new Error("Google Identity Services loaded without the OAuth API. Check the browser console and network access.");
+        }
+        googleTokenClient = window.google.accounts.oauth2.initTokenClient({
           client_id: config.clientId,
-          callback: handleGoogleCredential,
-          auto_select: false,
-          button_auto_select: false,
-          use_fedcm_for_button: false,
+          scope: "openid email profile",
+          callback: handleGoogleTokenResponse,
+          error_callback: handleGoogleAuthError,
         });
         googleIdentityInitialized = true;
       }
-      renderGoogleAuthButtons();
-      if (!googleThemeListenerRegistered) {
-        window.addEventListener("dineari:themechange", renderGoogleAuthButtons);
-        googleThemeListenerRegistered = true;
-      }
-      if (!document.querySelector(".customer-google-button-slot[data-google-button-rendered='true']")) {
+      if (!document.querySelector(".customer-google-button")) {
         throw new Error("Google sign-in buttons could not be displayed. Please reload and try again.");
       }
+      setGoogleAuthMessage(loginMessage, "");
+      setGoogleAuthMessage(signupMessage, "");
     } catch (error) {
       const message = error.message || "Google sign-in is unavailable. Please use email and password.";
       setGoogleAuthMessage(loginMessage, message, true);
       setGoogleAuthMessage(signupMessage, message, true);
+      console.error("Google Identity Services initialization failed.", error);
       throw error;
     }
   })();

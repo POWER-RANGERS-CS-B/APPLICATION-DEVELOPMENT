@@ -9005,40 +9005,71 @@ body.customer-auth-page .customer-auth-divider::after {
 }
 
 body.customer-auth-page .customer-google-button-slot {
-  position: relative;
+  width: 100%;
+}
+
+body.customer-auth-page .customer-google-button {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 12px;
   width: 100%;
+  min-width: 0;
   min-height: 44px;
+  margin: 0;
+  padding: 10px 16px;
+  border: 1px solid #d5d0ca;
   border-radius: 9px;
-  background: var(--surface-color);
-  color: var(--text-primary);
-  transition: box-shadow .18s ease, transform .18s ease, opacity .18s ease;
+  color: #24211f;
+  background: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.25;
+  cursor: pointer;
+  transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease, opacity .18s ease;
 }
 
-body.customer-auth-page .customer-google-button-slot iframe {
-  max-width: 100%;
-}
-
-body.customer-auth-page .customer-google-button-slot:hover:not(.is-loading) {
-  box-shadow: 0 3px 12px color-mix(in srgb, var(--text-primary) 12%, transparent);
+body.customer-auth-page .customer-google-button:hover:not(:disabled) {
+  border-color: #b7afa6;
+  background: #f8f7f5;
+  box-shadow: 0 3px 12px color-mix(in srgb, #24211f 12%, transparent);
   transform: translateY(-1px);
 }
 
-body.customer-auth-page .customer-google-button-slot:focus-within {
+body.customer-auth-page .customer-google-button:focus-visible {
   outline: 2px solid var(--accent-color);
   outline-offset: 3px;
 }
 
-body.customer-auth-page .customer-google-button-slot:active:not(.is-loading) {
+body.customer-auth-page .customer-google-button:active:not(:disabled) {
   box-shadow: none;
   transform: translateY(0);
 }
 
-body.customer-auth-page .customer-google-button-slot.is-loading {
+body.customer-auth-page .customer-google-button:disabled {
   opacity: .62;
   pointer-events: none;
+}
+
+:root[data-theme="dark"] body.customer-auth-page .customer-google-button {
+  border-color: color-mix(in srgb, var(--accent-color) 25%, #242424);
+  color: #fff;
+  background: #242424;
+}
+
+:root[data-theme="dark"] body.customer-auth-page .customer-google-button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent-color) 42%, #303030);
+  background: #303030;
+  box-shadow: 0 3px 12px rgb(0 0 0 / 24%);
+}
+
+body.customer-auth-page .customer-google-logo {
+  display: block;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  background: transparent;
 }
 
 body.customer-auth-page .customer-google-auth-message {

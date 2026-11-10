@@ -9,33 +9,104 @@ const authModel = require("../models/authModel");
 const auditService = require("../services/auditService");
 const { isValidEmailDomain } = require("../utils/emailValidation");
 const { parsePhoneNumberFromString } = require("libphonenumber-js/max");
-const googleOAuthClient = new OAuth2Client();
 
 exports.googleClientConfig = (_req, res) => {
-  res.set("Cache-Control", "no-store").json({ clientId: process.env.GOOGLE_CLIENT_ID || "" });
+  const clientId = process.env.GOOGLE_CLIENT_ID?.trim() || "";
+  res.set("Cache-Control", "no-store").json({
+    clientId,
+    enabled: Boolean(clientId),
+  });
 };
 
 exports.googleAuth = async (req, res) => {
   const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
-  const credential = typeof req.body?.credential === "string" ? req.body.credential : "";
+  const accessToken = typeof req.body?.accessToken === "string" ? req.body.accessToken : "";
   const intent = req.body?.intent;
 
   if (!clientId) {
     return res.status(503).json({ message: "Google sign-in is not configured. Please use email and password." });
   }
-  if (!credential || !["login", "signup"].includes(intent)) {
-    return res.status(400).json({ message: "A valid Google credential and authentication intent are required." });
+  if (!accessToken || accessToken.length > 8192 || !["login", "signup"].includes(intent)) {
+    return res.status(400).json({ message: "A valid Google access token and authentication intent are required." });
+  }
+  if (req.get("x-requested-with") !== "XmlHttpRequest") {
+    return res.status(400).json({ message: "Google sign-in request could not be verified." });
+  }
+
+  const origin = req.get("origin");
+  let originUrl;
+  try {
+    originUrl = new URL(origin);
+  } catch {
+    return res.status(400).json({ message: "Google sign-in origin could not be verified." });
+  }
+  if (
+    originUrl.origin !== origin ||
+    originUrl.host !== req.get("host") ||
+    (process.env.NODE_ENV === "production" && originUrl.protocol !== "https:")
+  ) {
+    return res.status(400).json({ message: "Google sign-in origin could not be verified." });
   }
 
   let googleUser;
+  let verificationStep = "token_info";
   try {
-    const ticket = await googleOAuthClient.verifyIdToken({
-      idToken: credential,
-      audience: clientId,
+    const googleOAuthClient = new OAuth2Client(clientId);
+    const tokenInfo = await googleOAuthClient.getTokenInfo(accessToken);
+    verificationStep = "audience_validation";
+    if (tokenInfo.aud !== clientId) {
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Google customer token verification failed.", {
+          endpoint: "POST /auth/google",
+          step: verificationStep,
+          reason: "audience_mismatch",
+          credentialPresent: true,
+        });
+      }
+      return res.status(401).json({ message: "Google could not verify this sign-in. Please try again." });
+    }
+    const tokenSubject = tokenInfo.sub || tokenInfo.user_id;
+    verificationStep = "userinfo_request";
+    googleOAuthClient.setCredentials({ access_token: accessToken });
+    const profileResponse = await googleOAuthClient.request({
+      url: "https://openidconnect.googleapis.com/v1/userinfo",
+      headers: { Authorization: `Bearer ${accessToken}` },
     });
-    googleUser = ticket.getPayload();
-  } catch {
+    googleUser = profileResponse.data;
+    verificationStep = "subject_validation";
+    if (!tokenSubject || googleUser?.sub !== tokenSubject) {
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Google customer token verification failed.", {
+          endpoint: "POST /auth/google",
+          step: verificationStep,
+          reason: "subject_mismatch",
+          credentialPresent: true,
+        });
+      }
+      return res.status(401).json({ message: "Google could not verify this sign-in. Please try again." });
+    }
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") {
+      const errorMessage = typeof error.message === "string"
+        ? error.message.replaceAll(accessToken, "[redacted]").replace(/Bearer\s+\S+/gi, "Bearer [redacted]")
+        : "Unknown Google verification error";
+      console.error("Google customer token verification failed.", {
+        endpoint: "POST /auth/google",
+        step: verificationStep,
+        credentialPresent: true,
+        errorType: error.name || "Error",
+        errorCode: error.code,
+        statusCode: error.response?.status || error.status,
+        errorMessage,
+      });
+    }
     return res.status(401).json({ message: "Google could not verify this sign-in. Please try again." });
+  }
+  if (process.env.NODE_ENV !== "production") {
+    console.info("Google customer token verification succeeded.", {
+      endpoint: "POST /auth/google",
+      step: "complete",
+    });
   }
 
   const email = typeof googleUser?.email === "string" ? googleUser.email.trim().toLowerCase() : "";
@@ -88,6 +159,12 @@ exports.googleAuth = async (req, res) => {
         googleSub: googleUser.sub,
         googleFullName,
         googlePictureUrl,
+      });
+    }
+    if (process.env.NODE_ENV !== "production") {
+      console.info("Google customer database operation succeeded.", {
+        endpoint: "POST /auth/google",
+        operation,
       });
     }
 

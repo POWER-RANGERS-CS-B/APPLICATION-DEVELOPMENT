@@ -17,14 +17,18 @@ Follow [database/LOCAL_POSTGRESQL_SETUP.md](database/LOCAL_POSTGRESQL_SETUP.md) 
 ## ⚙️ Backend Setup (Node.js & Express)
 1. Open terminal in `/backend`
 2. Run `npm install`
-3. Copy `.env.example` to `.env` and set your local PostgreSQL values (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`) and Google Identity Services web client ID (`GOOGLE_CLIENT_ID`)
+3. Copy `.env.example` to `.env` and set your local PostgreSQL values (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`) and Google OAuth web client ID (`GOOGLE_CLIENT_ID`)
 4. Keep `JWT_SECRET` set to a secure local value
 5. Run `npm run dev` (server runs on port 3000)
 
-Google authentication uses Google Identity Services. Create a Google OAuth web
-client, add the app's origin (for example, `http://localhost:3000`) to its
-authorized JavaScript origins, and set its client ID as `GOOGLE_CLIENT_ID` in
-the backend environment. Before enabling Google customer sign-in against an
+Google authentication uses the Google Identity Services OAuth 2.0 popup token
+flow with explicit account selection. The browser sends the short-lived access
+token to the backend for audience validation and a verified Google user-info
+lookup; the token is not stored. A client secret is not required for this
+flow. Create a Google OAuth web client, add the app's origin (for example,
+`http://localhost:3000`) to its authorized JavaScript origins, and configure
+its client ID as `GOOGLE_CLIENT_ID` in the backend environment. Before enabling
+Google customer sign-in against an
 existing database, apply
 [`database/migrations/20261110_google_customer_profiles.sql`](database/migrations/20261110_google_customer_profiles.sql)
 to persist verified Google account identifiers and profile information.
