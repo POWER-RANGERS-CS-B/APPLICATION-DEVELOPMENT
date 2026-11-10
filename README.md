@@ -52,7 +52,7 @@ npm install
 
 After running those commands:
 
-1. Copy `.env.example` to `.env` and set your local PostgreSQL values (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`).
+1. Change the name `.env.example` to `.env` and set your local PostgreSQL values (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`).
 2. Keep `JWT_SECRET` set to a secure local value.
 3. Run `npm run dev` to start the server (runs on port 3000).
 
