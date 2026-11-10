@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="no-referrer" />
+    <link rel="icon" href="/images/icon/dineari-logo.ico" type="image/x-icon" />
+    <title>Dine-Ari Official Receipt</title>
+    <script src="js/theme.js?v=20261104-day-night-switch-2"></script>
+    <link rel="stylesheet" href="css/style.css?v=20261105-global-notifications-3" />
+    <link rel="stylesheet" href="css/design-system.css?v=20261106-cool-input-5" />
+    <script src="/vendor/lucide/lucide.min.js?v=1.67.0"></script>
+</head>
+
+<body>
+    <main class="page center-page">
+        <section class="card receipt-download-card">
+            <span class="section-kicker">Official Receipt</span>
+            <picture class="system-logo-picture">
+                <source srcset="images/Logo/dineari-logo.webp" type="image/webp" />
+                <img class="system-logo system-logo-receipt" src="images/Logo/Dine-ari%20Chef%E2%80%99s%20Table%20Logo.png" alt="Dine-Ari Chef’s Table" width="1536" height="1024" decoding="async" />
+            </picture>
+            <p class="muted">Restaurant Order Receipt Verification</p>
+
+            <div id="receiptContent">
+                <p class="muted">Loading receipt...</p>
+            </div>
+
+            <div class="receipt-actions">
+                <button id="printReceiptButton" data-csp-click="window.print()" disabled><i data-lucide="printer" aria-hidden="true"></i> Download / Print Receipt</button>
+            </div>
+        </section>
+    </main>
+
+    <script src="js/notifications.js?v=20261105-global-notifications-5"></script>
+    <script src="js/receipt.js?v=20261105-receipt-1"></script>
+    <script src="/js/init-icons.js"></script>
+  <script src="/js/csp-events.js"></script>
+</body>
+
+</html>

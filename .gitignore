@@ -1,0 +1,24 @@
+# Secrets and local environment files
+.env
+.env.*
+!.env.example
+
+# Node.js dependencies
+node_modules/
+backend/node_modules/
+
+# Build outputs
+dist/
+coverage/
+
+# Logs
+npm-debug.log*
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Virtual Environments
+.venv/
+.venv-win/
