@@ -17,6 +17,7 @@
     "cors": "latest",
     "dotenv": "latest",
     "express": "latest",
+    "google-auth-library": "^11.3.4",
     "intl-tel-input": "^29.5.10",
     "jsonwebtoken": "latest",
     "libphonenumber-js": "^1.13.15",

@@ -8,7 +8,8 @@ function createCustomerError(message, statusCode = 400) {
 
 exports.getProfile = async (userId) => {
   const result = await db.query(
-    `SELECT id, full_name, email, contact_number, preferred_theme
+    `SELECT id, full_name, email, contact_number, preferred_theme,
+            google_full_name, google_picture_url
      FROM restaurant.users
      WHERE id = $1 AND role = 'customer' AND deleted_at IS NULL`,
     [userId]
@@ -24,7 +25,8 @@ exports.updateProfile = async (userId, { fullName, email, contactNumber }) => {
        SET full_name = $2, email = $3, username = $3, contact_number = $4,
            updated_at = NOW()
        WHERE id = $1 AND role = 'customer' AND deleted_at IS NULL
-       RETURNING id, full_name, email, contact_number, preferred_theme`,
+       RETURNING id, full_name, email, contact_number, preferred_theme,
+                 google_full_name, google_picture_url`,
       [userId, fullName, email, contactNumber]
     );
     if (!result.rows[0]) throw createCustomerError("Customer account not found.", 404);

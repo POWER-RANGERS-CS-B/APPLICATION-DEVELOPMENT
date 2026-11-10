@@ -17,9 +17,17 @@ Follow [database/LOCAL_POSTGRESQL_SETUP.md](database/LOCAL_POSTGRESQL_SETUP.md) 
 ## ⚙️ Backend Setup (Node.js & Express)
 1. Open terminal in `/backend`
 2. Run `npm install`
-3. Copy `.env.example` to `.env` and set your local PostgreSQL values (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`)
+3. Copy `.env.example` to `.env` and set your local PostgreSQL values (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`) and Google Identity Services web client ID (`GOOGLE_CLIENT_ID`)
 4. Keep `JWT_SECRET` set to a secure local value
 5. Run `npm run dev` (server runs on port 3000)
+
+Google authentication uses Google Identity Services. Create a Google OAuth web
+client, add the app's origin (for example, `http://localhost:3000`) to its
+authorized JavaScript origins, and set its client ID as `GOOGLE_CLIENT_ID` in
+the backend environment. Before enabling Google customer sign-in against an
+existing database, apply
+[`database/migrations/20261110_google_customer_profiles.sql`](database/migrations/20261110_google_customer_profiles.sql)
+to persist verified Google account identifiers and profile information.
 
 The admin **Audit Logs** tab records successful and failed logins, logout, account and menu changes, inventory changes, table/chair activity, reservation creation, and order activity. Business-state mutations and their audit rows share a database transaction; authentication events are recorded immediately after the outcome. Logs can be searched and filtered through the admin-only audit endpoint. For an existing database, apply the required migrations in `database/migrations/` in date order, including `20261109_late_arrival_refunds.sql`, in pgAdmin Query Tool before starting the updated backend. This migration adds cashier authorization and completion metadata to the existing order refund fields; it does not create refund records or tables.
 

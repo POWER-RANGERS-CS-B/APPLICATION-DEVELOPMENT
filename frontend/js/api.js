@@ -82,6 +82,10 @@ function getUser() {
   }
 }
 
+function notifyCustomerAuthStateChanged() {
+  window.dispatchEvent(new CustomEvent("dineari:customer-auth-state-changed"));
+}
+
 function saveSession(data) {
   const user = data?.user || data?.account || data;
 
@@ -100,6 +104,7 @@ function saveSession(data) {
   localStorage.setItem("user_id", user.id || user.user_id || "");
   localStorage.setItem("full_name", user.fullName || user.full_name || user.name || "");
   localStorage.setItem("email", user.email || "");
+  notifyCustomerAuthStateChanged();
 
   return user;
 }
@@ -114,6 +119,7 @@ async function logoutTo(destination) {
   } finally {
     localStorage.clear();
     sessionStorage.clear();
+    notifyCustomerAuthStateChanged();
     location.href = destination;
   }
 }

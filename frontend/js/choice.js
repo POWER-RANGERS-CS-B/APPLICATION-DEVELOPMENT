@@ -138,54 +138,33 @@ function positionCustomerThemeSwitch(signedIn) {
   }
 }
 
-async function updateCustomerNavigation() {
-  const cachedUser = typeof getUser === "function" ? getUser() : {};
-  const token = typeof getToken === "function" ? getToken() : localStorage.getItem("token");
+function renderCustomerNavigation(user, signedIn, refreshId) {
+  if (refreshId !== customerNavigationRefreshId) return;
   const authLinks = document.getElementById("customerAuthLinks");
   const sessionActions = document.getElementById("customerSessionActions");
   const welcome = document.getElementById("customerWelcomeName");
-  const refreshId = ++customerNavigationRefreshId;
-  let user = {};
-  let signedIn = false;
+  const accountButton = document.getElementById("customerAccountButton");
+  const accountName = user.google_full_name || user.full_name || user.fullName || user.name;
 
-  if (cachedUser.role === "customer" && token) {
-    if (authLinks) authLinks.hidden = true;
-    if (sessionActions) sessionActions.hidden = true;
-    try {
-      const profile = await request("/customers/profile");
-      if (refreshId !== customerNavigationRefreshId) return;
-      user = { ...cachedUser, ...profile };
-      signedIn = true;
-    } catch (error) {
-      if (refreshId !== customerNavigationRefreshId) return;
-      console.error("Could not verify the customer session:", error.message);
-    }
-  }
-
+  updateCustomerAccountIdentity(signedIn ? user : {});
   if (authLinks) authLinks.hidden = signedIn;
   if (sessionActions) sessionActions.hidden = !signedIn;
   positionCustomerThemeSwitch(signedIn);
   if (welcome) welcome.textContent = signedIn
-    ? user.full_name || user.fullName || user.name || ""
+    ? accountName || ""
     : "";
+  if (accountButton) {
+    accountButton.setAttribute(
+      "aria-label",
+      signedIn && accountName ? `Open ${accountName}'s account` : "Open user profile menu"
+    );
+    accountButton.title = signedIn && accountName ? accountName : "";
+  }
   if (signedIn) setCustomerAuthMenuOpen(false);
   const avatarImage = document.getElementById("customerAvatarImage");
   const avatarIcon = document.querySelector("#customerAvatar [data-lucide]");
-  const avatarUrl = user.picture || user.avatar_url || user.profile_picture_url || "";
-  const safeAvatarUrl = typeof avatarUrl === "string" && /^https:\/\//i.test(avatarUrl);
-  if (avatarImage) {
-    avatarImage.hidden = !signedIn || !safeAvatarUrl;
-    if (signedIn && safeAvatarUrl && avatarImage.src !== avatarUrl) {
-      avatarImage.src = avatarUrl;
-      avatarImage.onerror = () => {
-        avatarImage.hidden = true;
-        if (avatarIcon) avatarIcon.hidden = false;
-      };
-    } else if (!safeAvatarUrl) {
-      avatarImage.removeAttribute("src");
-    }
-  }
-  if (avatarIcon) avatarIcon.hidden = signedIn && safeAvatarUrl && avatarImage && !avatarImage.hidden;
+  const avatarUrl = user.google_picture_url || user.picture || user.avatar_url || user.profile_picture_url || "";
+  updateCustomerAvatarImage(avatarImage, avatarIcon, signedIn ? avatarUrl : "");
   if (!signedIn && customerNotificationRefreshTimer) {
     clearInterval(customerNotificationRefreshTimer);
     customerNotificationRefreshTimer = null;
@@ -193,6 +172,28 @@ async function updateCustomerNavigation() {
   } else if (signedIn && !customerNotificationRefreshTimer) {
     void refreshCustomerNotifications();
     customerNotificationRefreshTimer = setInterval(refreshCustomerNotifications, 30000);
+  }
+}
+
+async function updateCustomerNavigation() {
+  const cachedUser = typeof getUser === "function" ? getUser() : {};
+  const token = typeof getToken === "function" ? getToken() : localStorage.getItem("token");
+  const refreshId = ++customerNavigationRefreshId;
+  const hasCustomerSession = cachedUser.role === "customer" && Boolean(token);
+
+  renderCustomerNavigation(hasCustomerSession ? cachedUser : {}, hasCustomerSession, refreshId);
+  if (!hasCustomerSession) return;
+
+  try {
+    const profile = await request("/customers/profile");
+    if (refreshId !== customerNavigationRefreshId) return;
+    const user = { ...cachedUser, ...profile };
+    localStorage.setItem("user", JSON.stringify(user));
+    renderCustomerNavigation(user, true, refreshId);
+  } catch (error) {
+    if (refreshId !== customerNavigationRefreshId) return;
+    console.error("Could not verify the customer session:", error.message);
+    renderCustomerNavigation({}, false, refreshId);
   }
 }
 
@@ -1404,11 +1405,58 @@ function setCustomerAccountView(view) {
 function updateCustomerAccountIdentity(profile) {
   const name = document.getElementById("customerAccountDisplayName");
   const email = document.getElementById("customerAccountDisplayEmail");
-  if (name) name.textContent = profile.full_name || profile.fullName || "—";
+  if (name) name.textContent = profile.google_full_name || profile.full_name || profile.fullName || "—";
   if (email) {
     email.textContent = profile.email || "";
     email.hidden = !profile.email;
   }
+  const avatarImage = document.getElementById("customerAccountIdentityAvatarImage");
+  const avatarIcon = document.querySelector(".customer-account-identity-avatar [data-lucide]");
+  const avatarUrl = profile.google_picture_url || profile.picture || profile.avatar_url || profile.profile_picture_url || "";
+  updateCustomerAvatarImage(avatarImage, avatarIcon, avatarUrl);
+}
+
+function updateCustomerAvatarImage(image, fallbackIcon, avatarUrl) {
+  if (!image) return;
+  const avatarContainer = image.parentElement;
+  const setProfileImageVisible = (isVisible) => {
+    image.hidden = !isVisible;
+    avatarContainer?.classList.toggle("has-profile-image", isVisible);
+    if (fallbackIcon) fallbackIcon.hidden = isVisible;
+  };
+  const safeUrl = typeof avatarUrl === "string" && /^https:\/\//i.test(avatarUrl)
+    ? avatarUrl
+    : "";
+
+  if (!safeUrl) {
+    setProfileImageVisible(false);
+    image.removeAttribute("src");
+    image.dataset.profileImageUrl = "";
+    image.onload = null;
+    image.onerror = null;
+    return;
+  }
+
+  if (image.dataset.profileImageUrl === safeUrl) {
+    if (image.complete && image.naturalWidth > 0) {
+      setProfileImageVisible(true);
+    }
+    return;
+  }
+
+  setProfileImageVisible(false);
+  image.dataset.profileImageUrl = safeUrl;
+  image.onload = () => {
+    if (image.dataset.profileImageUrl !== safeUrl) return;
+    setProfileImageVisible(true);
+  };
+  image.onerror = () => {
+    if (image.dataset.profileImageUrl !== safeUrl) return;
+    setProfileImageVisible(false);
+    image.removeAttribute("src");
+    image.dataset.profileImageUrl = "";
+  };
+  image.src = safeUrl;
 }
 
 async function loadCustomerAccountIdentity() {
@@ -1428,7 +1476,8 @@ async function loadCustomerProfile() {
   try {
     const profile = await request("/customers/profile");
     updateCustomerAccountIdentity(profile);
-    document.getElementById("customerProfileName").textContent = profile.full_name || "—";
+    document.getElementById("customerProfileName").textContent =
+      profile.google_full_name || profile.full_name || "—";
     document.getElementById("customerProfileEmail").textContent = profile.email || "—";
     document.getElementById("customerProfileContact").textContent = profile.contact_number || "—";
   } catch (requestError) {
@@ -1478,6 +1527,11 @@ function updateCustomerNotificationCounts(unreadCount) {
   const menuCount = document.getElementById("customerMenuUnreadCount");
   const dialogCount = document.getElementById("customerDialogUnreadCount");
   const accountButton = document.getElementById("customerAccountButton");
+  const user = typeof getUser === "function" ? getUser() : {};
+  const accountName = user.google_full_name || user.full_name || user.fullName || user.name;
+  const accountLabel = accountName
+    ? `Open ${accountName}'s account`
+    : "Open user profile menu";
   if (accountBadge) {
     accountBadge.textContent = displayCount;
     accountBadge.hidden = count === 0;
@@ -1494,8 +1548,8 @@ function updateCustomerNotificationCounts(unreadCount) {
     accountButton.setAttribute(
       "aria-label",
       count === 0
-        ? "Open user profile menu"
-        : `Open user profile menu, ${count} unread notification${count === 1 ? "" : "s"}`
+        ? accountLabel
+        : `${accountLabel}, ${count} unread notification${count === 1 ? "" : "s"}`
     );
   }
   syncCustomerMarkAllReadButton();
@@ -2767,6 +2821,12 @@ document.addEventListener("DOMContentLoaded", () => {
       if (getUser().role === "customer" && localStorage.getItem("token")) {
         void refreshCustomerNotifications();
       }
+    }
+  });
+  window.addEventListener("dineari:customer-auth-state-changed", () => {
+    void updateCustomerNavigation();
+    if (getUser().role === "customer" && getToken()) {
+      void refreshCustomerNotifications();
     }
   });
 

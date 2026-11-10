@@ -17,6 +17,11 @@ CREATE TABLE restaurant.users (
     email TEXT NOT NULL,
     contact_number TEXT,
     password_hash TEXT NOT NULL,
+    google_sub TEXT,
+    google_full_name TEXT,
+    google_picture_url TEXT CHECK (
+        google_picture_url IS NULL OR google_picture_url ~ '^https://'
+    ),
     role TEXT NOT NULL CHECK (role IN ('staff', 'cashier', 'admin', 'customer')),
     deleted_at TIMESTAMP WITHOUT TIME ZONE,
     created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -28,6 +33,10 @@ CREATE UNIQUE INDEX users_username_lower_unique_idx
 
 CREATE UNIQUE INDEX users_email_lower_unique_idx
     ON restaurant.users (lower(email));
+
+CREATE UNIQUE INDEX users_google_sub_unique_idx
+    ON restaurant.users (google_sub)
+    WHERE google_sub IS NOT NULL;
 
 -- Floor-plan tables and their current operational status.
 CREATE TABLE restaurant.restaurant_tables (

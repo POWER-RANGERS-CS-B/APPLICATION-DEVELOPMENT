@@ -12,7 +12,7 @@
   <link rel="preload" as="image" href="images/backgrounds/restaurant-bg.webp" type="image/webp" fetchpriority="high" />
   <link rel="stylesheet" href="css/style.css?v=20261108-payment-receipt-refinement-1" />
   <link rel="stylesheet" href="/vendor/intl-tel-input/css/intlTelInput.min.css" />
-  <link rel="stylesheet" href="css/design-system.css?v=20261109-customer-notification-management-2" />
+  <link rel="stylesheet" href="css/design-system.css?v=20261110-google-avatar-fix-2" />
   <script src="/vendor/lucide/lucide.min.js?v=1.67.0"></script>
 </head>
 
@@ -620,7 +620,10 @@
         </button>
       </header>
       <section class="customer-account-identity" aria-label="Customer account">
-        <span class="customer-account-identity-avatar" aria-hidden="true"><i data-lucide="user-round"></i></span>
+        <span class="customer-account-identity-avatar" aria-hidden="true">
+          <img id="customerAccountIdentityAvatarImage" alt="" hidden />
+          <i data-lucide="user-round"></i>
+        </span>
         <div class="customer-account-identity-copy">
           <span class="customer-account-identity-label">Customer Account</span>
           <strong id="customerAccountDisplayName">Loading profile…</strong>
@@ -697,9 +700,9 @@
     </section>
   </dialog>
   <script src="js/notifications.js?v=20261105-global-notifications-5"></script>
-  <script src="js/api.js?v=20261107-customer-dine-in-auth-1"></script>
+  <script src="js/api.js?v=20261110-customer-auth-sync-1"></script>
   <script src="/vendor/intl-tel-input/js/intlTelInput.min.js"></script>
-  <script src="js/choice.js?v=20261109-customer-notification-management-2"></script>
+  <script src="js/choice.js?v=20261110-google-avatar-fix-2"></script>
   <script>if (window.lucide) lucide.createIcons();</script>
 </body>
 
