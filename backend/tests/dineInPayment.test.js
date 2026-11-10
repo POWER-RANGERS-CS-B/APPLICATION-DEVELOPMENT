@@ -157,7 +157,7 @@ test("an overdue dine-in order remains active and QR-eligible without a prematur
   assert.doesNotMatch(expiration.sql, /refund_status = 'pending'/);
 });
 
-test("customer Dine-in payment status is scoped to the owner and withholds an unconfirmed QR", async (t) => {
+test("guest Dine-in payment status requires its receipt capability and withholds an unconfirmed QR", async (t) => {
   const originalQuery = db.query;
   let queryText = "";
   db.query = async (sql) => {
@@ -176,8 +176,10 @@ test("customer Dine-in payment status is scoped to the owner and withholds an un
     db.query = originalQuery;
   });
 
-  const order = await orderModel.findCustomerPaymentStatus(12, 42);
-  assert.match(queryText, /o\.id = \$1 AND o\.user_id = \$2/);
+  const receiptToken = "a".repeat(64);
+  const order = await orderModel.findGuestPaymentStatus(12, receiptToken);
+  assert.match(queryText, /o\.id = \$1 AND o\.receipt_token = \$2/);
+  assert.match(queryText, /o\.type = 'dine_in'/);
   assert.match(queryText, /t\.table_name/);
   assert.match(queryText, /o\.gcash_reference, o\.gcash_sender_name/);
   assert.equal(order.qr_code, null);

@@ -1,6 +1,7 @@
 const staffModel = require("../models/staffModel");
 const arrivalScannerModel = require("../models/arrivalScannerModel");
 const orderModel = require("../models/orderModel");
+const respondError = require("../utils/respondError");
 
 function arrivalResponseStatus(scanStatus) {
   switch (scanStatus) {
@@ -24,10 +25,8 @@ exports.getKitchenDisplay = async (req, res) => {
   try {
     res.json(await staffModel.getKitchenOrders());
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    respondError(res, error, "Kitchen orders could not be loaded.");
   }
-<<<<<<< HEAD
-=======
 };
 
 exports.validateArrivalQr = async (req, res) => {
@@ -67,7 +66,7 @@ exports.startLateArrivalRefundProcessing = async (req, res) => {
     res.set("Cache-Control", "no-store");
     res.json(await orderModel.startLateArrivalRefundProcessing(req.params.id, req.user));
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message });
+    respondError(res, error, "Refund processing could not be started.", 400);
   }
 };
 
@@ -76,7 +75,6 @@ exports.completeLateArrivalRefund = async (req, res) => {
     res.set("Cache-Control", "no-store");
     res.json(await orderModel.completeLateArrivalRefund(req.params.id, req.user));
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message });
+    respondError(res, error, "Refund could not be completed.", 400);
   }
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 };

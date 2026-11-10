@@ -6,10 +6,7 @@
   <meta name="theme-color" content="#1d1410" />
   <meta name="description" content="Welcome to Dine-Ari Chef’s Table. Explore the menu and reserve your table." />
   <link rel="icon" href="/images/icon/dineari-logo.ico" type="image/x-icon" />
-<<<<<<< HEAD
-=======
   <link rel="preload" as="image" href="/images/backgrounds/welcome-hero-poster.webp" fetchpriority="high" />
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet" />
@@ -80,10 +77,6 @@
     .brand.logo-hidden{opacity:0;transform:translateY(-8px);pointer-events:none}
     .nav.nav-hidden{opacity:0;transform:translateY(-100%);pointer-events:none}
     .nav-links{display:flex;gap:34px;list-style:none;font-size:.88rem;font-weight:500;letter-spacing:.02em}
-<<<<<<< HEAD
-    .nav-links,.nav-cta{display:none!important}
-=======
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     .nav-links a{position:relative;opacity:.9;transition:opacity .3s}
     .nav-links a:hover{opacity:1}
     .nav-links a::after{
@@ -119,10 +112,6 @@
       object-fit:cover;object-position:72% center;
       transform:scale(calc(1 + var(--hp,0)*.08));
       will-change:transform;
-<<<<<<< HEAD
-      animation:video-fade 1.6s var(--ease) both;
-=======
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     }
     .hero::before{
       content:"";position:absolute;inset:0;z-index:-2;
@@ -282,7 +271,7 @@
 
     .stage{position:relative;height:clamp(390px,52vw,570px);perspective:1500px;touch-action:pan-y;user-select:none;cursor:grab}
     .stage.dragging{cursor:grabbing}
-    .slide{--d:0;--abs:0;--w:clamp(220px,27vw,360px);position:absolute;left:50%;top:50%;width:var(--w);aspect-ratio:4/5;transform:translate(-50%,-50%) translateX(calc(var(--d)*var(--w)*.66)) translateZ(calc(var(--abs)*-180px)) rotateY(calc(var(--d)*-30deg)) scale(calc(1 - var(--abs)*.04));opacity:calc(1 - var(--abs)*.32);z-index:calc(10 - var(--abs));transition:transform .8s var(--ease),opacity .8s var(--ease),filter .8s var(--ease);filter:brightness(calc(1 - var(--abs)*.25));cursor:pointer}
+    .slide{--d:0;--abs:0;--w:clamp(220px,27vw,360px);position:absolute;left:50%;top:50%;width:var(--w);aspect-ratio:4/5;transform:translate(-50%,-50%) translateX(calc(var(--d)*var(--w)*.66)) translateZ(calc(var(--abs)*-180px)) rotateY(calc(var(--d)*-30deg)) scale(calc(1 - var(--abs)*.04));opacity:calc(1 - var(--abs)*.32);z-index:calc(10 - var(--abs));transition:transform .1s var(--ease),opacity .1s var(--ease),filter .1s var(--ease);filter:brightness(calc(1 - var(--abs)*.25));cursor:pointer}
     .slide.hidden{opacity:0;pointer-events:none}
     .slide.no-anim{transition:none!important}
     .card{position:relative;width:100%;height:100%;overflow:hidden;border-radius:26px;background:var(--roast);box-shadow:0 40px 80px -24px #000b,0 0 0 1px #ffffff12;transform:rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .25s ease-out}
@@ -305,13 +294,6 @@
     .counter span{color:rgba(246,241,233,.44)}
     .bar{width:min(220px,48vw);height:2px;background:rgba(246,241,233,.15);margin:24px auto 0;overflow:hidden;border-radius:2px}
     .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--gold-pale))}
-<<<<<<< HEAD
-    .section-next{width:44px;height:44px;margin:24px auto 0;display:grid;place-items:center;border:1px solid rgba(230,200,145,.62);border-radius:50%;color:var(--gold-pale);transition:transform .3s var(--ease),background .3s,color .3s,border-color .3s;animation:cue-glow 3.2s ease-in-out infinite}
-    .section-next svg{width:18px;height:18px}
-    .section-next:hover{transform:translateX(3px);background:var(--gold-pale);border-color:var(--gold-pale);color:var(--espresso)}
-    .visit .section-next{justify-self:end;margin:0}
-=======
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 
     /* ---------- End card (visit) ---------- */
     .visit{
@@ -339,35 +321,22 @@
     .reveal{opacity:0;transform:translateY(28px);transition:opacity .9s var(--ease),transform .9s var(--ease)}
     .reveal.in{opacity:1;transform:none}
     @keyframes rise{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}
-<<<<<<< HEAD
-    @keyframes video-fade{from{opacity:.4}to{opacity:1}}
-=======
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     @keyframes bob{0%,100%{transform:translateY(-2px)}50%{transform:translateY(3px)}}
     @keyframes cue-glow{0%,100%{border-color:rgba(201,160,98,.38);box-shadow:0 5px 22px rgba(0,0,0,.14),0 0 0 rgba(201,160,98,0)}50%{border-color:rgba(230,197,143,.8);box-shadow:0 5px 22px rgba(0,0,0,.14),0 0 13px -4px rgba(201,160,98,.34)}}
 
     /* ---------- Responsive ---------- */
-<<<<<<< HEAD
-=======
     #story,#featured,#visit{scroll-margin-top:96px}
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     @media(max-width:900px){
       .visit{grid-template-columns:1fr}
       .visit .button{justify-self:start}
       .hud-tr{display:none}
     }
     @media(max-width:760px){
-<<<<<<< HEAD
-      .nav-links{display:none}
-      .nav{padding-top:16px;padding-bottom:16px}
-      .nav.scrolled{padding-top:12px;padding-bottom:12px}
-=======
       .nav{flex-wrap:wrap;row-gap:8px;padding-top:12px;padding-bottom:12px}
       .nav.scrolled{padding-top:12px;padding-bottom:12px}
       .nav-links{order:3;flex:1 0 100%;justify-content:center;gap:clamp(14px,4vw,24px);font-size:.76rem}
       .nav-cta{padding:8px 13px;font-size:.76rem}
       #story,#featured,#visit{scroll-margin-top:112px}
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
       .brand{font-size:1.1rem}
       .brand img{width:38px;height:38px}
 
@@ -407,33 +376,16 @@
 <body>
   <div class="progress" id="progress"></div>
 
-<<<<<<< HEAD
-  <header class="nav" id="nav">
-    <a class="brand" href="#top"><img src="/images/Logo/dineari-logo.webp" alt="" />Dine-Ari</a>
-    <ul class="nav-links"><li><a href="#story">Our Table</a></li><li><a href="#featured">Menu Favorites</a></li><li><a href="#visit">Visit</a></li></ul>
-    <a class="nav-cta" href="/choice.html">Start an order</a>
-  </header>
-
-  <main>
-    <!-- HERO -->
-    <section class="hero" id="top">
-      <video class="hero-video" autoplay muted loop playsinline preload="auto" poster="/images/backgrounds/restaurant-bg.webp" aria-hidden="true">
-=======
   <main>
     <!-- HERO -->
     <section class="hero" id="top">
       <video class="hero-video" autoplay muted loop playsinline preload="auto" poster="/images/backgrounds/welcome-hero-poster.webp" aria-hidden="true">
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
         <source src="/images/backgrounds/Background.mp4" type="video/mp4" />
       </video>
       <div class="lb top" aria-hidden="true"></div>
       <div class="lb bot" aria-hidden="true"></div>
       <div class="hero-inner">
-<<<<<<< HEAD
         <span class="eyebrow">EST 2026</span>
-=======
-        <span class="eyebrow">Dine-Ari</span>
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
         <h1>Good food.<br /><em>Better together.</em></h1>
         <p class="hero-copy-text">Gather around the table for comforting Filipino favorites, warm hospitality, and moments worth sharing.</p>
         <div class="hero-actions">
@@ -447,13 +399,8 @@
     <!-- TITLE CARD: automatic text reveal over the cooking video -->
     <section class="title-card" id="story" aria-label="About Dine-Ari">
       <div class="title-stage">
-<<<<<<< HEAD
-        <video class="title-background-video" autoplay muted loop playsinline preload="metadata" aria-hidden="true">
-          <source src="/images/backgrounds/cooking.mp4" type="video/mp4" />
-=======
         <video class="title-background-video" muted loop playsinline preload="none" aria-hidden="true">
           <source data-src="/images/backgrounds/cooking.mp4" type="video/mp4" />
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
         </video>
         <div class="tc-lb top" aria-hidden="true"></div>
         <div class="tc-lb bot" aria-hidden="true"></div>
@@ -497,137 +444,10 @@
       <div>
         <h2>Come hungry. <em>Leave happy.</em></h2>
       </div>
-<<<<<<< HEAD
-      <a class="section-next" href="/choice.html" aria-label="Continue to the Dine-Ari order flow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7" /></svg></a>
-=======
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     </section>
   </main>
 
-  <script>
-    /* ===== Carousel (unchanged behavior) ===== */
-    const dishes=[
-      {name:'Chicken Inasal',tag:'Grilled favorite',img:'/images/menu-images/chicken-inasal-meal.webp',text:'Smoky, savory Filipino grilled chicken served with rice.'},
-      {name:'Beef Kare-Kare',tag:'Filipino classic',img:'/images/menu-images/beef-kare-kare.webp',text:'A comforting favorite with a rich, savory peanut sauce.'},
-      {name:'Pork Sinigang',tag:'Comfort food',img:'/images/menu-images/pork-sinigang.webp',text:'A warm, tangy Filipino soup made for sharing.'},
-      {name:'Garlic Butter Shrimp',tag:'Guest favorite',img:'/images/menu-images/garlic-butter-shrimp.webp',text:'Juicy shrimp tossed in fragrant garlic butter.'},
-      {name:'Leche Flan',tag:'Something sweet',img:'/images/menu-images/leche-flan.webp',text:'A silky caramel custard to finish your meal.'},
-      {name:'Turon',tag:'Filipino merienda',img:'/images/menu-images/turon.webp',text:'Crisp golden banana rolls with a sweet caramel finish.'}
-    ];
-    const stage=document.getElementById('stage'),caption=document.getElementById('caption'),capTitle=document.getElementById('capTitle'),capText=document.getElementById('capText'),counter=document.getElementById('counter'),barFill=document.getElementById('barFill');
-    let current=0,dragging=false,dragMoved=false,startX=0,paused=false,startTime=0,raf=0;const duration=4800,N=dishes.length;
-    dishes.forEach((dish,i)=>{const slide=document.createElement('div');slide.className='slide';slide.dataset.i=i;const card=document.createElement('div');card.className='card';const tag=document.createElement('span');tag.className='tag';tag.textContent=dish.tag;const img=document.createElement('img');img.src=dish.img;img.alt=dish.name;img.loading='lazy';img.draggable=false;img.addEventListener('error',()=>{img.style.display='none';card.style.background='linear-gradient(145deg,#50382d,#a77d3e)'});card.append(tag,img);slide.append(card);stage.append(slide)});
-    const slides=[...stage.querySelectorAll('.slide')],reflect=document.createElement('div');reflect.className='reflect';stage.append(reflect);const prior=slides.map(()=>0);
-    function render(first=false){slides.forEach((el,i)=>{let d=i-current;if(d>N/2)d-=N;if(d< -N/2)d+=N;const abs=Math.abs(d);if(!first&&Math.abs(d-prior[i])>1.5){el.classList.add('no-anim');requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.remove('no-anim')))}prior[i]=d;el.style.setProperty('--d',d);el.style.setProperty('--abs',abs);el.classList.toggle('hidden',abs>2);el.classList.toggle('active',d===0);el.setAttribute('aria-hidden',d!==0)});caption.classList.add('swap');setTimeout(()=>{capTitle.textContent=dishes[current].name;capText.textContent=dishes[current].text;caption.classList.remove('swap')},first?0:220);counter.innerHTML=`${String(current+1).padStart(2,'0')} <span>/ ${String(N).padStart(2,'0')}</span>`}
-    function restart(){cancelAnimationFrame(raf);startTime=performance.now();barFill.style.width='0%';tick()}function tick(now=performance.now()){if(!paused){const p=Math.min((now-startTime)/duration,1);barFill.style.width=`${p*100}%`;if(p>=1){go(current+1);return}}else startTime=now-(parseFloat(barFill.style.width||'0')/100)*duration;raf=requestAnimationFrame(tick)}function go(n){current=(n+N)%N;render();restart()}
-    document.getElementById('next').addEventListener('click',()=>go(current+1));document.getElementById('prev').addEventListener('click',()=>go(current-1));slides.forEach(el=>el.addEventListener('click',()=>{if(!dragMoved&&Number(el.dataset.i)!==current)go(Number(el.dataset.i))}));document.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(current+1);if(e.key==='ArrowLeft')go(current-1)});stage.addEventListener('mouseenter',()=>paused=true);stage.addEventListener('mouseleave',()=>paused=false);document.addEventListener('visibilitychange',()=>paused=document.hidden);
-    stage.addEventListener('pointerdown',e=>{dragging=true;dragMoved=false;startX=e.clientX;stage.classList.add('dragging')});window.addEventListener('pointermove',e=>{if(dragging&&Math.abs(e.clientX-startX)>8)dragMoved=true});window.addEventListener('pointerup',e=>{if(!dragging)return;dragging=false;stage.classList.remove('dragging');const dx=e.clientX-startX;if(Math.abs(dx)>50)go(current+(dx<0?1:-1));setTimeout(()=>dragMoved=false,50)});
-    stage.addEventListener('mousemove',e=>{const card=stage.querySelector('.slide.active .card');if(!card)return;const r=card.getBoundingClientRect();card.style.setProperty('--ry',`${((e.clientX-r.left)/r.width-.5)*10}deg`);card.style.setProperty('--rx',`${-((e.clientY-r.top)/r.height-.5)*10}deg`)});stage.addEventListener('mouseleave',()=>{const card=stage.querySelector('.slide.active .card');if(card){card.style.setProperty('--rx','0deg');card.style.setProperty('--ry','0deg')}});
-    render(true);restart();
-
-<<<<<<< HEAD
-=======
-    /* Load the non-hero video only when its section is about to be seen. */
-    const titleVideo=document.querySelector('.title-background-video');
-    const titleVideoSource=titleVideo.querySelector('source');
-    let titleVideoLoaded=false,titleVideoVisible=false;
-    function updateTitleVideoPlayback(){
-      if(!titleVideoVisible||document.hidden){titleVideo.pause();return}
-      if(titleVideoSource.dataset.src){
-        titleVideoSource.src=titleVideoSource.dataset.src;
-        delete titleVideoSource.dataset.src;
-        titleVideo.load();
-        titleVideoLoaded=true;
-      }
-      if(titleVideoLoaded){
-        titleVideo.play().catch(error=>{
-          if(error.name!=='NotAllowedError'&&error.name!=='AbortError'){
-            console.error('Could not start the welcome background video:',error);
-          }
-        });
-      }
-    }
-    if('IntersectionObserver' in window){
-      const titleVideoObserver=new IntersectionObserver(entries=>{
-        titleVideoVisible=entries.some(entry=>entry.isIntersecting);
-        updateTitleVideoPlayback();
-      },{threshold:.1});
-      titleVideoObserver.observe(titleVideo);
-    }else{
-      titleVideoVisible=true;
-      updateTitleVideoPlayback();
-    }
-    document.addEventListener('visibilitychange',updateTitleVideoPlayback);
-
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
-    /* ===== Editor-style scroll choreography ===== */
-    const clamp01=v=>Math.min(Math.max(v,0),1);
-    const titleCard=document.getElementById('story');
-    const cardLines=[...titleCard.querySelectorAll('[data-s]')];
-    const SECONDS=8;               /* the title card lasts an 8-second "clip" */
-
-    function setCardProgress(elapsed){
-      const t=clamp01(elapsed/SECONDS);
-      titleCard.style.setProperty('--open',clamp01(elapsed/1.1).toFixed(4));
-      cardLines.forEach(el=>{
-        const cue=parseFloat(el.dataset.s||0);
-        el.style.setProperty('--lp',clamp01((t-cue)/0.14).toFixed(4));
-      });
-    }
-    function playTitleAnimation(){
-      if(matchMedia('(prefers-reduced-motion: reduce)').matches){setCardProgress(SECONDS);return}
-      const startedAt=performance.now();
-      function frame(now){
-        const elapsed=Math.min((now-startedAt)/1000,SECONDS);
-        setCardProgress(elapsed);
-        if(elapsed<SECONDS)requestAnimationFrame(frame);
-      }
-      requestAnimationFrame(frame);
-    }
-    const titleObserver=new IntersectionObserver(entries=>{
-      if(entries.some(entry=>entry.isIntersecting)){titleObserver.disconnect();playTitleAnimation()}
-    },{threshold:.12});
-    titleObserver.observe(titleCard);
-
-    /* ===== Navigation, progress, hero, reveal ===== */
-    const nav=document.getElementById('nav'),progress=document.getElementById('progress');
-<<<<<<< HEAD
-    const featuredSection=document.getElementById('featured');
-    const introSection=document.getElementById('story');
-=======
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
-    const brand=document.querySelector('.brand');
-    let previousLogoScroll=scrollY;
-    const hero=document.querySelector('.hero');
-    let heroTicking=false;
-    function onScroll(){
-      heroTicking=false;
-      const y=scrollY,vh=innerHeight;
-      if(y<vh*1.2)hero.style.setProperty('--hp',Math.min(y/vh,1).toFixed(3));
-    }
-    addEventListener('scroll',()=>{
-      nav.classList.toggle('scrolled',scrollY>45);
-<<<<<<< HEAD
-      const featuredBounds=featuredSection.getBoundingClientRect();
-      const introBounds=introSection.getBoundingClientRect();
-      const hideNav=(featuredBounds.top<innerHeight&&featuredBounds.bottom>0)||(introBounds.top<innerHeight&&introBounds.bottom>0);
-      nav.classList.toggle('nav-hidden',hideNav);
-=======
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
-      const max=document.documentElement.scrollHeight-innerHeight;
-      progress.style.width=`${max?scrollY/max*100:0}%`;
-      const y=scrollY;
-      if(y<80||y<previousLogoScroll-2)brand.classList.remove('logo-hidden');
-      else if(y>previousLogoScroll+2)brand.classList.add('logo-hidden');
-      previousLogoScroll=y;
-      if(!heroTicking){heroTicking=true;requestAnimationFrame(onScroll)}
-    },{passive:true});
-    onScroll();
-
-    const observer=new IntersectionObserver(entries=>entries.forEach(entry=>{
-      if(entry.isIntersecting){entry.target.classList.add('in');observer.unobserve(entry.target)}
-    }),{threshold:.12});
-    document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
-  </script>
+  <script src="/js/welcome.js"></script>
+  <script src="/js/csp-events.js"></script>
 </body>
 </html>

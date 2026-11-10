@@ -29,46 +29,6 @@ exports.findAll = async () => {
 };
 
 // : Direct layout hook to save dashboard form inputs to pgAdmin ---
-<<<<<<< HEAD
-exports.create = async (itemData) => {
-  const { item_name, category, price, stock_count, description, image_url } = itemData;
-  const result = await db.query(
-    `INSERT INTO restaurant.menu_items (item_name, category, price, stock_count, description, image_url, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
-     RETURNING *`,
-    [item_name, category, price, stock_count || 0, description, image_url || 'images/default-food.jpg']
-  );
-  return result.rows[0];
-};
-
-// : Handles modifications sent from "Edit Price" panel inputs ---
-exports.update = async (id, updateData) => {
-  const { item_name, category, price, stock_count, description, image_url} = updateData;
-  const result = await db.query(
-    `UPDATE restaurant.menu_items
-     SET item_name = COALESCE($1, item_name),
-      category = COALESCE($2, category), 
-      price = COALESCE($3, price), 
-      stock_count = COALESCE($4, stock_count), 
-      description = COALESCE($5, description), 
-      image_url = COALESCE($6, image_url),
-      updated_at = NOW()
-     WHERE id = $7 AND deleted_at IS NULL
-     RETURNING *`,
-    [item_name, category, price, stock_count, description, image_url, id]
-  );
-  return result.rows[0];
-};
-
-exports.softDelete = async (id) => {
-  const result = await db.query(
-    `UPDATE restaurant.menu_items
-     SET deleted_at = NOW(), updated_at = NOW()
-     WHERE id = $1
-     RETURNING *`,
-    [id]
-  );
-=======
 exports.create = async (itemData, actor) => {
   const { item_name, category, price, stock_count, description, image_url } = itemData;
   return auditService.transaction(async (client, audit) => {
@@ -79,7 +39,6 @@ exports.create = async (itemData, actor) => {
       [item_name, category, price, stock_count || 0, description, image_url || 'images/default-food.jpg']
     );
     const item = result.rows[0];
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 
     await audit({
       ...auditActor(actor),
@@ -163,4 +122,3 @@ exports.softDelete = async (id, actor) => {
     return item;
   });
 };
-

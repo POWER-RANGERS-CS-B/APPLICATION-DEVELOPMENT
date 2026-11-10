@@ -8,13 +8,33 @@ let activeFloor = 1;
 let floorChairs = [];
 let floorTables = [];
 let selectedTableId = null;
-<<<<<<< HEAD
-=======
 let dineInHeldTableId = null;
 let reservationPhoneInput = null;
 let reservationPhoneUtilsReady = false;
 let reservationCustomerProfilePromise = null;
 let reservationCustomerNameEdited = false;
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  })[character]);
+}
+
+function safeMenuImageUrl(value, fallback = "images/menu-images/default-food.png") {
+  try {
+    const url = new URL(String(value || fallback), window.location.origin);
+    if (url.origin === window.location.origin && url.pathname.startsWith("/images/")) {
+      return `${url.pathname}${url.search}${url.hash}`;
+    }
+  } catch {
+    // Use the local fallback for malformed or non-local image URLs.
+  }
+  return fallback;
+}
 let reservationCustomerContactEdited = false;
 let reservationContinueInProgress = false;
 let reservationSubmissionInProgress = false;
@@ -42,7 +62,6 @@ let floorPlanResizeObserver = null;
 let floorPlanResizeFrame = 0;
 let floorPlanFallbackResizeHandler = null;
 let floorPlanScalingAbortController = null;
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 
 const FLOOR_PLAN_DESIGN_WIDTH = 760;
 const FLOOR_PLAN_ZOOM_LEVELS = [1, 1.25, 1.5, 1.75, 2, 2.25, 2.5];
@@ -87,13 +106,12 @@ async function request(path, options = {}) {
   }
 
   const base = `${window.location.origin}/api`;
-  const token = localStorage.getItem("token");
 
   const res = await fetch(`${base}${path}`, {
     ...options,
+    credentials: "same-origin",
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {})
     }
   });
@@ -120,11 +138,7 @@ function logout() {
 }
 
 function requireCustomerSession(flow = null) {
-  const user = typeof getUser === "function" ? getUser() : {};
-  if (user.role === "customer" && localStorage.getItem("token")) return true;
-  const returnFlow = flow === "dine_in" ? "?flow=dine_in" : "";
-  window.location.href = `customer-auth.html${returnFlow}#login`;
-  return false;
+  return true;
 }
 
 function positionCustomerThemeSwitch(signedIn) {
@@ -143,7 +157,6 @@ function positionCustomerThemeSwitch(signedIn) {
 
 async function updateCustomerNavigation() {
   const cachedUser = typeof getUser === "function" ? getUser() : {};
-  const token = typeof getToken === "function" ? getToken() : localStorage.getItem("token");
   const authLinks = document.getElementById("customerAuthLinks");
   const sessionActions = document.getElementById("customerSessionActions");
   const welcome = document.getElementById("customerWelcomeName");
@@ -151,7 +164,7 @@ async function updateCustomerNavigation() {
   let user = {};
   let signedIn = false;
 
-  if (cachedUser.role === "customer" && token) {
+  if (cachedUser.role === "customer") {
     if (authLinks) authLinks.hidden = true;
     if (sessionActions) sessionActions.hidden = true;
     try {
@@ -258,10 +271,7 @@ function showChoicePanel() {
   orderType = null;
   selectedChairIds = [];
   selectedTableId = null;
-<<<<<<< HEAD
-=======
   dineInHeldTableId = null;
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   cart = [];
   reservationDetails = null;
 
@@ -298,10 +308,7 @@ function showReservationSection() {
   orderType = "reservation";
   selectedChairIds = [];
   selectedTableId = null;
-<<<<<<< HEAD
-=======
   dineInHeldTableId = null;
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   reservationDetails = null;
   updateChairSelectionUI();
   updateCartTotal();
@@ -518,19 +525,10 @@ async function continueReservationToChairs() {
 
   const date = document.getElementById("reservationDate")?.value;
   const time = document.getElementById("reservationTime")?.value;
-<<<<<<< HEAD
-  const name =
-    document.getElementById("reservationName")?.value.trim() ||
-    localStorage.getItem("full_name") ||
-    "Customer";
-  const contactInput = document.getElementById("reservationContact");
-  const localMobileNumber = contactInput?.value.trim() || "";
-=======
   const name = document.getElementById("reservationName")?.value.trim();
   const contact = reservationPhoneInput?.getNumber();
   const selectedCountry = reservationPhoneInput?.getSelectedCountry();
   const contactCountry = selectedCountry?.iso2;
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 
   if (!date || !time) {
     alert("Please select reservation date and time.");
@@ -543,14 +541,6 @@ async function continueReservationToChairs() {
     document.getElementById("reservationContact")?.focus();
     return;
   }
-
-  if (!/^9\d{9}$/.test(localMobileNumber)) {
-    alert("Enter a valid 10-digit Philippine mobile number starting with 9.");
-    contactInput?.focus();
-    return;
-  }
-
-  const contact = `+63${localMobileNumber}`;
 
   reservationDetails = {
     date,
@@ -609,24 +599,10 @@ async function chooseType(type) {
   }
   if (!requireCustomerSession(type === "dine_in" ? "dine_in" : null)) return;
 
-  if (type === "dine_in") {
-    try {
-      await request("/customers/profile");
-    } catch (error) {
-      if (error.status !== 401) {
-        alert(error.message || "Unable to verify your customer account.");
-      }
-      return;
-    }
-  }
-
   orderType = type;
   selectedChairIds = [];
   selectedTableId = null;
-<<<<<<< HEAD
-=======
   dineInHeldTableId = null;
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   cart = [];
   updateChairSelectionUI();
   updateCartTotal();
@@ -669,54 +645,6 @@ const restaurantBlueprint = {
   ]
 };
 
-<<<<<<< HEAD
-function getChairPosition(chairCount, index) {
-  const positions = {
-    2: [
-      { x: -55, y: 0 },
-      { x: 55, y: 0 }
-    ],
-
-    4: [
-      { x: 0, y: -65 },
-      { x: 65, y: 0 },
-      { x: 0, y: 65 },
-      { x: -65, y: 0 }
-    ],
-
-    6: [
-      { x: -75, y: -40 },
-      { x: 0, y: -55 },
-      { x: 75, y: -40 },
-      { x: -75, y: 40 },
-      { x: 0, y: 55 },
-      { x: 75, y: 40 }
-    ],
-
-    8: [
-      { x: -85, y: -55 },
-      { x: -28, y: -55 },
-      { x: 28, y: -55 },
-      { x: 85, y: -55 },
-      { x: -85, y: 55 },
-      { x: -28, y: 55 },
-      { x: 28, y: 55 },
-      { x: 85, y: 55 }
-    ],
-
-    10: [
-      { x: -48, y: -65 },
-      { x: 0, y: -65 },
-      { x: 48, y: -65 },
-      { x: -48, y: 65 },
-      { x: 0, y: 65 },
-      { x: 48, y: 65 },
-      { x: -105, y: 0 },
-      { x: 105, y: 0 },
-      { x: -85, y: -65 },
-      { x: 85, y: 65 }
-    ]
-=======
 function getChairPosition(chairCount, index, shape) {
   const radiusX = shape === "rect-large" ? 112 : shape === "rect-medium" ? 100 : shape === "circle" ? 78 : 68;
   const radiusY = shape === "rect-large" ? 70 : shape === "rect-medium" ? 64 : shape === "circle" ? 78 : 48;
@@ -724,7 +652,6 @@ function getChairPosition(chairCount, index, shape) {
   return {
     x: Math.round(Math.cos(angle) * radiusX),
     y: Math.round(Math.sin(angle) * radiusY)
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   };
 }
 
@@ -733,15 +660,10 @@ async function loadFloorPlan() {
   let tables = [];
 
   try {
-    const tableQuery = new URLSearchParams();
-    if (orderType === "reservation" && reservationDetails?.date && reservationDetails?.time) {
-      tableQuery.set("reservation_date", reservationDetails.date);
-      tableQuery.set("reservation_time", reservationDetails.time);
-    }
-    const tableQueryString = tableQuery.toString();
-    const tablePath = tableQueryString ? `/tables?${tableQueryString}` : "/tables";
-    const chairData = await request("/chairs");
-    const tableData = await request(tablePath);
+    const [chairData, tableData] = await Promise.all([
+      request("/chairs"),
+      request("/tables")
+    ]);
 
     floorChairs = Array.isArray(chairData) ? chairData : [];
     floorTables = Array.isArray(tableData) ? tableData : [];
@@ -775,22 +697,6 @@ function renderFloorPlan() {
   floorPlan.dataset.floor = String(activeFloor);
   floorPlan.innerHTML = "";
 
-<<<<<<< HEAD
-  const tablesOnFloor = restaurantBlueprint.tables.filter(
-    (table) => table.floor === activeFloor
-  );
-
-  tablesOnFloor.forEach((blueprintTable) => {
-    const realTable =
-      floorTables.find((t) => Number(t.id ?? t.table_id) === Number(blueprintTable.id)) || {
-        id: blueprintTable.id,
-        table_id: blueprintTable.id,
-        table_name: `T${blueprintTable.id}`
-      };
-
-    const tableChairs = floorChairs.filter(
-      (c) => Number(c.table_id ?? c.tableId) === Number(blueprintTable.id)
-=======
   const configuredTables = [...floorTables].sort(
     (first, second) => Number(first.id ?? first.table_id) - Number(second.id ?? second.table_id)
   );
@@ -821,18 +727,12 @@ function renderFloorPlan() {
 
     const tableChairs = floorChairs.filter(
       (c) => Number(c.table_id ?? c.tableId) === realTableId
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     );
 
     const chairSource = tableChairs;
 
     const isAvailable =
       String(realTable.status || "vacant").toLowerCase() === "vacant" &&
-      chairSource.length > 0 &&
-      chairSource.every((chair) => String(chair.status || "vacant").toLowerCase() === "vacant");
-
-    const isAvailable =
-      String(realTable.effective_status || realTable.status || "vacant").toLowerCase() === "vacant" &&
       chairSource.length > 0 &&
       chairSource.every((chair) => String(chair.status || "vacant").toLowerCase() === "vacant");
 
@@ -844,19 +744,6 @@ function renderFloorPlan() {
     const tableBox = document.createElement("button");
     tableBox.type = "button";
     tableBox.className = `table-box ${blueprintTable.shape} table-select`;
-<<<<<<< HEAD
-    tableBox.dataset.tableId = blueprintTable.id;
-    tableBox.classList.toggle("selected", selectedTableId === Number(blueprintTable.id));
-    tableBox.classList.toggle("unavailable", !isAvailable);
-    tableBox.disabled = !isAvailable;
-    tableBox.setAttribute("aria-pressed", String(selectedTableId === Number(blueprintTable.id)));
-    tableBox.title = isAvailable
-      ? `Select ${realTable.table_name || realTable.name || `Table ${blueprintTable.id}`} with ${chairSource.length} seats`
-      : `${realTable.table_name || realTable.name || `Table ${blueprintTable.id}`} is unavailable`;
-    tableBox.innerHTML = `<span>${realTable.table_name || realTable.name || `Table ${blueprintTable.id}`}</span><small>${chairSource.length} seats</small>`;
-    if (isAvailable) {
-      tableBox.addEventListener("click", () => selectTable(blueprintTable, chairSource));
-=======
     tableBox.dataset.tableId = realTableId;
     tableBox.classList.toggle("selected", selectedTableId === realTableId);
     tableBox.classList.toggle("unavailable", !isAvailable);
@@ -866,10 +753,9 @@ function renderFloorPlan() {
       ? `Select ${realTable.table_name || realTable.name || `Table ${realTableId}`} with ${chairSource.length} seats`
       : `${realTable.table_name || realTable.name || `Table ${realTableId}`} is unavailable`;
     const occupiedLabel = isAvailable ? "" : '<small class="table-status-label"><span aria-hidden="true">●</span> Occupied</small>';
-    tableBox.innerHTML = `<span>${realTable.table_name || realTable.name || `Table ${realTableId}`}</span><small>${chairSource.length} seats</small>${occupiedLabel}`;
+    tableBox.innerHTML = `<span>${escapeHtml(realTable.table_name || realTable.name || `Table ${realTableId}`)}</span><small>${chairSource.length} seats</small>${occupiedLabel}`;
     if (isAvailable) {
       tableBox.addEventListener("click", () => selectTable(realTable, chairSource));
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     }
 
     tableGroup.appendChild(tableBox);
@@ -877,24 +763,11 @@ function renderFloorPlan() {
     chairSource.forEach((chair, index) => {
       const status = String(chair.status || "vacant").toLowerCase();
 
-<<<<<<< HEAD
-      const pos = getChairPosition(chairSource.length, index);
-=======
       const pos = getChairPosition(chairSource.length, index, blueprintTable.shape);
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 
       const chairEl = document.createElement("span");
       chairEl.type = "button";
       chairEl.className = `chair ${status}`;
-<<<<<<< HEAD
-      if (selectedTableId === Number(blueprintTable.id)) chairEl.classList.add("selected");
-      chairEl.textContent = `C${index + 1}`;
-      chairEl.style.left = `calc(50% + ${pos.x}px)`;
-      chairEl.style.top = `calc(50% + ${pos.y}px)`;
-      chairEl.title = `Table ${blueprintTable.id} - Chair ${index + 1}`;
-      chairEl.dataset.tableId = blueprintTable.id;
-      chairEl.setAttribute("aria-hidden", "true");
-=======
       if (selectedTableId === realTableId) chairEl.classList.add("selected");
       chairEl.textContent = chair.chair_label || `C${index + 1}`;
       chairEl.style.left = `calc(50% + ${pos.x}px)`;
@@ -903,52 +776,12 @@ function renderFloorPlan() {
       chairEl.dataset.tableId = realTableId;
       chairEl.setAttribute("aria-label", `${realTable.table_name || `Table ${realTableId}`}, chair ${chair.chair_label || index + 1}, ${status}`);
       chairEl.tabIndex = 0;
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 
       tableGroup.appendChild(chairEl);
     });
 
     floorPlan.appendChild(tableGroup);
   });
-<<<<<<< HEAD
-
-  if (!tablesOnFloor.length) {
-    floorPlan.innerHTML = `<p class="floor-empty-message">No tables are configured on Floor ${activeFloor} yet.</p>`;
-  }
-}
-
-function selectTable(table, chairs) {
-  selectedTableId = Number(table.id);
-  selectedChairIds = chairs.map((chair) => chair.id);
-  renderFloorPlan();
-  updateChairSelectionUI();
-}
-
-function updateChairSelectionUI() {
-  const selectedTable = restaurantBlueprint.tables.find(
-    (table) => Number(table.id) === Number(selectedTableId)
-  );
-  const realTable = selectedTable && floorTables.find(
-    (table) => Number(table.id ?? table.table_id) === Number(selectedTableId)
-  );
-  const selectedTableLabel = document.getElementById("selectedTableLabel");
-  const lockButton = document.getElementById("lockChairsButton");
-
-  if (selectedTableLabel) {
-    selectedTableLabel.textContent = selectedTable
-      ? `${realTable?.table_name || realTable?.name || `Table ${selectedTable.id}`} · ${selectedChairIds.length} seats`
-      : "None";
-  }
-  if (lockButton) {
-    lockButton.textContent = selectedTable
-      ? `Reserve Table ${selectedTable.id} & continue`
-      : "Select a table to continue";
-    lockButton.disabled = !selectedTable;
-  }
-}
-
-async function lockSelectedChairs() {
-=======
 
   if (!renderedTables) {
     floorPlan.innerHTML = `<p class="floor-empty-message">No restaurant tables are configured on Floor ${activeFloor}. Add tables and chairs in the database, then reload this page.</p>`;
@@ -1111,7 +944,6 @@ function updateChairSelectionUI() {
 async function lockSelectedChairs() {
   if (chairHoldInProgress) return;
 
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   if (!selectedTableId) {
     alert("Please select an available table.");
     return;
@@ -1132,11 +964,6 @@ async function lockSelectedChairs() {
   try {
     const lockedChairs = await request("/chairs/lock", {
       method: "POST",
-<<<<<<< HEAD
-      body: JSON.stringify({ tableId: selectedTableId })
-    });
-    selectedChairIds = lockedChairs.map((chair) => chair.id);
-=======
       body: JSON.stringify({ tableId: selectedTableId, orderType })
     });
     selectedChairIds = lockedChairs.map((chair) => chair.id);
@@ -1148,21 +975,14 @@ async function lockSelectedChairs() {
     dineInHeldTableId = Number(selectedTableId);
     showSection("menuSection", 3);
     await loadMenu();
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   } catch (error) {
     alert("Cannot reserve table: " + error.message);
     selectedTableId = null;
     selectedChairIds = [];
-<<<<<<< HEAD
-    updateChairSelectionUI();
-    await loadFloorPlan();
-    return;
-=======
     await loadFloorPlan();
   } finally {
     chairHoldInProgress = false;
     updateChairSelectionUI();
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   }
 }
 
@@ -1756,8 +1576,8 @@ function closeCustomerNotificationMenus(restoreFocus = false) {
 
 async function refreshCustomerNotifications() {
   const user = typeof getUser === "function" ? getUser() : {};
-  const token = localStorage.getItem("token");
-  if (user.role !== "customer" || !token) return;
+  if (user.role !== "customer") return;
+  const userId = String(user.id || user.user_id || "");
   if (customerNotificationRefreshPromise) return customerNotificationRefreshPromise;
   const mutationVersion = customerNotificationMutationVersion;
   customerNotificationRefreshPromise = (async () => {
@@ -1765,7 +1585,7 @@ async function refreshCustomerNotifications() {
       const result = await request("/customers/notifications");
       const currentUser = typeof getUser === "function" ? getUser() : {};
       if (
-        localStorage.getItem("token") === token &&
+        String(currentUser.id || currentUser.user_id || "") === userId &&
         currentUser.role === "customer" &&
         mutationVersion === customerNotificationMutationVersion
       ) {
@@ -2084,7 +1904,7 @@ async function loadMenu() {
       menuGrid.innerHTML = `
         <div class="panel empty-menu">
           <h3>Menu cannot load</h3>
-          <p>${error.message}</p>
+          <p>${escapeHtml(error.message)}</p>
           <p>Please check if your backend /api/menu route is running.</p>
         </div>
       `;
@@ -2111,13 +1931,14 @@ function renderMenuCardActions(name, itemId, stock, cartLine) {
   }
 
   if (!cartLine) {
-    return `<button type="button" onclick="addToCart(${itemId})"><i data-lucide="plus" aria-hidden="true"></i> Add</button>`;
+    return `<button type="button" data-csp-click="addToCart(${itemId})"><i data-lucide="plus" aria-hidden="true"></i> Add</button>`;
   }
 
-  return `<div class="menu-quantity-control" aria-label="${name} quantity">
-    <button type="button" aria-label="Remove one ${name}" onclick="changeQuantity(${itemId}, -1)"><i data-lucide="minus" aria-hidden="true"></i></button>
+  const safeName = escapeHtml(name);
+  return `<div class="menu-quantity-control" aria-label="${safeName} quantity">
+    <button type="button" aria-label="Remove one ${safeName}" data-csp-click="changeQuantity(${itemId}, -1)"><i data-lucide="minus" aria-hidden="true"></i></button>
     <span aria-live="polite">${cartLine.quantity}</span>
-    <button type="button" aria-label="Add one ${name}" onclick="changeQuantity(${itemId}, 1)"><i data-lucide="plus" aria-hidden="true"></i></button>
+    <button type="button" aria-label="Add one ${safeName}" data-csp-click="changeQuantity(${itemId}, 1)"><i data-lucide="plus" aria-hidden="true"></i></button>
   </div>`;
 }
 
@@ -2153,17 +1974,8 @@ function renderMenu(items) {
 
   menuGrid.innerHTML = filtered.map((item, index) => {
     const name = getItemName(item);
-<<<<<<< HEAD
-    // Existing catalog images use local filename mappings; admin uploads use
-    // backend-relative paths, so resolve those against the API server origin.
-    const backendOrigin = `${window.location.protocol === "https:" ? "https:" : "http:"}//${window.location.hostname || "localhost"}:3000/`;
-    const uploadedImageUrl = item.image_url
-      ? new URL(item.image_url, backendOrigin).href
-      : "";
-    const imageUrl = foodImages[name] || uploadedImageUrl || "images/menu-images/default-food.png";
-=======
     const fallbackImageUrl = foodImages[name] || "";
-    const storedImageUrl = item.image_url || "";
+    const storedImageUrl = safeMenuImageUrl(item.image_url || "");
     const staleLocalJpeg = /^\/?images\/menu-images\/.+\.jpe?g$/i.test(storedImageUrl);
     const selectedImageUrl = staleLocalJpeg && fallbackImageUrl
       ? fallbackImageUrl
@@ -2173,7 +1985,6 @@ function renderMenu(items) {
       ? `${localPngImage[1]}.webp${localPngImage[2] || ""}`
       : selectedImageUrl;
     const imageFallbackUrl = localPngImage ? selectedImageUrl : fallbackImageUrl;
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     const stock = Number(item.stock_count ?? item.stock ?? 99);
     const price = Number(item.price || 0);
     const description = getItemDescription(item);
@@ -2183,13 +1994,13 @@ function renderMenu(items) {
     return `
       <div class="panel menu-card" data-menu-item-id="${itemId}" style="animation-delay:${index * 0.04}s">
         <div class="menu-image-wrapper">
-          <img src="${imageUrl}" data-fallback-src="${imageFallbackUrl}" alt="${name}" width="960" height="640" loading="lazy" decoding="async" onerror="if(this.dataset.fallbackSrc && !this.src.endsWith(this.dataset.fallbackSrc)){this.src=this.dataset.fallbackSrc;this.dataset.fallbackSrc=''}else{this.hidden=true;this.parentElement.classList.add('image-fallback')}">
+          <img src="${escapeHtml(imageUrl)}" data-fallback-src="${escapeHtml(imageFallbackUrl)}" alt="${escapeHtml(name)}" width="960" height="640" loading="lazy" decoding="async" data-csp-error="menuImageFallback">
           <span class="menu-image-fallback" aria-hidden="true">
             <svg viewBox="0 0 32 32" fill="none"><path d="M5 17h22c0 6-4.5 10-11 10S5 23 5 17Z" stroke="currentColor" stroke-width="1.7"/><path d="M8 13c1.4 1 2.8 1 4.2 0s2.8-1 4.2 0 2.8 1 4.2 0 2.8-1 4.2 0M16 5v4m-5-2 2 3m8-3-2 3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
           </span>
         </div>
-        <h3>${name}</h3>
-        ${description ? `<p>${description}</p>` : ""}
+        <h3>${escapeHtml(name)}</h3>
+        ${description ? `<p>${escapeHtml(description)}</p>` : ""}
         <div class="price-stock">
           <strong>₱${price.toFixed(2)}</strong>
           <span class="stock">${stock > 0 ? `${stock} left` : "Sold Out"}</span>
@@ -2288,39 +2099,22 @@ function updateCartTotal() {
   cartItems.innerHTML = cart.length ? cart.map((line) => `
     <div class="cart-line">
       <div>
-        <strong>${line.item_name}</strong><br>
+          <strong>${escapeHtml(line.item_name)}</strong><br>
         <small>₱${line.price.toFixed(2)} × ${line.quantity}</small>
       </div>
       <div class="cart-line-actions">
         <strong>₱${(line.price * line.quantity).toFixed(2)}</strong>
         <div class="cart-quantity-control">
-          <button type="button" aria-label="Remove one ${line.item_name}" onclick="changeQuantity(${line.menu_item_id}, -1)"><i data-lucide="minus" aria-hidden="true"></i></button>
+          <button type="button" aria-label="Remove one ${escapeHtml(line.item_name)}" data-csp-click="changeQuantity(${Number(line.menu_item_id)}, -1)"><i data-lucide="minus" aria-hidden="true"></i></button>
           <span aria-live="polite">${line.quantity}</span>
-          <button type="button" aria-label="Add one ${line.item_name}" onclick="changeQuantity(${line.menu_item_id}, 1)"><i data-lucide="plus" aria-hidden="true"></i></button>
-          <button type="button" class="danger remove-cart-item" aria-label="Remove ${line.item_name} from cart" onclick="removeFromCart(${line.menu_item_id})"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+          <button type="button" aria-label="Add one ${escapeHtml(line.item_name)}" data-csp-click="changeQuantity(${Number(line.menu_item_id)}, 1)"><i data-lucide="plus" aria-hidden="true"></i></button>
+          <button type="button" class="danger remove-cart-item" aria-label="Remove ${escapeHtml(line.item_name)} from cart" data-csp-click="removeFromCart(${Number(line.menu_item_id)})"><i data-lucide="trash-2" aria-hidden="true"></i></button>
         </div>
       </div>
     </div>
   `).join("") : `<div class="cart-empty-state"><strong>Your cart is empty</strong><span>Add a dish from the menu to get started.</span></div>`;
   updateMenuCartControls();
   syncLucideIcons();
-}
-
-function openCartDialog() {
-  const dialog = document.getElementById("cartDialog");
-  if (!dialog || dialog.open) return;
-  dialog.showModal();
-  document.getElementById("floatingCartButton")?.setAttribute("aria-expanded", "true");
-}
-
-function closeCartDialog() {
-  const dialog = document.getElementById("cartDialog");
-  if (dialog?.open) dialog.close();
-  document.getElementById("floatingCartButton")?.setAttribute("aria-expanded", "false");
-}
-
-function closeCartDialogOnBackdrop(event) {
-  if (event.target === event.currentTarget) closeCartDialog();
 }
 
 function openCartDialog() {
@@ -2355,7 +2149,7 @@ function openPaymentPanel() {
     paymentItems.innerHTML = cart.map((item) => `
       <div class="payment-line">
         <div>
-          <strong>${item.item_name || "Menu Item"}</strong>
+          <strong>${escapeHtml(item.item_name || "Menu Item")}</strong>
           <small>₱${formatOrderAmount(item.price)} × ${item.quantity}</small>
         </div>
         <span>₱${formatOrderAmount(item.price * item.quantity)}</span>
@@ -2415,16 +2209,6 @@ function selectPaymentCard(input) {
   input.closest(".payment-method-card")?.classList.add("active");
 }
 
-<<<<<<< HEAD
-function confirmPaymentAndOrder() {
-  const selectedPayment =
-    document.querySelector('input[name="paymentMethod"]:checked')?.value || "GCash";
-
-  if (selectedPayment === "Cash") {
-    alert("Cash payment is no longer available. Please choose GCash or Card.");
-    return;
-  }
-=======
 function validateDineInPaymentFields() {
   const referenceInput = document.getElementById("dineInGcashReference");
   const senderInput = document.getElementById("dineInGcashSenderName");
@@ -2434,7 +2218,6 @@ function validateDineInPaymentFields() {
   const senderError = document.getElementById("dineInGcashSenderNameError");
   const referenceValid = Boolean(reference) && reference.length <= 128;
   const senderValid = Boolean(senderName) && senderName.length <= 128;
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 
   if (referenceError) {
     referenceError.textContent = referenceValid
@@ -2460,6 +2243,7 @@ function validateDineInPaymentFields() {
 function showDineInOrderPending(order) {
   activeDineInOrderId = Number(order.id);
   localStorage.setItem("dineariPendingDineInOrderId", String(activeDineInOrderId));
+  localStorage.setItem("dineariPendingDineInOrderToken", String(order.receipt_token || ""));
   document.getElementById("receiptTitle").textContent = "Dine-in Payment Status";
   document.getElementById("receiptIntro").hidden = true;
   document.querySelector(".receipt-qr-box").hidden = true;
@@ -2616,7 +2400,8 @@ function updateDineInCountdown(deadline) {
 
 async function refreshDineInOrderStatus(orderId) {
   try {
-    const order = await request(`/orders/${encodeURIComponent(orderId)}/payment-status`);
+    const token = localStorage.getItem("dineariPendingDineInOrderToken") || "";
+    const order = await request(`/orders/${encodeURIComponent(orderId)}/payment-status/${encodeURIComponent(token)}`);
     activeDineInOrderId = Number(order.id);
     renderDineInOrderStatus(order);
     return order;
@@ -2650,7 +2435,8 @@ function stopDineInOrderStatusPolling() {
 
 async function restoreDineInOrderStatus() {
   const orderId = Number(localStorage.getItem("dineariPendingDineInOrderId"));
-  if (!Number.isSafeInteger(orderId) || orderId <= 0 || getUser().role !== "customer") return;
+  const token = localStorage.getItem("dineariPendingDineInOrderToken");
+  if (!Number.isSafeInteger(orderId) || orderId <= 0 || !token) return;
   showSection("receiptSection", 5);
   document.getElementById("dineInOrderStatusPanel").hidden = false;
   startDineInOrderStatusPolling(orderId);
@@ -2739,7 +2525,7 @@ function downloadQrCode() {
   document.body.removeChild(link);
 }
 
-function placeOrder() {
+async function placeOrder() {
   if (!cart.length) {
     alert("Please add at least one item.");
     return;
@@ -2762,37 +2548,22 @@ function placeOrder() {
     ? "GCash"
     : document.querySelector('input[name="paymentMethod"]:checked')?.value || "Cash";
 
-<<<<<<< HEAD
-  // Gigamit nato ang anonymous async function module aron ma-process ang await nga walay error 🌟
-  (async () => {
-    try {
-      order = await request("/orders", {
-=======
   try {
       const order = await request("/orders", {
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
         method: "POST",
         body: JSON.stringify({
           type: orderType || (selectedChairIds.length ? "dine_in" : null),
           chairIds: selectedChairIds,
           payment_method: selectedPayment,
-<<<<<<< HEAD
-          
-          // MAP RES DETAILS APIL ARON DILI MAG-NULL SA DATABASE 🌟
-=======
           gcash_reference: isDineIn ? document.getElementById("dineInGcashReference").value.trim() : null,
           gcash_sender_name: isDineIn ? document.getElementById("dineInGcashSenderName").value.trim() : null,
           
           // Include reservation details so the database receives the selected booking.
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
           reservation_date: reservationDetails ? reservationDetails.date : null,
           reservation_time: reservationDetails ? reservationDetails.time : null,
           customer_name: reservationDetails ? reservationDetails.name : null,
           contact_number: reservationDetails ? reservationDetails.contact : null,
-<<<<<<< HEAD
-=======
           contact_country: reservationDetails ? reservationDetails.contactCountry : null,
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
           num_guests: selectedChairIds.length || 1,
 
           items: cart.map((item) => ({
@@ -2802,14 +2573,11 @@ function placeOrder() {
         })
       });
 
-<<<<<<< HEAD
-=======
       if (isDineIn) {
         showDineInOrderPending(order);
         return;
       }
 
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
       // Human malampuson ang request, ipadayon ang UI workflow
       const receiptTitle = document.getElementById("receiptTitle");
       if (receiptTitle) {
@@ -2821,38 +2589,16 @@ function placeOrder() {
         receiptIntro.textContent = "Show this QR code to the staff to view the official receipt.";
       }
 
-<<<<<<< HEAD
-      showSection("receiptSection", 4);
-
-      const qrBox = document.querySelector(".receipt-qr-box");
-      if (qrBox) {
-        qrBox.style.display = "block";
-=======
       showSection("receiptSection", 5);
 
       const qrBox = document.querySelector(".receipt-qr-box");
       if (qrBox) {
         qrBox.hidden = false;
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
       }
 
       const qrImage = document.getElementById("qrImage");
 
       if (order.qr_code && qrImage) {
-<<<<<<< HEAD
-        qrImage.style.display = "block";
-        qrImage.src = order.qr_code;
-        qrImage.dataset.qr = order.qr_code;
-      }
-
-      document.getElementById("thankYouMessage").textContent =
-        `Thank you for dining with Dine-Ari! Your order has been placed successfully using ${selectedPayment}. Please show the QR code to the staff to view your receipt.`;
-
-    } catch (error) {
-      alert("Cannot place order: " + error.message);
-    }
-  })();
-=======
         qrImage.hidden = false;
         qrImage.style.display = "block";
         qrImage.src = order.qr_code;
@@ -2885,45 +2631,43 @@ function placeOrder() {
       confirmButton.textContent = originalButtonText || "Confirm Payment";
     }
   }
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 }
 
 
 document.addEventListener("DOMContentLoaded", () => {
-<<<<<<< HEAD
-=======
+  const loginShortcut = document.querySelector(".header-login-link");
+  const syncLoginShortcut = async () => {
+    if (!loginShortcut || typeof apiRequest !== "function") return;
+    try {
+      const session = await apiRequest("/auth/session", { suppressAuthRedirect: true });
+      const role = session?.user?.role;
+      const signedIn = role === "admin" || role === "staff" || role === "cashier";
+      loginShortcut.classList.toggle("is-authenticated", signedIn);
+      loginShortcut.href = signedIn
+        ? role === "admin" ? "admin-dashboard.html" : "staff-kds.html"
+        : "login.html";
+      loginShortcut.dataset.tooltip = signedIn
+        ? role === "admin" ? "Admin workspace" : "Staff workspace"
+        : "Admin login";
+      loginShortcut.setAttribute("aria-label", loginShortcut.dataset.tooltip);
+    } catch {
+      loginShortcut.classList.remove("is-authenticated");
+      loginShortcut.href = "login.html";
+      loginShortcut.dataset.tooltip = "Admin login";
+      loginShortcut.setAttribute("aria-label", "Admin login");
+    }
+  };
+  void syncLoginShortcut();
+
   initializeFloorPlanScaling();
   window.addEventListener("pageshow", (event) => {
     if (event.persisted) initializeFloorPlanScaling();
   });
 
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   const cartDialog = document.getElementById("cartDialog");
   cartDialog?.addEventListener("close", () => {
     document.getElementById("floatingCartButton")?.setAttribute("aria-expanded", "false");
   });
-<<<<<<< HEAD
-
-  updateCartTotal();
-
-  setInterval(() => {
-    const floorSection = document.getElementById("floorSection");
-    if (floorSection && floorSection.style.display !== "none") {
-      loadFloorPlan();
-    }
-  }, 5000);
-
-  if (
-    !localStorage.getItem("token") &&
-    !localStorage.getItem("dinequeue_token") &&
-    !location.pathname.includes("index.html")
-  ) {
-    console.warn("No token found. If auth redirects are handled by api.js, ignore this warning.");
-  }
-
-  showChoicePanel();
-});
-=======
   document.getElementById("customerAuthMenuButton")?.addEventListener("click", (event) => {
     const button = event.currentTarget;
     const shouldOpen = button.getAttribute("aria-expanded") !== "true";
@@ -3053,7 +2797,7 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("storage", (event) => {
     if (event.key === null || ["token", "user", "role"].includes(event.key)) {
       updateCustomerNavigation();
-      if (getUser().role === "customer" && localStorage.getItem("token")) {
+      if (getUser().role === "customer") {
         void refreshCustomerNotifications();
       }
     }
@@ -3071,10 +2815,9 @@ document.addEventListener("DOMContentLoaded", () => {
   updateReservationCustomerValidation();
 
   showChoicePanel();
-  if (localStorage.getItem("dineariPendingDineInOrderId") && getUser().role === "customer") {
+  if (localStorage.getItem("dineariPendingDineInOrderId") && localStorage.getItem("dineariPendingDineInOrderToken")) {
     void restoreDineInOrderStatus();
   } else if (new URLSearchParams(window.location.search).get("flow") === "dine_in") {
     void chooseType("dine_in");
   }
 });
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50

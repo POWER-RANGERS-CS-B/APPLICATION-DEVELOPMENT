@@ -54,10 +54,6 @@ async function generateOrderCode(client) {
   throw new Error("Cannot generate a unique order code.");
 }
 
-<<<<<<< HEAD
-exports.create = async ({
-  userId,
-=======
 async function createOrderNotification(client, order, {
   notificationType,
   title,
@@ -153,24 +149,16 @@ async function restoreDineInOrderInventory(client, orderId, actorName) {
 exports.create = async ({
   userId,
   actorName,
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   type,
   chairIds = [],
   items = [],
   paymentMethod = "GCash",
-<<<<<<< HEAD
-=======
   gcashReference = null,
   gcashSenderName = null,
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   reservationDate = null,
   reservationTime = null,
   customerName = null,
   contactNumber = null,
-<<<<<<< HEAD
-  receiptBaseUrl = null,
-}) => {
-=======
   contactCountry = null,
   receiptBaseUrl = null,
 }) => {
@@ -179,18 +167,14 @@ exports.create = async ({
   const customer = hasCustomerDetails
     ? normalizeReservationCustomer(customerName, contactNumber, contactCountry)
     : null;
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   const client = await db.connect();
 
   try {
     await client.query("BEGIN");
 
-<<<<<<< HEAD
-=======
     if (type === "dine_in" && paymentMethod !== "GCash") {
       throw new Error("Dine-in orders require GCash payment.");
     }
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     if (!["GCash", "Card"].includes(paymentMethod)) {
       throw new Error("Unavailable payment method. Please choose GCash or Card.");
     }
@@ -199,15 +183,6 @@ exports.create = async ({
       throw new Error("A valid order type is required. Select a table for dine-in before ordering.");
     }
 
-<<<<<<< HEAD
-    let total = 0;
-    let reservationId = null;
-    const orderItems = [];
-
-    if (!Array.isArray(items) || items.length === 0) {
-      throw new Error("Add at least one menu item before placing the order.");
-    }
-=======
     const normalizedGcashReference = String(gcashReference || "").trim();
     const normalizedGcashSenderName = String(gcashSenderName || "").trim();
     if (type === "dine_in" && !normalizedGcashReference) {
@@ -227,7 +202,6 @@ exports.create = async ({
     let reservationId = null;
     let tableId = null;
     const inventoryChanges = [];
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 
     if (type === "dine_in") {
       if (!chairIds.length) {
@@ -248,20 +222,6 @@ exports.create = async ({
         throw new Error("Selected chair does not exist.");
       }
 
-<<<<<<< HEAD
-      // Atomically convert the hold to occupied so only one order can claim it.
-      const tableResult = await client.query(
-        `UPDATE restaurant.restaurant_tables
-         SET status = 'occupied', updated_at = NOW()
-         WHERE id = $1
-           AND deleted_at IS NULL
-           AND status = 'reserved'
-         RETURNING id`,
-        [tableId]
-      );
-      
-      if (!tableResult.rows[0]) {
-=======
       const tableResult = await client.query(
         `SELECT id, status
          FROM restaurant.restaurant_tables
@@ -272,52 +232,16 @@ exports.create = async ({
       
       // CHANGE THIS LINE: Allow both 'vacant' and 'reserved' tables
       if (!tableResult.rows[0] || !["vacant", "reserved"].includes(tableResult.rows[0].status)) {
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
         throw new Error("The selected table is no longer available. Please choose another table.");
       }
 
       const tableChairsResult = await client.query(
-<<<<<<< HEAD
-        `SELECT id, status, (locked_until > NOW()) AS hold_active
-=======
         `SELECT id, status
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
          FROM restaurant.chairs
          WHERE table_id = $1 AND deleted_at IS NULL
          ORDER BY id
          FOR UPDATE`,
         [tableId]
-<<<<<<< HEAD
-      );
-
-      const requestedChairIds = [...new Set(chairIds.map(Number))].sort((a, b) => a - b);
-      const activeTableChairIds = tableChairsResult.rows.map((chair) => Number(chair.id)).sort((a, b) => a - b);
-      
-      const ownsWholeTable =
-        requestedChairIds.length === activeTableChairIds.length &&
-        requestedChairIds.every((id, index) => id === activeTableChairIds[index]);
-
-      if (!ownsWholeTable || !tableChairsResult.rows.length) {
-        throw new Error("Your table hold expired or is no longer available. Please choose a table again.");
-      }
-
-      if (tableChairsResult.rows.some((chair) => chair.status !== "reserved" || !chair.hold_active)) {
-        throw new Error("Your table hold expired or is no longer available. Please choose a table again.");
-      }
-
-      const dateValue = reservationDate || new Date().toISOString().split("T")[0];
-      const timeValue = reservationTime || new Date().toTimeString().split(" ")[0];
-      const resolvedName = customerName || "Customer";
-      const resolvedContact = contactNumber || "N/A";
-
-      const reservationResult = await client.query(
-        `INSERT INTO restaurant.reservations
-         (user_id, table_id, num_guests, status, reservation_date, reservation_time, customer_name, contact_number)
-         VALUES ($1, $2, $3, 'checked_in', $4, $5, $6, $7)
-         RETURNING id`,
-        [userId, tableId, chairIds.length, dateValue, timeValue, resolvedName, resolvedContact]
-=======
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
       );
 
       const requestedChairIds = [...new Set(chairIds.map(Number))].sort((a, b) => a - b);
@@ -378,8 +302,6 @@ exports.create = async ({
         `UPDATE restaurant.chairs
         SET status = 'occupied', locked_until = NULL, updated_at = NOW()
         WHERE table_id = $1 AND deleted_at IS NULL`,
-<<<<<<< HEAD
-=======
         [tableId]
       );
 
@@ -387,50 +309,23 @@ exports.create = async ({
         `UPDATE restaurant.restaurant_tables
          SET status = 'occupied', updated_at = NOW()
          WHERE id = $1`,
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
         [tableId]
       );
-
     }
 
     for (const item of items) {
-      const quantity = Number(item.quantity);
-      if (!Number.isSafeInteger(quantity) || quantity <= 0) {
-        throw new Error(`Invalid quantity for item ${item.menu_item_id}.`);
-      }
-
       const menuResult = await client.query(
-<<<<<<< HEAD
-        `UPDATE restaurant.menu_items
-         SET stock_count = stock_count - $2,
-             updated_at = NOW()
-=======
         `SELECT *
          FROM restaurant.menu_items
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
          WHERE id = $1
            AND deleted_at IS NULL
-           AND stock_count >= $2
-         RETURNING price`,
-        [item.menu_item_id, quantity]
+         FOR UPDATE`,
+        [item.menu_item_id]
       );
 
       const menuItem = menuResult.rows[0];
       const availableStock = Number(menuItem?.stock_count);
 
-<<<<<<< HEAD
-      if (!menuItem) {
-        throw new Error(`Not enough stock for item ${item.menu_item_id}.`);
-      }
-
-      const unitPrice = Number(menuItem.price);
-      total += unitPrice * quantity;
-      orderItems.push({
-        menuItemId: Number(item.menu_item_id),
-        quantity,
-        unitPrice,
-      });
-=======
       if (
         !menuItem ||
         !Number.isSafeInteger(availableStock) ||
@@ -454,34 +349,18 @@ exports.create = async ({
          WHERE id = $1`,
         [item.menu_item_id, item.quantity]
       );
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     }
 
     const orderCode = await generateOrderCode(client);
 
     const receiptToken = crypto.randomBytes(32).toString("hex");
 
-<<<<<<< HEAD
-    const baseUrl =
-      receiptBaseUrl ||
-      process.env.PUBLIC_BASE_URL ||
-      process.env.BASE_URL ||
-      process.env.FRONTEND_URL ||
-      `http://localhost:${process.env.PORT || 3000}`;
-
-    const receiptUrl = new URL("/receipt.html", baseUrl);
-    receiptUrl.searchParams.set("code", orderCode);
-    receiptUrl.searchParams.set("token", receiptToken);
-
-    const qrCode = await QRCode.toDataURL(receiptUrl.toString());
-=======
     if (!receiptBaseUrl) {
       throw new Error("Receipt base URL is not configured.");
     }
 
     const receiptUrl = buildReceiptUrl(receiptBaseUrl, orderCode, receiptToken);
     const qrCode = type === "dine_in" ? null : await QRCode.toDataURL(receiptUrl);
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 
     const orderResult = await client.query(
       `INSERT INTO restaurant.orders
@@ -544,9 +423,6 @@ exports.create = async ({
 
     const order = orderResult.rows[0];
 
-<<<<<<< HEAD
-    for (const item of orderItems) {
-=======
     for (const item of items) {
       const priceResult = await client.query(
         "SELECT price FROM restaurant.menu_items WHERE id = $1",
@@ -555,12 +431,11 @@ exports.create = async ({
 
       const price = Number(priceResult.rows[0].price);
 
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
       await client.query(
         `INSERT INTO restaurant.order_items
          (order_id, menu_item_id, quantity, unit_price, subtotal)
          VALUES ($1, $2, $3, $4, $5)`,
-        [order.id, item.menuItemId, item.quantity, item.unitPrice, item.unitPrice * item.quantity]
+        [order.id, item.menu_item_id, item.quantity, price, price * item.quantity]
       );
     }
 
@@ -1015,8 +890,13 @@ exports.expireUnarrivedDineIns = async () => {
   }
 };
 
-exports.findCustomerPaymentStatus = async (orderId, userId) => {
+exports.findGuestPaymentStatus = async (orderId, receiptToken) => {
   const id = parseOrderId(orderId);
+  if (typeof receiptToken !== "string" || !/^[a-f\d]{64}$/i.test(receiptToken)) {
+    const error = new Error("Order not found.");
+    error.statusCode = 404;
+    throw error;
+  }
   const result = await db.query(
     `SELECT o.id, o.order_code, o.type, o.status, o.payment_status, o.payment_method,
             o.table_id, t.table_name,
@@ -1026,8 +906,8 @@ exports.findCustomerPaymentStatus = async (orderId, userId) => {
             o.gcash_reference, o.gcash_sender_name
      FROM restaurant.orders o
      LEFT JOIN restaurant.restaurant_tables t ON t.id = o.table_id
-     WHERE o.id = $1 AND o.user_id = $2 AND o.type = 'dine_in' AND o.deleted_at IS NULL`,
-    [id, userId]
+     WHERE o.id = $1 AND o.receipt_token = $2 AND o.type = 'dine_in' AND o.deleted_at IS NULL`,
+    [id, receiptToken]
   );
   const order = result.rows[0];
   if (!order) {
@@ -1041,13 +921,6 @@ exports.findCustomerPaymentStatus = async (orderId, userId) => {
 
 exports.findKdsOrders = async () => {
   const result = await db.query(
-<<<<<<< HEAD
-    `SELECT *
-     FROM restaurant.orders
-     WHERE deleted_at IS NULL
-       AND status IN ('pending', 'preparing', 'ready')
-     ORDER BY created_at DESC`
-=======
     `SELECT
        o.id,
        o.order_code,
@@ -1068,21 +941,12 @@ exports.findKdsOrders = async () => {
        AND o.status IN ('pending', 'preparing', 'ready')
        AND (o.type <> 'dine_in' OR o.dine_in_status IS NULL OR o.payment_status = 'paid')
      ORDER BY o.created_at DESC`
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   );
 
   return result.rows;
 };
 
-<<<<<<< HEAD
-exports.updateStatus = async (id, status) => {
-  if (!["preparing", "ready", "completed"].includes(status)) {
-    throw new Error("Invalid order status.");
-  }
-
-=======
 exports.updateStatus = async (id, status, actor) => {
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   const client = await db.connect();
 
   try {
@@ -1136,18 +1000,6 @@ exports.updateStatus = async (id, status, actor) => {
       );
 
       if (!existingHistory.rowCount) {
-<<<<<<< HEAD
-        const userResult = await client.query(
-          `SELECT full_name, email
-           FROM restaurant.users
-           WHERE id = $1`,
-          [order.user_id]
-        );
-
-        const user = userResult.rows[0] || {};
-
-=======
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
         const itemsResult = await client.query(
           `SELECT 
              mi.item_name,
@@ -1188,50 +1040,11 @@ exports.updateStatus = async (id, status, actor) => {
             "N/A",
             order.type,
             order.payment_method || "GCash",
-<<<<<<< HEAD
-            order.payment_status || "paid",
-=======
             order.payment_status || "unpaid",
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
             order.total_amount,
             orderedItems
           ]
         );
-      }
-
-      if (order.type === "dine_in" && order.reservation_id) {
-        const reservationResult = await client.query(
-          `SELECT table_id
-           FROM restaurant.reservations
-           WHERE id = $1
-           FOR UPDATE`,
-          [order.reservation_id]
-        );
-
-        const tableId = reservationResult.rows[0]?.table_id;
-
-        if (tableId) {
-          await client.query(
-            `UPDATE restaurant.reservations
-             SET status = 'completed', updated_at = NOW()
-             WHERE id = $1 AND status IN ('active', 'checked_in')`,
-            [order.reservation_id]
-          );
-
-          await client.query(
-            `UPDATE restaurant.chairs
-             SET status = 'vacant', locked_until = NULL, updated_at = NOW()
-             WHERE table_id = $1 AND deleted_at IS NULL`,
-            [tableId]
-          );
-
-          await client.query(
-            `UPDATE restaurant.restaurant_tables
-             SET status = 'vacant', updated_at = NOW()
-             WHERE id = $1 AND deleted_at IS NULL`,
-            [tableId]
-          );
-        }
       }
     }
 
@@ -1262,19 +1075,8 @@ exports.updateStatus = async (id, status, actor) => {
   }
 };
 
-<<<<<<< HEAD
-exports.softDelete = async (id) => {
-  const result = await db.query(
-    `UPDATE restaurant.orders
-     SET deleted_at = NOW(), updated_at = NOW()
-     WHERE id = $1
-     RETURNING *`,
-    [id]
-  );
-=======
 exports.softDelete = async (id, actor) => {
   const client = await db.connect();
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 
   try {
     await client.query("BEGIN");
@@ -1329,16 +1131,9 @@ exports.findReceiptByCodeAndToken = async (code, token) => {
        o.payment_status,
        o.payment_method,
        o.total_amount,
-<<<<<<< HEAD
-       o.created_at,
-       u.full_name
-     FROM restaurant.orders o
-     LEFT JOIN restaurant.users u ON u.id = o.user_id
-=======
        o.customer_name,
        o.created_at
      FROM restaurant.orders o
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
      WHERE o.order_code = $1
        AND o.receipt_token = $2
        AND o.deleted_at IS NULL
@@ -1360,13 +1155,9 @@ exports.findReceiptByCodeAndToken = async (code, token) => {
        oi.subtotal
      FROM restaurant.order_items oi
      LEFT JOIN restaurant.menu_items mi ON mi.id = oi.menu_item_id
-<<<<<<< HEAD
-     WHERE oi.order_id = $1`,
-=======
     WHERE oi.order_id = $1
       AND oi.deleted_at IS NULL
     ORDER BY oi.id`,
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     [order.id]
   );
 
@@ -1445,8 +1236,5 @@ exports.getTodayIncome = async () => {
 
   return result.rows[0];
 };
-<<<<<<< HEAD
-=======
 
 exports.normalizeOrderItems = normalizeOrderItems;
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50

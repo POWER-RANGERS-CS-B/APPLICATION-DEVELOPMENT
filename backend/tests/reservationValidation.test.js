@@ -1,14 +1,17 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const express = require("express");
-const jwt = require("jsonwebtoken");
 const reservationModel = require("../models/reservationModel");
 const reservationRoutes = require("../routes/reservationRoutes");
 const db = require("../config/db");
 const auditService = require("../services/auditService");
+const { installSessionAuth } = require("./helpers/sessionAuth");
+const sessionAuth = installSessionAuth();
+test.after(() => sessionAuth.restore());
 
 async function withReservationApi(run) {
   const app = express();
+  app.use(sessionAuth.cookieParser());
   app.use(express.json());
   app.use("/api/reservations", reservationRoutes);
   const server = app.listen(0);
@@ -16,10 +19,10 @@ async function withReservationApi(run) {
   try {
     await new Promise((resolve) => server.once("listening", resolve));
     const { port } = server.address();
-    const token = jwt.sign({ id: 27, role: "customer" }, process.env.JWT_SECRET);
+    const cookie = sessionAuth.cookieFor("customer", 27);
     await run(`http://127.0.0.1:${port}/api/reservations`, {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+      Cookie: cookie,
     });
   } finally {
     await new Promise((resolve, reject) => {
@@ -90,14 +93,14 @@ test("reservation API rejects customer names longer than 128 characters before p
   }
 });
 
-test("reservation API requires an authenticated customer", async () => {
+test("reservation API accepts guests and validates their submitted details", async () => {
   await withReservationApi(async (url) => {
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
     });
-    assert.equal(response.status, 401);
+    assert.equal(response.status, 400);
   });
 });
 
@@ -155,7 +158,7 @@ test("reservation API trims valid customer details before passing them to persis
       });
 
       assert.equal(response.status, 201);
-      assert.equal(savedInput.userId, 27);
+      assert.equal(savedInput.userId, null);
       assert.equal(savedInput.customerName, "Customer Name");
       assert.equal(savedInput.contactNumber, "+639171234567");
     });

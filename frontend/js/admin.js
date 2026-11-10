@@ -1,24 +1,4 @@
 // State Arrays for Database-backed Dashboard
-<<<<<<< HEAD
-let products = [];
-let users = [];
-let auditLogs = [];
-let ordersCache = [];
-let allOrdersCache = [];
-let menuItemsCache = [];
-let revenueChartInstance = null;
-let ridgelineChartInstance = null;
-
-document.addEventListener("DOMContentLoaded", async () => {
-  if (
-    !getToken() &&
-    !location.pathname.includes("index.html") &&
-    !location.pathname.includes("intro.html")
-  ) {
-    console.warn("No token found. Proceeding with admin initialization.");
-  }
-
-=======
 function syncLucideIcons() {
   if (window.lucide) window.lucide.createIcons();
 }
@@ -133,7 +113,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const sessionUser = getUser();
   const sessionRole = String(sessionUser.role || localStorage.getItem("role") || "").trim().toLowerCase();
-  if (!getToken() || sessionRole !== "admin") {
+  if (sessionRole !== "admin") {
     window.location.replace("./login.html");
     return;
   }
@@ -150,14 +130,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     void validateReservationQr();
   });
 
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   await loadAdminWorkspace();
   initCharts();
   setInterval(loadAdminWorkspace, 10000); // Live refresh every 10 seconds
 });
 
-<<<<<<< HEAD
-=======
 async function validateReservationQr() {
   const input = document.getElementById("reservationQrValidationCode");
   const resultBox = document.getElementById("reservationQrValidationResult");
@@ -192,7 +169,6 @@ async function validateReservationQr() {
   }
 }
 
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 // Main orchestrator to load all workspace sections from PostgreSQL backend
 async function loadAdminWorkspace() {
   try {
@@ -210,11 +186,6 @@ async function loadAdminWorkspace() {
 
 // --- 1. DASHBOARD, LIVE ORDERS & TELEMETRY ---
 async function loadAdminDashboardMetrics() {
-<<<<<<< HEAD
-  try {
-    const orders = await apiRequest("/orders/kds");
-    const reservations = await apiRequest("/reservations");
-=======
   void refreshCategoryPieChart();
 
   try {
@@ -225,7 +196,6 @@ async function loadAdminDashboardMetrics() {
     reservationRequestsCache = Array.isArray(reservations) ? reservations : [];
     dineInPaymentRequestsCache = Array.isArray(dineInPayments) ? dineInPayments : [];
     pendingDineInRefundsCache = Array.isArray(pendingDineInRefunds) ? pendingDineInRefunds : [];
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     
     let history = [];
     try {
@@ -268,18 +238,10 @@ async function loadAdminDashboardMetrics() {
 
     // Refresh charts with real data
     updateRevenueChartRange();
-<<<<<<< HEAD
-    initCategoryPieChart();
-  } catch (error) {
-    console.error("Admin dashboard telemetry error:", error);
-    document.querySelectorAll("#orders, #reservations, #history").forEach((el) => {
-      if (el) el.innerHTML = `<p class="muted">Unable to load telemetry data. ${error.message}</p>`;
-=======
   } catch (error) {
     console.error("Admin dashboard telemetry error:", error);
     document.querySelectorAll("#orders, #reservations, #history").forEach((el) => {
       if (el) el.textContent = `Unable to load telemetry data. ${error.message}`;
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     });
     const reservationRequests = document.getElementById("reservationRequests");
     if (reservationRequests) {
@@ -407,13 +369,13 @@ function renderReservationRequests(reservations) {
           <p><strong>GCash reference:</strong> ${escapeAdminHtml(gcashReference)}</p>
           <p><strong>Sender's name:</strong> ${escapeAdminHtml(reservation.gcash_sender_name || "Not provided")}</p>
           <p><strong>Payment status:</strong> ${escapeAdminHtml(paymentStatus.toUpperCase())}</p>
-          ${reservation.payment_proof_url ? `<p><strong>Payment proof:</strong> <a href="${escapeAdminHtml(reservation.payment_proof_url)}" target="_blank" rel="noopener noreferrer">View submitted proof</a></p>` : ""}
+          ${safeHttpsUrl(reservation.payment_proof_url) ? `<p><strong>Payment proof:</strong> <a href="${escapeAdminHtml(safeHttpsUrl(reservation.payment_proof_url))}" target="_blank" rel="noopener noreferrer">View submitted proof</a></p>` : ""}
           <p><strong>Submitted:</strong> ${escapeAdminHtml(submittedAt)}</p>
         </div>
         ${canReview ? `<div class="admin-inline-actions">
-          <button type="button" class="secondary" onclick="viewReservationDetails(${id})">View Details</button>
-          <button type="button" class="primary" onclick="confirmReservation(${id})">Confirm Payment</button>
-          <button type="button" class="danger" onclick="rejectReservation(${id})">Reject Payment</button>
+          <button type="button" class="secondary" data-csp-click="viewReservationDetails(${id})">View Details</button>
+          <button type="button" class="primary" data-csp-click="confirmReservation(${id})">Confirm Payment</button>
+          <button type="button" class="danger" data-csp-click="rejectReservation(${id})">Reject Payment</button>
         </div>` : ""}
       </article>
     `;
@@ -574,9 +536,9 @@ function renderReservationManagement(reservations) {
         <td>${escapeAdminHtml(createdAt)}</td>
         <td>
           <div class="reservation-management-row-actions">
-            <button type="button" class="secondary" onclick="viewReservationDetails(${id})">View</button>
+            <button type="button" class="secondary" data-csp-click="viewReservationDetails(${id})">View</button>
             ${isHistoricalReservation(reservation)
-              ? `<button type="button" class="danger" onclick="archiveHistoricalReservation(${id})">Remove</button>`
+              ? `<button type="button" class="danger" data-csp-click="archiveHistoricalReservation(${id})">Remove</button>`
               : ""}
           </div>
         </td>
@@ -678,6 +640,16 @@ function escapeAdminHtml(value) {
     '"': "&quot;",
     "'": "&#39;",
   })[character]);
+}
+
+function safeHttpsUrl(value) {
+  try {
+    const url = new URL(String(value));
+    if (url.protocol === "https:" && !url.username && !url.password) return url.href;
+  } catch {
+    // Invalid links are omitted.
+  }
+  return "";
 }
 
 function viewReservationDetails(id) {
@@ -854,23 +826,21 @@ function renderLiveOrders(orders) {
     ? orders.map((order) => `
         <div class="admin-item dashboard-card-row">
           <div class="dashboard-card-head">
-            <h3>Order #${order.order_code || order.id}</h3>
-            <span class="status-badge status-${order.status}">
-              ${String(order.status || "pending").toUpperCase()}
+            <h3>Order #${escapeAdminHtml(order.order_code || order.id)}</h3>
+            <span class="status-badge status-${escapeAdminHtml(order.status || "pending")}">
+              ${escapeAdminHtml(String(order.status || "pending").toUpperCase())}
             </span>
           </div>
 
-          <p><strong>Type:</strong> ${String(order.type || "N/A").replace("_", " ").toUpperCase()}</p>
-          <p><strong>Payment:</strong> ${order.payment_method || "Cash"}</p>
+          <p><strong>Type:</strong> ${escapeAdminHtml(String(order.type || "N/A").replace("_", " ").toUpperCase())}</p>
+          <p><strong>Payment:</strong> ${escapeAdminHtml(order.payment_method || "Cash")}</p>
           <p><strong>Total:</strong> ₱${Number(order.total_amount || 0).toFixed(2)}</p>
           <p><strong>Date:</strong> ${order.created_at ? new Date(order.created_at).toLocaleString() : "N/A"}</p>
 
-          <button class="danger" onclick="deleteOrder(${order.id})"><i data-lucide="trash-2" aria-hidden="true"></i> Soft Delete</button>
+          <button class="danger" data-csp-click="deleteOrder(${Number(order.id)})"><i data-lucide="trash-2" aria-hidden="true"></i> Soft Delete</button>
         </div>
       `).join("")
     : `<p class="muted empty-state">No active orders found in database.</p>`;
-<<<<<<< HEAD
-=======
   syncLucideIcons();
 }
 
@@ -930,8 +900,8 @@ function renderDineInPaymentRequests(orders) {
         ${order.payment_verified_at ? `<p><strong>Verified:</strong> ${escapeAdminHtml(new Date(order.payment_verified_at).toLocaleString())}</p>` : ""}
       </div>
       ${canReview ? `<div class="admin-inline-actions">
-        <button type="button" class="primary" onclick="confirmDineInPayment(${Number(order.id)})">Confirm Payment</button>
-        <button type="button" class="danger" onclick="rejectDineInPayment(${Number(order.id)})">Reject Payment</button>
+        <button type="button" class="primary" data-csp-click="confirmDineInPayment(${Number(order.id)})">Confirm Payment</button>
+        <button type="button" class="danger" data-csp-click="rejectDineInPayment(${Number(order.id)})">Reject Payment</button>
       </div>` : ""}
     </article>
   `;
@@ -1026,7 +996,6 @@ async function rejectDineInPayment(id) {
   } finally {
     endAdminMutation(actionKey);
   }
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 }
 
 function renderReservations(reservations) {
@@ -1034,56 +1003,6 @@ function renderReservations(reservations) {
   if (!reservationsBox) return;
 
   reservationsBox.innerHTML = reservations.length
-<<<<<<< HEAD
-    ? [...reservations]
-      .sort((a, b) => {
-        const statusOrder = {
-          active: 0,
-          confirmed: 0,
-          checked_in: 1,
-          cancelled: 2,
-          completed: 3,
-        };
-        const statusA = String(a.status || "active").toLowerCase();
-        const statusB = String(b.status || "active").toLowerCase();
-        return (statusOrder[statusA] ?? 4) - (statusOrder[statusB] ?? 4);
-      })
-      .map((reservation) => {
-        const status = String(reservation.status || "active").toLowerCase();
-        const statusLabels = {
-          active: "Confirmed",
-          confirmed: "Confirmed",
-          checked_in: "Checked In",
-          completed: "Completed",
-          cancelled: "Cancelled",
-        };
-        const statusClasses = {
-          active: "confirmed",
-          confirmed: "confirmed",
-          checked_in: "checked-in",
-          completed: "completed",
-          cancelled: "cancelled",
-        };
-        const statusLabel = statusLabels[status] || "Unknown";
-        const statusClass = statusClasses[status] || "other";
-
-        return `
-          <div class="admin-item dashboard-card-row">
-            <div class="dashboard-card-head">
-              <h3>${reservation.table_name || "Table " + reservation.table_id}</h3>
-              <span class="reservation-status-badge reservation-status-badge--${statusClass}">${statusLabel}</span>
-            </div>
-
-            <p><strong>Customer:</strong> ${reservation.customer_name || reservation.full_name || "Customer"}</p>
-            <p><strong>Contact:</strong> ${reservation.contact_number || "N/A"}</p>
-            <p><strong>Guests:</strong> ${reservation.num_guests || reservation.number_of_guests || "N/A"}</p>
-            <p><strong>Date:</strong> ${reservation.reservation_date || "N/A"}</p>
-            <p><strong>Time:</strong> ${reservation.reservation_time || "N/A"}</p>
-          </div>
-        `;
-      }).join("")
-    : `<p class="muted empty-state">No reservations found.</p>`;
-=======
     ? reservations.map((reservation) => `
         <div class="admin-item dashboard-card-row">
           <div class="dashboard-card-head">
@@ -1105,7 +1024,6 @@ function renderReservations(reservations) {
         </div>
       `).join("")
     : `<p class="muted empty-state">No reservation history is available.</p>`;
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 }
 
 function renderOrderHistory(history) {
@@ -1116,23 +1034,23 @@ function renderOrderHistory(history) {
     ? history.map((record) => `
         <div class="admin-item history-card">
           <div class="dashboard-card-head">
-            <h3>Completed Order #${record.order_code || record.order_id || record.id}</h3>
+            <h3>Completed Order #${escapeAdminHtml(record.order_code || record.order_id || record.id)}</h3>
             <span class="status-badge status-completed">COMPLETED</span>
           </div>
 
           <div class="history-grid">
-            <p><strong>Customer:</strong> ${record.customer_name || "Customer"}</p>
-            <p><strong>Email:</strong> ${record.customer_email || "N/A"}</p>
-            <p><strong>Order Type:</strong> ${String(record.order_type || record.type || "N/A").replace("_", " ").toUpperCase()}</p>
-            <p><strong>Payment:</strong> ${record.payment_method || "Cash"}</p>
-            <p><strong>Payment Status:</strong> ${String(record.payment_status || "unpaid").toUpperCase()}</p>
+            <p><strong>Customer:</strong> ${escapeAdminHtml(record.customer_name || "Customer")}</p>
+            <p><strong>Email:</strong> ${escapeAdminHtml(record.customer_email || "N/A")}</p>
+            <p><strong>Order Type:</strong> ${escapeAdminHtml(String(record.order_type || record.type || "N/A").replace("_", " ").toUpperCase())}</p>
+            <p><strong>Payment:</strong> ${escapeAdminHtml(record.payment_method || "Cash")}</p>
+            <p><strong>Payment Status:</strong> ${escapeAdminHtml(String(record.payment_status || "unpaid").toUpperCase())}</p>
             <p><strong>Total:</strong> ₱${Number(record.total_amount || 0).toFixed(2)}</p>
-            <p><strong>Date & Time:</strong> ${record.completed_at ? new Date(record.completed_at).toLocaleString() : "N/A"}</p>
+            <p><strong>Date & Time:</strong> ${escapeAdminHtml(record.completed_at ? new Date(record.completed_at).toLocaleString() : "N/A")}</p>
           </div>
 
           <div class="ordered-items-box">
             <strong>Ordered Items:</strong>
-            <p>${record.ordered_items || "No item list saved."}</p>
+            <p>${escapeAdminHtml(record.ordered_items || "No item list saved.")}</p>
           </div>
         </div>
       `).join("")
@@ -1140,14 +1058,6 @@ function renderOrderHistory(history) {
 }
 
 async function deleteOrder(id) {
-<<<<<<< HEAD
-  if (!confirm("Soft delete this order from the database?")) return;
-  try {
-    await apiRequest(`/orders/${id}`, { method: "DELETE" });
-    await loadAdminDashboardMetrics();
-  } catch (err) {
-    console.error("Failed to delete order:", err);
-=======
   const actionKey = `delete-order:${id}`;
   if (!beginAdminMutation(actionKey)) return;
   try {
@@ -1169,7 +1079,6 @@ async function deleteOrder(id) {
     }
   } finally {
     endAdminMutation(actionKey);
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   }
 }
 
@@ -1177,10 +1086,6 @@ async function deleteOrder(id) {
 async function fetchProducts() {
   try {
     const data = await apiRequest("/menu");
-<<<<<<< HEAD
-    menuItemsCache = data;
-=======
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     products = data.map(item => ({
       id: item.id,
       name: item.item_name,
@@ -1191,10 +1096,6 @@ async function fetchProducts() {
       image_url: item.image_url || 'images/default-food.jpg'
     }));
     renderProducts();
-<<<<<<< HEAD
-    initCategoryPieChart();
-=======
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   } catch (err) {
     console.error("Failed to fetch menu items from DB:", err);
   }
@@ -1203,79 +1104,6 @@ async function fetchProducts() {
 function renderProducts() {
   const tbody = document.getElementById("productTableBody");
   if (!tbody) return;
-<<<<<<< HEAD
-  const sortedProducts = [...products].sort((a, b) =>
-    String(a.name || "").localeCompare(String(b.name || ""), undefined, { sensitivity: "base" })
-  );
-  tbody.innerHTML = sortedProducts.map(p => `
-    <tr>
-      <td><strong>${p.name}</strong></td>
-      <td>${p.category}</td>
-      <td>₱${p.price.toFixed(2)}</td>
-      <td><span class="badge ${p.stock < 15 ? 'badge-danger' : ''}">${p.stock} units</span></td>
-      <td><small class="muted">${p.recipe}</small></td>
-      <td>
-        <button class="secondary" style="padding: 4px 8px; margin:0;" onclick="editProduct(${p.id})">Edit</button>
-        <button class="danger" style="padding: 4px 8px; margin:0;" onclick="deleteProduct(${p.id})">Delete</button>
-      </td>
-    </tr>
-  `).join('');
-}
-
-function openProductModal() {
-  document.getElementById("productModalTitle").innerText = "Add Menu";
-  document.getElementById("editProductId").value = "";
-  document.getElementById("prodName").value = "";
-  document.getElementById("prodCategory").value = "Main Course";
-  document.getElementById("prodPrice").value = "";
-  document.getElementById("prodStock").value = "";
-  
-  const imageInput = document.getElementById("prodImageFile");
-  if (imageInput) imageInput.value = ""; 
-
-  document.getElementById("prodRecipe").value = "";
-  document.getElementById("productModal").classList.remove("hidden");
-}
-
-function closeProductModal() {
-  const modal = document.getElementById("productModal");
-  if (modal) {
-    modal.classList.add("hidden");
-  }
-}
-
-function editProduct(id) {
-  const p = products.find(prod => prod.id === id);
-  if (!p) return;
-  document.getElementById("productModalTitle").innerText = "Edit Product & Recipe";
-  document.getElementById("editProductId").value = p.id;
-  document.getElementById("prodName").value = p.name;
-  document.getElementById("prodCategory").value = p.category;
-  document.getElementById("prodPrice").value = p.price;
-  document.getElementById("prodStock").value = p.stock;
-
-  const imageInput = document.getElementById("prodImageFile");
-  if (imageInput) imageInput.value = ""; // File inputs cannot be prefilled programmatically for security
-
-  document.getElementById("prodRecipe").value = p.recipe;
-  document.getElementById("productModal").classList.remove("hidden");
-}
-
-async function saveProduct() {
-  const id = document.getElementById("editProductId").value;
-  const item_name = document.getElementById("prodName").value;
-  const category = document.getElementById("prodCategory").value;
-  const price = parseFloat(document.getElementById("prodPrice").value);
-  const stock_count = parseInt(document.getElementById("prodStock").value);
-  const description = document.getElementById("prodRecipe").value;
-  const imageFile = document.getElementById("prodImageFile").files[0];
-
-  if (!item_name || isNaN(price) || isNaN(stock_count)) {
-    alert("Please fill in all required product fields accurately.");
-    return;
-  }
-
-=======
   const searchInput = document.getElementById("menuSearch");
   const query = searchInput ? searchInput.value.trim().toLowerCase() : "";
   const clearButton = document.getElementById("clearMenuSearch");
@@ -1296,14 +1124,14 @@ async function saveProduct() {
 
   tbody.innerHTML = matchingProducts.map(p => `
     <tr>
-      <td><strong>${p.name}</strong></td>
-      <td>${p.category}</td>
+      <td><strong>${escapeAdminHtml(p.name)}</strong></td>
+      <td>${escapeAdminHtml(p.category)}</td>
       <td>₱${p.price.toFixed(2)}</td>
-      <td><span class="badge ${p.stock < 15 ? 'badge-danger' : ''}">${p.stock} units</span></td>
-      <td><small class="muted">${p.recipe}</small></td>
+      <td><span class="badge ${Number(p.stock) < 15 ? 'badge-danger' : ''}">${Number(p.stock)} units</span></td>
+      <td><small class="muted">${escapeAdminHtml(p.recipe)}</small></td>
       <td>
-        <button class="secondary" style="padding: 4px 8px; margin:0;" onclick="editProduct(${p.id})"><i data-lucide="pencil" aria-hidden="true"></i> Edit</button>
-        <button class="danger" style="padding: 4px 8px; margin:0;" onclick="deleteProduct(${p.id})"><i data-lucide="trash-2" aria-hidden="true"></i> Delete</button>
+        <button class="secondary" style="padding: 4px 8px; margin:0;" data-csp-click="editProduct(${Number(p.id)})"><i data-lucide="pencil" aria-hidden="true"></i> Edit</button>
+        <button class="danger" style="padding: 4px 8px; margin:0;" data-csp-click="deleteProduct(${Number(p.id)})"><i data-lucide="trash-2" aria-hidden="true"></i> Delete</button>
       </td>
     </tr>
   `).join('');
@@ -1372,7 +1200,6 @@ async function saveProduct() {
     return;
   }
 
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   // Use FormData to support file uploads from any device
   const formData = new FormData();
   formData.append("item_name", item_name);
@@ -1384,31 +1211,19 @@ async function saveProduct() {
     formData.append("image", imageFile);
   }
 
-  const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-
   try {
-<<<<<<< HEAD
-    const url = id ? `http://localhost:3000/api/menu/${id}` : "http://localhost:3000/api/menu";
-=======
     const url = id
       ? `${window.location.origin}/api/menu/${id}`
       : `${window.location.origin}/api/menu`;
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     const method = id ? "PUT" : "POST";
 
     const res = await fetch(url, {
       method: method,
-      headers: {
-        ...(token ? { "Authorization": `Bearer ${token}` } : {})
-        // NOTE: Do NOT set Content-Type header when using FormData; fetch handles it automatically with boundaries.
-      },
+      credentials: "same-origin",
+      // Do not set Content-Type for FormData; fetch supplies the boundary.
       body: formData
     });
 
-<<<<<<< HEAD
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Failed to save menu item");
-=======
     if (res.status === 401 || res.status === 403) {
       redirectForAuthorizationFailure(res.status);
       throw new Error(`Request failed with status ${res.status}`);
@@ -1418,7 +1233,6 @@ async function saveProduct() {
     if (!res.ok) {
       throw new Error(data.message || "Failed to save menu item");
     }
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 
     closeProductModal();
     await fetchProducts();
@@ -1430,15 +1244,6 @@ async function saveProduct() {
 }
 
 async function deleteProduct(id) {
-<<<<<<< HEAD
-  if (confirm("Delete this food product from PostgreSQL?")) {
-    try {
-      await apiRequest(`/menu/${id}`, { method: "DELETE" });
-      await fetchProducts();
-    } catch (err) {
-      console.error("Database deletion error:", err);
-    }
-=======
   const actionKey = `delete-menu:${id}`;
   if (!beginAdminMutation(actionKey)) return;
   try {
@@ -1460,26 +1265,11 @@ async function deleteProduct(id) {
     }
   } finally {
     endAdminMutation(actionKey);
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   }
 }
 
 // --- 3. STAFF USERS & RBAC (Filtered to Employees Only) ---
 async function fetchUsers() {
-<<<<<<< HEAD
-  try {
-    const data = await apiRequest("/users");
-    // Filter to include ONLY employees ('admin' and 'staff')
-    const employees = data.filter(u => u.role === 'admin' || u.role === 'staff');
-
-    users = employees.map(u => ({
-      id: u.id,
-      name: u.full_name,
-      email: u.email,
-      role: u.role,
-      permissions: u.role === 'admin' ? 'Full Database Access' : 'Staff Operations',
-      status: u.deleted_at ? 'Suspended' : 'Active'
-=======
   const tbody = document.getElementById("userTableBody");
   const status = document.getElementById("staffManagementStatus");
   try {
@@ -1492,18 +1282,10 @@ async function fetchUsers() {
       role: u.role,
       createdAt: u.created_at,
       status: u.deleted_at ? "inactive" : "active"
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     }));
 
     renderUsers();
 
-<<<<<<< HEAD
-    // Display employee count in Active Employees card
-    const kpiUsers = document.getElementById("kpiUsers");
-    if (kpiUsers) kpiUsers.innerText = users.filter(u => u.status === 'Active').length;
-  } catch (err) {
-    console.error("Failed to fetch employees:", err);
-=======
     const kpiUsers = document.getElementById("kpiUsers");
     if (kpiUsers) {
       kpiUsers.innerText = users.filter((user) => ["staff", "cashier"].includes(user.role) && user.status === "active").length;
@@ -1521,35 +1303,12 @@ async function fetchUsers() {
       status.classList.add("is-error");
       status.textContent = "Staff accounts could not be loaded. Please try again.";
     }
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   }
 }
 
 function renderUsers() {
   const tbody = document.getElementById("userTableBody");
   if (!tbody) return;
-<<<<<<< HEAD
-  tbody.innerHTML = users.map(u => `
-    <tr>
-      <td><strong>${u.name}</strong></td>
-      <td>${u.email}</td>
-      <td>${u.role}</td>
-      <td><small>${u.permissions}</small></td>
-      <td><span class="status-badge ${u.status === 'Active' ? 'status-active' : ''}">${u.status}</span></td>
-      <td>
-        <button class="secondary" style="padding: 4px 8px; margin:0;" onclick="toggleUserStatus(${u.id})">Toggle Status</button>
-      </td>
-    </tr>
-  `).join('');
-}
-
-async function toggleUserStatus(id) {
-  try {
-    await apiRequest(`/users/${id}/status`, { method: "PATCH" });
-    await fetchUsers();
-  } catch (err) {
-    console.error("Failed to toggle user status:", err);
-=======
   const search = document.getElementById("staffSearch")?.value.trim().toLowerCase() || "";
   const roleFilter = document.getElementById("staffRoleFilter")?.value || "all";
   const statusFilter = document.getElementById("staffStatusFilter")?.value || "all";
@@ -1578,8 +1337,8 @@ async function toggleUserStatus(id) {
       <td>
         ${["staff", "cashier"].includes(user.role)
           ? `<div class="staff-row-actions">
-              <button class="secondary" type="button" data-staff-id="${escapeStaffHtml(user.id)}" onclick="openStaffForm(this.dataset.staffId)"><i data-lucide="pencil" aria-hidden="true"></i>Edit</button>
-              <button class="secondary" type="button" data-staff-id="${escapeStaffHtml(user.id)}" data-next-status="${user.status === "active" ? "inactive" : "active"}" onclick="toggleUserStatus(this.dataset.staffId, this.dataset.nextStatus)"><i data-lucide="${user.status === "active" ? "user-round-x" : "user-round-check"}" aria-hidden="true"></i>${user.status === "active" ? "Deactivate" : "Activate"}</button>
+              <button class="secondary" type="button" data-staff-id="${escapeStaffHtml(user.id)}" data-csp-click="openStaffForm(this.dataset.staffId)"><i data-lucide="pencil" aria-hidden="true"></i>Edit</button>
+              <button class="secondary" type="button" data-staff-id="${escapeStaffHtml(user.id)}" data-next-status="${user.status === "active" ? "inactive" : "active"}" data-csp-click="toggleUserStatus(this.dataset.staffId, this.dataset.nextStatus)"><i data-lucide="${user.status === "active" ? "user-round-x" : "user-round-check"}" aria-hidden="true"></i>${user.status === "active" ? "Deactivate" : "Activate"}</button>
             </div>`
           : `<small class="staff-protected-label">Protected administrator account</small>`}
       </td>
@@ -1733,27 +1492,11 @@ async function toggleUserStatus(id, nextStatus) {
     }
   } finally {
     endAdminMutation(actionKey);
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   }
 }
 
 // --- 4. AUDIT LOGS & SYSTEM ALERTS ---
 async function fetchAuditLogs() {
-<<<<<<< HEAD
-  try {
-    const data = await apiRequest("/audit-logs");
-    auditLogs = data.map(log => ({
-      time: log.created_at,
-      user: log.user_name || "System Admin",
-      action: log.action_description || log.action,
-      ip: log.ip_address || "127.0.0.1"
-    }));
-    renderAuditLogs();
-  } catch (err) {
-    auditLogs = [{ time: new Date().toLocaleString(), user: "System", action: "Connected to PostgreSQL Schema", ip: "127.0.0.1" }];
-    renderAuditLogs();
-  }
-=======
   const tbody = document.getElementById("auditTableBody");
   const status = document.getElementById("auditLogStatus");
   if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="muted">Loading audit logs…</td></tr>`;
@@ -1868,22 +1611,11 @@ function initAuditLogControls() {
       fetchAuditLogs();
     }
   });
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 }
 
 function renderAuditLogs() {
   const tbody = document.getElementById("auditTableBody");
   if (!tbody) return;
-<<<<<<< HEAD
-  tbody.innerHTML = auditLogs.map(log => `
-    <tr>
-      <td><small>${log.time}</small></td>
-      <td>${log.user}</td>
-      <td>${log.action}</td>
-      <td><code>${log.ip}</code></td>
-    </tr>
-  `).join('');
-=======
   if (!auditLogs.length) {
     tbody.innerHTML = `<tr><td colspan="6" class="muted">No audit records found for these filters.</td></tr>`;
     return;
@@ -1917,7 +1649,6 @@ function renderAuditLogs() {
       </tr>
     `;
   }).join("");
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 }
 
 function renderAlerts() {
@@ -1932,26 +1663,16 @@ function renderAlerts() {
 
   container.innerHTML = lowStock.map(p => `
     <div style="padding: 12px; margin-bottom: 10px; border: 1px solid var(--danger); border-radius: 12px; background: rgba(224, 86, 86, 0.1);">
-<<<<<<< HEAD
-      <strong>⚠️ Low Stock Level Alert:</strong> ${p.name} has only <strong>${p.stock} units</strong> remaining in database inventory.
-    </div>
-  `).join('');
-=======
-      <strong><i data-lucide="triangle-alert" aria-hidden="true"></i> Low Stock Level Alert:</strong> ${p.name} has only <strong>${p.stock} units</strong> remaining in database inventory.
+      <strong><i data-lucide="triangle-alert" aria-hidden="true"></i> Low Stock Level Alert:</strong> ${escapeAdminHtml(p.name)} has only <strong>${Number(p.stock)} units</strong> remaining in database inventory.
     </div>
   `).join('');
   syncLucideIcons();
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 }
 
 // --- 5. CHARTS & TIME RANGE SWITCHER ---
 function initCharts() {
   updateRevenueChartRange();
   initRidgelineChart();
-<<<<<<< HEAD
-  initCategoryPieChart();
-=======
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 }
 
 function updateRevenueChartRange() {
@@ -2022,13 +1743,8 @@ function updateRevenueChartRange() {
       datasets: [{
         label: `Revenue (${range.toUpperCase()}) (₱)`,
         data: dataPoints,
-<<<<<<< HEAD
-        borderColor: '#d6a83f',
-        backgroundColor: 'rgba(214, 168, 63, 0.15)',
-=======
         borderColor: '#ef7417',
         backgroundColor: 'rgba(239, 116, 23, 0.16)',
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
         fill: true,
         tension: 0.3
       }]
@@ -2036,18 +1752,12 @@ function updateRevenueChartRange() {
     options: {
       responsive: true,
       animation: { duration: 400 }, // Smooth entry only on first load
-<<<<<<< HEAD
-      scales: {
-        y: { beginAtZero: true, ticks: { color: '#aeb8c5' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-        x: { ticks: { color: '#aeb8c5' }, grid: { display: false } }
-=======
       plugins: {
         legend: { labels: { color: dashboardChartTheme().text } }
       },
       scales: {
         y: { beginAtZero: true, ticks: { color: dashboardChartTheme().text }, grid: { color: dashboardChartTheme().grid } },
         x: { ticks: { color: dashboardChartTheme().text }, grid: { display: false } }
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
       }
     }
   });
@@ -2070,39 +1780,24 @@ function initRidgelineChart() {
         {
           label: 'Main Course',
           data: [10, 45, 85, 60, 30, 15, 5],
-<<<<<<< HEAD
-          borderColor: '#d6a83f',
-          backgroundColor: 'rgba(214, 168, 63, 0.45)',
-=======
           borderColor: '#ef7417',
           backgroundColor: 'rgba(239, 116, 23, 0.30)',
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
           fill: true,
           tension: 0.4
         },
         {
           label: 'Appetizers',
           data: [5, 25, 55, 40, 20, 8, 2],
-<<<<<<< HEAD
-          borderColor: '#ffe4a0',
-          backgroundColor: 'rgba(255, 228, 160, 0.35)',
-=======
           borderColor: '#ffb45c',
           backgroundColor: 'rgba(255, 180, 92, 0.26)',
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
           fill: true,
           tension: 0.4
         },
         {
           label: 'Beverages',
           data: [2, 15, 35, 75, 45, 20, 5],
-<<<<<<< HEAD
-          borderColor: '#3fbf6b',
-          backgroundColor: 'rgba(63, 191, 107, 0.30)',
-=======
           borderColor: '#8f5937',
           backgroundColor: 'rgba(143, 89, 55, 0.22)',
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
           fill: true,
           tension: 0.4
         }
@@ -2114,86 +1809,24 @@ function initRidgelineChart() {
         legend: {
           display: true,
           position: 'bottom',
-<<<<<<< HEAD
-          labels: { color: '#f7f2e8', font: { size: 11 } }
-=======
           labels: { color: dashboardChartTheme().text, font: { size: 11 } }
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
         }
       },
       scales: {
         y: { 
           stacked: true, 
-<<<<<<< HEAD
-          grid: { color: 'rgba(255, 255, 255, 0.05)' },
-          ticks: { color: '#aeb8c5' }
-        },
-        x: { 
-          grid: { display: false },
-          ticks: { color: '#aeb8c5' }
-=======
           grid: { color: dashboardChartTheme().grid },
           ticks: { color: dashboardChartTheme().text }
         },
         x: { 
           grid: { display: false },
           ticks: { color: dashboardChartTheme().text }
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
         }
       }
     }
   });
 }
 
-<<<<<<< HEAD
-// Sales by Category Pie / Doughnut Chart
-function initCategoryPieChart() {
-  const ctxCategory = document.getElementById('categoryChart');
-  if (!ctxCategory) return;
-
-  // Extract unique categories from menu items
-  const categoriesMap = {};
-  menuItemsCache.forEach(item => {
-    const cat = item.category || "Main Course";
-    categoriesMap[cat] = 0;
-  });
-
-  if (Object.keys(categoriesMap).length === 0) {
-    categoriesMap["Main Course"] = 1;
-    categoriesMap["Appetizers"] = 1;
-    categoriesMap["Beverages"] = 1;
-  }
-
-  // Aggregate totals by category
-  allOrdersCache.forEach(ord => {
-    const catKeys = Object.keys(categoriesMap);
-    const fallbackCat = catKeys[0] || "Main Course";
-    categoriesMap[fallbackCat] += Number(ord.total_amount || 0);
-  });
-
-  const labels = Object.keys(categoriesMap);
-  const data = labels.map(cat => categoriesMap[cat]);
-  const totalVal = data.reduce((a, b) => a + b, 0);
-  const chartData = totalVal === 0 ? data.map(() => 1) : data;
-
-  // If the doughnut chart already exists, update data smoothly without re-rendering/flickering
-  if (window.categoryChartInstance) {
-    window.categoryChartInstance.data.labels = labels;
-    window.categoryChartInstance.data.datasets[0].data = chartData;
-    window.categoryChartInstance.update('none'); // 'none' mode stops the flicker animation
-    return;
-  }
-
-  // Otherwise, create it for the first time
-  window.categoryChartInstance = new Chart(ctxCategory.getContext('2d'), {
-    type: 'doughnut',
-    data: {
-      labels: labels,
-      datasets: [{
-        data: chartData,
-        backgroundColor: ['#d6a83f', '#ffe4a0', '#12304f', '#e05656', '#3fbf6b', '#9b59b6'],
-        borderWidth: 1
-=======
 function setCategoryChartStatus(message, isError = false) {
   const status = document.getElementById("categoryChartStatus");
   if (!status) return;
@@ -2249,17 +1882,10 @@ function initCategoryPieChart(categorySales) {
         borderColor: dashboardChartTheme().grid,
         borderWidth: 1,
         hoverOffset: 4
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
       }]
     },
     options: {
       responsive: true,
-<<<<<<< HEAD
-      animation: { duration: 0 }, // Disables heavy initial animation loops causing visual jitter
-      plugins: {
-        legend: {
-          display: false // <-- Hides the built-in default chart legend so only your custom right-side labels show
-=======
       maintainAspectRatio: true,
       animation: { duration: 180 },
       plugins: {
@@ -2274,19 +1900,12 @@ function initCategoryPieChart(categorySales) {
               })}`;
             }
           }
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
         }
       }
     }
   });
 }
 
-<<<<<<< HEAD
-// Tab Switching Navigation
-function switchTab(tabId) {
-  document.querySelectorAll(".tab-section").forEach(sec => sec.classList.remove("active"));
-  document.querySelectorAll(".admin-sidebar-menu li").forEach(item => item.classList.remove("active"));
-=======
 async function refreshCategoryPieChart() {
   const canvas = document.getElementById("categoryChart");
   if (!canvas) return;
@@ -2315,15 +1934,12 @@ async function refreshCategoryPieChart() {
 function switchTab(tabId) {
   document.querySelectorAll(".tab-section").forEach(sec => sec.classList.remove("active"));
   document.querySelectorAll(".admin-sidebar-menu li[data-tab]").forEach(item => item.classList.remove("active"));
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 
   const targetTab = document.getElementById(tabId);
   const targetNav = document.querySelector(`[data-tab="${tabId}"]`);
   
   if (targetTab) targetTab.classList.add("active");
   if (targetNav) targetNav.classList.add("active");
-<<<<<<< HEAD
-=======
 
   const navToggle = document.querySelector(".admin-nav-toggle");
   if (navToggle && window.matchMedia("(max-width: 1024px)").matches) {
@@ -2637,14 +2253,18 @@ function forecastChartOptions() {
       }
     }
   };
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 }
 
 // CSV Exporter for Database Records
 function exportReportCSV() {
   let csvContent = "data:text/csv;charset=utf-8,ID,Item Name,Category,Price,Stock\n";
   products.forEach(p => {
-    csvContent += `${p.id},"${p.name}",${p.category},${p.price},${p.stock}\n`;
+    const csvCell = (value) => {
+      const text = String(value ?? "");
+      const safeText = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+      return `"${safeText.replace(/"/g, '""')}"`;
+    };
+    csvContent += [p.id, p.name, p.category, p.price, p.stock].map(csvCell).join(",") + "\n";
   });
   const encodedUri = encodeURI(csvContent);
   const link = document.createElement("a");
@@ -2656,12 +2276,7 @@ function exportReportCSV() {
 }
 
 function logout() {
-<<<<<<< HEAD
-  localStorage.removeItem("token");
-  window.location.href = "login.html";
-=======
   void logoutTo("login.html");
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 }
 
 /* =========================================================================
@@ -2694,62 +2309,18 @@ function renderFoodCatalogTable(items) {
   const tableContainer = document.getElementById("foodInventoryTableWrapper");
   if (!tableContainer) return;
 
-<<<<<<< HEAD
-  tableContainer.innerHTML = `
-    <table class="workspace-data-table">
-      <thead>
-        <tr>
-          <th>Display</th>
-          <th>Product / Recipe Target Item</th>
-          <th>Menu Classification</th>
-          <th>Price Point</th>
-          <th>Stock Inventory</th>
-          <th>Recipe Formulation Path</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${items.map(item => `
-          <tr>
-            <td>
-              <img src="${item.image_url || 'images/default-food.jpg'}" 
-                   style="width: 44px; height: 44px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border);" 
-                   alt="food" />
-            </td>
-            <td><strong>${item.item_name}</strong></td>
-            <td><span class="badge-element status-pending">${item.category}</span></td>
-            <td>₱${Number(item.price).toFixed(2)}</td>
-            <td>
-              ${item.stock === 0 
-                ? `<span class="badge-element status-completed" style="background: var(--danger); color: #fff;">SOLD OUT</span>`
-                : item.stock < 15 
-                ? `<span style="color:var(--danger); font-weight:800;">${item.stock} Low Stock</span>` 
-                : `<span style="color:var(--success);">${item.stock} Units</span>`
-              }
-            </td>
-            <td><small class="muted">${item.description || 'No description available'}</small></td>
-            <td>
-              <button class="btn secondary" style="min-height:32px; padding:6px 12px; margin:0 4px 0 0;" onclick="triggerModifyPricePrompt(${item.id}, ${item.price})">Edit Price</button>
-              <button class="btn danger" style="min-height:32px; padding:6px 12px; margin:0;" onclick="triggerDeleteProductOperation(${item.id})">Purge</button>
-            </td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  `;
-=======
   const rows = items.map((item) => {
     const stockCount = Number(item.stock_count ?? 0);
 
     return `
       <tr>
         <td>
-          <img src="${item.image_url || 'images/default-food.jpg'}"
+          <img src="${escapeAdminHtml(item.image_url || 'images/default-food.jpg')}"
                style="width: 44px; height: 44px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border);"
                alt="food" />
         </td>
-        <td><strong>${item.item_name}</strong></td>
-        <td><span class="badge-element status-pending">${item.category}</span></td>
+        <td><strong>${escapeAdminHtml(item.item_name)}</strong></td>
+        <td><span class="badge-element status-pending">${escapeAdminHtml(item.category)}</span></td>
         <td>₱${Number(item.price).toFixed(2)}</td>
         <td>
           ${stockCount === 0
@@ -2759,10 +2330,10 @@ function renderFoodCatalogTable(items) {
               : `<span style="color:var(--success);">${stockCount} Units</span>`
           }
         </td>
-        <td><small class="muted">${item.description || 'No description available'}</small></td>
+        <td><small class="muted">${escapeAdminHtml(item.description || 'No description available')}</small></td>
         <td>
-          <button class="btn secondary" style="min-height:32px; padding:6px 12px; margin:0 4px 0 0;" onclick="triggerModifyPricePrompt(${item.id}, ${item.price})"><i data-lucide="pencil" aria-hidden="true"></i> Edit Price</button>
-          <button class="btn danger" style="min-height:32px; padding:6px 12px; margin:0;" onclick="triggerDeleteProductOperation(${item.id})"><i data-lucide="trash-2" aria-hidden="true"></i> Purge</button>
+          <button class="btn secondary" style="min-height:32px; padding:6px 12px; margin:0 4px 0 0;" data-csp-click="triggerModifyPricePrompt(${Number(item.id)}, ${Number(item.price)})"><i data-lucide="pencil" aria-hidden="true"></i> Edit Price</button>
+          <button class="btn danger" style="min-height:32px; padding:6px 12px; margin:0;" data-csp-click="triggerDeleteProductOperation(${Number(item.id)})"><i data-lucide="trash-2" aria-hidden="true"></i> Purge</button>
         </td>
       </tr>
     `;
@@ -2789,7 +2360,6 @@ function renderFoodCatalogTable(items) {
     </div>
   `;
   syncLucideIcons();
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 }
 
 /**
@@ -2804,11 +2374,7 @@ async function executeFoodProductCreation(event) {
     image_url: document.getElementById("inputProdImage") ? document.getElementById("inputProdImage").value : 'images/default-food.jpg',
     category: document.getElementById("inputProdCategory").value,
     price: parseFloat(document.getElementById("inputProdPrice").value || 0),
-<<<<<<< HEAD
-    stock: parseInt(document.getElementById("inputProdStock").value || 0),
-=======
     stock_count: parseInt(document.getElementById("inputProdStock").value || 0),
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     description: document.getElementById("inputProdDesc").value
   };
 
@@ -2859,11 +2425,6 @@ async function triggerModifyPricePrompt(productId, currentPrice) {
  * Drops the visibility relation boundary from client views
  */
 async function triggerDeleteProductOperation(productId) {
-<<<<<<< HEAD
-  if (!confirm("Are you sure you want to flag this product row as deleted in pgAdmin?")) return;
-
-  try {
-=======
   const actionKey = `delete-product-row:${productId}`;
   if (!beginAdminMutation(actionKey)) return;
   try {
@@ -2875,7 +2436,6 @@ async function triggerDeleteProductOperation(productId) {
       destructive: true,
     });
     if (!confirmed) return;
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     await apiRequest(`/menu/${productId}`, {
       method: "DELETE"
     });
@@ -2884,11 +2444,8 @@ async function triggerDeleteProductOperation(productId) {
 
   } catch (error) {
     alert("Failed to drop database row reference safely: " + error.message);
-<<<<<<< HEAD
-=======
   } finally {
     endAdminMutation(actionKey);
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   }
 }
 
@@ -2899,11 +2456,7 @@ function renderSystemTelemetryAlerts(items) {
   const alertContainerNode = document.getElementById("realtimeSystemAlertBox");
   if (!alertContainerNode) return;
 
-<<<<<<< HEAD
-  const lowLevelStockIssues = items.filter(item => item.stock < 15);
-=======
   const lowLevelStockIssues = items.filter(item => Number(item.stock_count ?? 0) < 15);
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 
   alertContainerNode.innerHTML = `
     <div class="card-header-row">
@@ -2911,30 +2464,18 @@ function renderSystemTelemetryAlerts(items) {
     </div>
     <div style="display: flex; flex-direction: column; gap: 10px;">
       <div style="border-left: 3px solid var(--gold); padding: 8px 12px; background: rgba(255,255,255,0.02); font-size:13px;">
-<<<<<<< HEAD
-        <strong>📡 Distributed Gateway State</strong><br/>
-=======
         <strong><i data-lucide="network" aria-hidden="true"></i> Distributed Gateway State</strong><br/>
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
         <span class="muted">PostgreSQL connection channels verified and running smoothly.</span>
       </div>
       ${lowLevelStockIssues.map(issueItem => `
         <div style="border-left: 3px solid var(--danger); padding: 8px 12px; background: rgba(224,86,86,0.06); font-size:13px;">
-<<<<<<< HEAD
-          <strong style="color: var(--danger);">⚠️ Component Stock Exhaustion Warning</strong><br/>
-          <span class="muted">${issueItem.item_name} dropping critically low (${issueItem.stock} elements left inside pgAdmin).</span>
-=======
           <strong style="color: var(--danger);"><i data-lucide="triangle-alert" aria-hidden="true"></i> Component Stock Exhaustion Warning</strong><br/>
-          <span class="muted">${issueItem.item_name} dropping critically low (${Number(issueItem.stock_count ?? 0)} elements left in inventory).</span>
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
+          <span class="muted">${escapeAdminHtml(issueItem.item_name)} dropping critically low (${Number(issueItem.stock_count ?? 0)} elements left in inventory).</span>
         </div>
       `).join('')}
     </div>
   `;
-<<<<<<< HEAD
-=======
   syncLucideIcons();
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 }
 
 /**

@@ -28,18 +28,15 @@
             </div>
 
             <div class="receipt-actions">
-                <button id="printReceiptButton" onclick="window.print()" disabled><i data-lucide="printer" aria-hidden="true"></i> Download / Print Receipt</button>
+                <button id="printReceiptButton" data-csp-click="window.print()" disabled><i data-lucide="printer" aria-hidden="true"></i> Download / Print Receipt</button>
             </div>
         </section>
     </main>
 
-<<<<<<< HEAD
-    <script src="js/receipt.js?v=dynamic-receipt-host"></script>
-=======
     <script src="js/notifications.js?v=20261105-global-notifications-5"></script>
     <script src="js/receipt.js?v=20261105-receipt-1"></script>
-    <script>if (window.lucide) lucide.createIcons();</script>
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
+    <script src="/js/init-icons.js"></script>
+  <script src="/js/csp-events.js"></script>
 </body>
 
 </html>

@@ -66,7 +66,7 @@ All nine tables are created in `restaurant`; no records are inserted.
 
 | Table | Purpose |
 |---|---|
-| `users` | Authenticated customer, admin, staff, and cashier accounts; bcrypt hash, required username/email, role, and soft-deactivation timestamp. |
+| `users` | Admin, staff, and cashier login accounts plus any retained legacy customer rows; bcrypt hash, required username/email, role, and soft-deactivation timestamp. |
 | `restaurant_tables` | Restaurant floor-plan tables, positions, and availability state. |
 | `chairs` | Seats belonging to floor-plan tables and temporary hold expiry. |
 | `reservations` | Reservation date/time, guest count, required guest full name/contact, and optional account/table references. |
@@ -76,16 +76,14 @@ All nine tables are created in `restaurant`; no records are inserted.
 | `order_history` | Completed-order summary used by history and income views. |
 | `audit_logs` | Actor, action, module, entity, and JSONB before/after/details records. |
 
-### Customers and account roles
+### Guest ordering and staff account roles
 
-Customers can register and sign in for reservations, account features, and
-dine-in ordering. Reservation creation and dine-in table locking/order
-submission require an authenticated customer account. Reservations store the
-required customer name/contact directly on the reservation, and the order API
-associates each new dine-in order with the authenticated customer's `user_id`.
-The column remains nullable for compatibility with existing records; the API
-rejects unauthenticated order submissions. Passwords are never stored in
-plain text.
+Customers use guest checkout and do not create accounts or sign in. Guest
+reservations and dine-in orders store the required customer name/contact on the
+transaction, with nullable `user_id` references retained for legacy data.
+Reservation status uses a private capability token; dine-in payment status
+uses the order's private receipt token. Admin, staff, and cashier accounts
+authenticate through the staff login. Passwords are stored as bcrypt hashes.
 
 Reservation contact numbers are validated against the selected country's
 numbering rules and stored in E.164 format. Dine-in table orders store the
@@ -207,7 +205,7 @@ Use only `database/dinequeue_db.sql` for a fresh database. The historical
 `database/dine.sql` is destructive and contains sample rows; do not use it.
 `database/dineari_schema.sql` is retained as a legacy development schema and
 is not the authoritative initializer; its historical account and order
-constraints may differ from the current authenticated customer workflows.
+constraints may differ from the current guest-ordering workflows.
 Use the canonical file above for fresh installations.
 `database/dineari_sample_data.sql` is an optional, separate fictional
 development fixture and is not part of this clean schema.

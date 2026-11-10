@@ -1,11 +1,13 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const express = require("express");
-const jwt = require("jsonwebtoken");
+const { installSessionAuth } = require("./helpers/sessionAuth");
 const db = require("../config/db");
 const auditService = require("../services/auditService");
 const reservationModel = require("../models/reservationModel");
 const reservationRoutes = require("../routes/reservationRoutes");
+const sessionAuth = installSessionAuth();
+test.after(() => sessionAuth.restore());
 
 function configureReservationMocks(initialReservation) {
   const originalConnect = db.connect;
@@ -287,10 +289,11 @@ test("reservation QR validation requires paid confirmation and prevents duplicat
 
 test("staff accounts cannot confirm or reject reservations", async (t) => {
   const app = express();
+  app.use(sessionAuth.cookieParser());
   app.use(express.json());
   app.use("/api/reservations", reservationRoutes);
   const server = app.listen(0);
-  const token = jwt.sign({ id: 8, role: "staff" }, process.env.JWT_SECRET);
+  const cookie = sessionAuth.cookieFor("staff", 8);
   t.after(async () => {
     await new Promise((resolve, reject) => {
       server.close((error) => (error ? reject(error) : resolve()));
@@ -306,7 +309,7 @@ test("staff accounts cannot confirm or reject reservations", async (t) => {
     const response = await fetch(`http://127.0.0.1:${port}${path}`, {
       method: "PATCH",
       headers: {
-        Authorization: `Bearer ${token}`,
+        Cookie: cookie,
         ...(body ? { "Content-Type": "application/json" } : {}),
         Connection: "close",
       },

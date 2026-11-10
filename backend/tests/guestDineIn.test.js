@@ -2,10 +2,10 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const Module = require("node:module");
 const express = require("express");
-const jwt = require("jsonwebtoken");
+const { installSessionAuth } = require("./helpers/sessionAuth");
 
-const jwtSecret = process.env.JWT_SECRET || "dine-in-auth-test-secret";
-process.env.JWT_SECRET = jwtSecret;
+const sessionAuth = installSessionAuth();
+test.after(() => sessionAuth.restore());
 
 const dbPath = require.resolve("../config/db");
 const db = {};
@@ -37,14 +37,14 @@ function createResponse() {
   };
 }
 
-function tokenFor(role, id = 42) {
-  return jwt.sign({ id, role, email: `${role}@example.test` }, jwtSecret);
+function tokenFor(role, id) {
+  return sessionAuth.cookieFor(role, id);
 }
 
 function authHeaders(token) {
   return {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
+    Cookie: token,
   };
 }
 
@@ -55,7 +55,7 @@ async function listen(app, t) {
   return `http://127.0.0.1:${server.address().port}/api`;
 }
 
-test("dine-in order route requires a customer token and reservations remain protected", async (t) => {
+test("dine-in orders and reservations are available to guests", async (t) => {
   const originalCreateOrder = orderController.createOrder;
   orderController.createOrder = (req, res) =>
     res.status(201).json({ role: req.user?.role || "guest" });
@@ -65,6 +65,7 @@ test("dine-in order route requires a customer token and reservations remain prot
   orderController.createOrder = originalCreateOrder;
 
   const app = express();
+  app.use(sessionAuth.cookieParser());
   app.use(express.json());
   app.use("/api/orders", orderRoutes);
   app.use("/api/reservations", require("../routes/reservationRoutes"));
@@ -75,7 +76,8 @@ test("dine-in order route requires a customer token and reservations remain prot
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ type: "dine_in" }),
   });
-  assert.equal(guestResponse.status, 401);
+  assert.equal(guestResponse.status, 201);
+  assert.deepEqual(await guestResponse.json(), { role: "guest" });
 
   const customerResponse = await fetch(`${baseUrl}/orders`, {
     method: "POST",
@@ -83,21 +85,21 @@ test("dine-in order route requires a customer token and reservations remain prot
     body: JSON.stringify({ type: "dine_in" }),
   });
   assert.equal(customerResponse.status, 201);
-  assert.deepEqual(await customerResponse.json(), { role: "customer" });
+  assert.deepEqual(await customerResponse.json(), { role: "guest" });
 
   const adminResponse = await fetch(`${baseUrl}/orders`, {
     method: "POST",
     headers: authHeaders(tokenFor("admin")),
     body: JSON.stringify({ type: "dine_in" }),
   });
-  assert.equal(adminResponse.status, 403);
+  assert.equal(adminResponse.status, 201);
 
   const reservationResponse = await fetch(`${baseUrl}/reservations`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({}),
   });
-  assert.equal(reservationResponse.status, 401);
+  assert.equal(reservationResponse.status, 400);
 });
 
 test("Dine-in payment review is admin-only and arrival requires the QR scanner", async (t) => {
@@ -111,7 +113,7 @@ test("Dine-in payment review is admin-only and arrival requires the QR scanner",
   orderController.getPendingPaymentOrders = (_req, res) => res.json([{ id: 8 }]);
   orderController.confirmPayment = (req, res) => res.json({ role: req.user.role });
   orderController.rejectPayment = (req, res) => res.json({ role: req.user.role });
-  orderController.getCustomerPaymentStatus = (req, res) => res.json({ customerId: req.user.id });
+  orderController.getCustomerPaymentStatus = (req, res) => res.json({ token: req.params.token });
   const orderRoutesPath = require.resolve("../routes/orderRoutes");
   delete require.cache[orderRoutesPath];
   const orderRoutes = require(orderRoutesPath);
@@ -120,6 +122,7 @@ test("Dine-in payment review is admin-only and arrival requires the QR scanner",
   });
 
   const app = express();
+  app.use(sessionAuth.cookieParser());
   app.use(express.json());
   app.use("/api/orders", orderRoutes);
   const baseUrl = await listen(app, t);
@@ -127,7 +130,7 @@ test("Dine-in payment review is admin-only and arrival requires the QR scanner",
   const unauthorizedQueue = await fetch(`${baseUrl}/orders/pending-verification`, {
     headers: authHeaders(tokenFor("customer")),
   });
-  assert.equal(unauthorizedQueue.status, 403);
+  assert.equal(unauthorizedQueue.status, 401);
 
   const adminQueue = await fetch(`${baseUrl}/orders/pending-verification`, {
     headers: authHeaders(tokenFor("admin")),
@@ -141,14 +144,13 @@ test("Dine-in payment review is admin-only and arrival requires the QR scanner",
   });
   assert.equal(directArrival.status, 404);
 
-  const customerStatus = await fetch(`${baseUrl}/orders/8/payment-status`, {
-    headers: authHeaders(tokenFor("customer", 42)),
-  });
+  const statusToken = "a".repeat(64);
+  const customerStatus = await fetch(`${baseUrl}/orders/8/payment-status/${statusToken}`);
   assert.equal(customerStatus.status, 200);
-  assert.deepEqual(await customerStatus.json(), { customerId: 42 });
+  assert.deepEqual(await customerStatus.json(), { token: statusToken });
 });
 
-test("dine-in table locks require an authenticated customer", async (t) => {
+test("dine-in table holds are available to guests", async (t) => {
   const originalLockTable = chairModel.lockTable;
   const locked = [{ id: 21, table_id: 4 }];
   let actor;
@@ -161,6 +163,7 @@ test("dine-in table locks require an authenticated customer", async (t) => {
   });
 
   const app = express();
+  app.use(sessionAuth.cookieParser());
   app.use(express.json());
   app.use("/api/chairs", require("../routes/chairRoutes"));
   const baseUrl = await listen(app, t);
@@ -171,7 +174,9 @@ test("dine-in table locks require an authenticated customer", async (t) => {
     headers: { "Content-Type": "application/json" },
     body,
   });
-  assert.equal(guestResponse.status, 401);
+  assert.equal(guestResponse.status, 200);
+  assert.deepEqual(await guestResponse.json(), locked);
+  assert.equal(actor, null);
 
   const customerResponse = await fetch(`${baseUrl}/chairs/lock`, {
     method: "POST",
@@ -180,18 +185,17 @@ test("dine-in table locks require an authenticated customer", async (t) => {
   });
   assert.equal(customerResponse.status, 200);
   assert.deepEqual(await customerResponse.json(), locked);
-  assert.equal(actor.id, 42);
-  assert.equal(actor.role, "customer");
+  assert.equal(actor, null);
 
   const adminResponse = await fetch(`${baseUrl}/chairs/lock`, {
     method: "POST",
     headers: authHeaders(tokenFor("admin")),
     body,
   });
-  assert.equal(adminResponse.status, 403);
+  assert.equal(adminResponse.status, 200);
 });
 
-test("order controller rejects guests and associates authenticated Dine-In orders with the customer", async (t) => {
+test("order controller creates guest Dine-In orders without linking a user account", async (t) => {
   const originalCreate = orderModel.create;
   let orderInput;
   orderModel.create = async (input) => {
@@ -215,8 +219,8 @@ test("order controller rejects guests and associates authenticated Dine-In order
 
   const guestResponse = createResponse();
   await orderController.createOrder(orderRequest, guestResponse);
-  assert.equal(guestResponse.statusCode, 401);
-  assert.equal(orderInput, undefined);
+  assert.equal(guestResponse.statusCode, 201);
+  assert.equal(orderInput.userId, null);
 
   const customerResponse = createResponse();
   await orderController.createOrder(
@@ -225,7 +229,7 @@ test("order controller rejects guests and associates authenticated Dine-In order
   );
   assert.equal(customerResponse.statusCode, 201);
   assert.equal(customerResponse.body.id, 150);
-  assert.equal(orderInput.userId, 42);
+  assert.equal(orderInput.userId, null);
   assert.equal(orderInput.type, "dine_in");
   assert.deepEqual(orderInput.chairIds, [21, 22]);
 
@@ -234,10 +238,10 @@ test("order controller rejects guests and associates authenticated Dine-In order
     { ...orderRequest, user: { id: 7, role: "staff" } },
     staffResponse
   );
-  assert.equal(staffResponse.statusCode, 403);
+  assert.equal(staffResponse.statusCode, 201);
 });
 
-test("Dine-In order insertion keeps the authenticated customer and selected table linked", async (t) => {
+test("guest Dine-In order insertion leaves user linkage empty and keeps the selected table", async (t) => {
   const originalConnect = db.connect;
   const originalAuditInsert = auditService.insert;
   const originalToDataURL = QRCode.toDataURL;
@@ -288,8 +292,8 @@ test("Dine-In order insertion keeps the authenticated customer and selected tabl
   });
 
   const result = await orderModel.create({
-    userId: 42,
-    actorName: "customer@example.test",
+    userId: null,
+    actorName: null,
     type: "dine_in",
     chairIds: [21, 22],
     items: [{ menu_item_id: 7, quantity: 1 }],
@@ -301,7 +305,7 @@ test("Dine-In order insertion keeps the authenticated customer and selected tabl
   const orderInsert = statements.find(({ sql }) => /INSERT INTO restaurant\.orders/.test(sql));
   assert.ok(orderInsert);
   assert.match(orderInsert.sql, /table_id/);
-  assert.equal(orderInsert.values[1], 42);
+  assert.equal(orderInsert.values[1], null);
   assert.equal(orderInsert.values[3], 4);
   assert.equal(orderInsert.values[4], "dine_in");
   assert.equal(orderInsert.values[5], "pending");

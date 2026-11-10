@@ -2,14 +2,19 @@ const express = require("express");
 const router = express.Router();
 const reservationController = require("../controllers/reservationController");
 const { authenticate, allowRoles } = require("../middleware/auth");
+const { rateLimit } = require("express-rate-limit");
+
+const guestReservationLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 20,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: { message: "Too many reservation requests. Please try again later." },
+});
 
 router.post(
     "/",
-<<<<<<< HEAD
-=======
-    authenticate,
-    allowRoles("customer"),
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
+    guestReservationLimiter,
     reservationController.createReservation
 );
 
@@ -37,16 +42,6 @@ router.get(
     reservationController.getReservations
 );
 
-<<<<<<< HEAD
-router.patch(
-    "/:id/status",
-    authenticate,
-    allowRoles("admin", "staff"),
-    reservationController.updateReservationStatus
-);
-
-module.exports = router;
-=======
 router.delete(
     "/:id",
     authenticate,
@@ -76,4 +71,3 @@ router.patch(
 );
 
 module.exports = router;
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50

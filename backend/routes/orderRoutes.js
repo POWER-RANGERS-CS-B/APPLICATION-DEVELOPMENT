@@ -2,12 +2,18 @@ const express = require("express");
 const router = express.Router();
 const orderController = require("../controllers/orderController");
 const { authenticate, allowRoles } = require("../middleware/auth");
+const { rateLimit } = require("express-rate-limit");
+
+const guestOrderLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { message: "Too many order requests. Please try again later." },
+});
 
 const requiredHandlers = {
   createOrder: orderController.createOrder,
-<<<<<<< HEAD
-  getReceipt: orderController.getReceipt,
-=======
   getPendingPaymentOrders: orderController.getPendingPaymentOrders,
   getDineInPaymentRequests: orderController.getDineInPaymentRequests,
   getPendingDineInRefunds: orderController.getPendingDineInRefunds,
@@ -17,7 +23,6 @@ const requiredHandlers = {
   getCustomerPaymentStatus: orderController.getCustomerPaymentStatus,
   getReceipt: orderController.getReceipt,
   getCategorySales: orderController.getCategorySales,
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   getKdsOrders: orderController.getKdsOrders,
   getOrderHistory: orderController.getOrderHistory,
   getTodayIncome: orderController.getTodayIncome,
@@ -31,15 +36,7 @@ for (const [name, handler] of Object.entries(requiredHandlers)) {
   }
 }
 
-<<<<<<< HEAD
-router.post("/", requiredHandlers.createOrder);
-router.get("/receipt", requiredHandlers.getReceipt);
-router.get("/kds", authenticate, allowRoles("admin", "staff"), requiredHandlers.getKdsOrders);
-router.get("/history", authenticate, allowRoles("admin"), requiredHandlers.getOrderHistory);
-router.get("/income/today", authenticate, allowRoles("admin"), requiredHandlers.getTodayIncome);
-router.patch("/:id/status", authenticate, allowRoles("admin", "staff"), requiredHandlers.updateStatus);
-=======
-router.post("/", authenticate, allowRoles("customer"), requiredHandlers.createOrder);
+router.post("/", guestOrderLimiter, requiredHandlers.createOrder);
 router.get("/receipt", requiredHandlers.getReceipt);
 router.get(
   "/pending-verification",
@@ -78,9 +75,7 @@ router.patch(
   requiredHandlers.rejectPayment
 );
 router.get(
-  "/:id/payment-status",
-  authenticate,
-  allowRoles("customer"),
+  "/:id/payment-status/:token",
   requiredHandlers.getCustomerPaymentStatus
 );
 router.get("/category-sales", authenticate, allowRoles("admin"), requiredHandlers.getCategorySales);
@@ -88,7 +83,6 @@ router.get("/kds", authenticate, allowRoles("admin", "staff", "cashier"), requir
 router.get("/history", authenticate, allowRoles("admin"), requiredHandlers.getOrderHistory);
 router.get("/income/today", authenticate, allowRoles("admin"), requiredHandlers.getTodayIncome);
 router.patch("/:id/status", authenticate, allowRoles("admin", "staff", "cashier"), requiredHandlers.updateStatus);
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 router.delete("/:id", authenticate, allowRoles("admin"), requiredHandlers.deleteOrder);
 
 module.exports = router;

@@ -1,24 +1,13 @@
 const API_BASE = `${window.location.origin}/api`;
 
-function getToken() {
-  const token = localStorage.getItem("token");
-  if (!token || token === "undefined" || token === "null") return "";
-  return token;
-}
-
 function redirectForAuthorizationFailure(status) {
   const pathname = window.location.pathname;
   const isAdminDashboard = pathname.endsWith("/admin-dashboard.html");
   const isStaffDashboard = pathname.endsWith("/staff-kds.html");
-  const isCustomerPage = pathname.endsWith("/choice.html") || pathname === "/";
 
   if (status === 401) {
     if (isAdminDashboard || isStaffDashboard) {
       window.location.replace("/login.html");
-    } else if (isCustomerPage) {
-      const flow = new URLSearchParams(window.location.search).get("flow");
-      const returnFlow = flow === "dine_in" ? "?flow=dine_in" : "";
-      window.location.replace(`/customer-auth.html${returnFlow}#login`);
     }
   } else if (status === 403 && isAdminDashboard) {
     window.location.replace("/choice.html");
@@ -28,23 +17,19 @@ function redirectForAuthorizationFailure(status) {
 }
 
 async function apiRequest(path, options = {}) {
+  const { suppressAuthRedirect = false, ...fetchOptions } = options;
   const headers = {
     "Content-Type": "application/json",
-    ...(options.headers || {}),
+    ...(fetchOptions.headers || {}),
   };
-
-  const token = getToken();
-
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
 
   let response;
 
   try {
     response = await fetch(`${API_BASE}${path}`, {
-      ...options,
+      ...fetchOptions,
       headers,
+      credentials: "same-origin",
     });
   } catch (error) {
     throw new Error(
@@ -62,7 +47,7 @@ async function apiRequest(path, options = {}) {
   }
 
   if (!response.ok) {
-    redirectForAuthorizationFailure(response.status);
+    if (!suppressAuthRedirect) redirectForAuthorizationFailure(response.status);
     const error = new Error(
       data?.message || `Request failed with status ${response.status}`
     );
@@ -76,7 +61,12 @@ async function apiRequest(path, options = {}) {
 
 function getUser() {
   try {
-    return JSON.parse(localStorage.getItem("user") || "{}");
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    if (user.role === "customer") {
+      ["token", "user", "role", "user_id", "full_name", "email"].forEach((key) => localStorage.removeItem(key));
+      return {};
+    }
+    return user;
   } catch {
     return {};
   }
@@ -89,12 +79,7 @@ function saveSession(data) {
     throw new Error("Login succeeded but no user object was returned.");
   }
 
-  if (data?.token) {
-    localStorage.setItem("token", data.token);
-  } else {
-    localStorage.removeItem("token");
-  }
-
+  localStorage.removeItem("token");
   localStorage.setItem("user", JSON.stringify(user));
   localStorage.setItem("role", user.role || "");
   localStorage.setItem("user_id", user.id || user.user_id || "");
@@ -106,9 +91,7 @@ function saveSession(data) {
 
 async function logoutTo(destination) {
   try {
-    if (getToken()) {
-      await apiRequest("/auth/logout", { method: "POST" });
-    }
+    await apiRequest("/auth/logout", { method: "POST", suppressAuthRedirect: true });
   } catch {
     console.error("Logout audit event could not be confirmed.");
   } finally {
@@ -118,13 +101,10 @@ async function logoutTo(destination) {
   }
 }
 
-<<<<<<< HEAD
-=======
 function logout() {
   void logoutTo("index.html");
 }
 
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
 function togglePasswordVisibility(inputId, toggleButton) {
   const passwordInput = document.getElementById(inputId);
 
@@ -135,8 +115,6 @@ function togglePasswordVisibility(inputId, toggleButton) {
   toggleButton.setAttribute("aria-label", isVisible ? "Show password" : "Hide password");
   toggleButton.setAttribute("aria-pressed", String(!isVisible));
 
-<<<<<<< HEAD
-=======
   const icon = toggleButton.querySelector("svg");
   if (icon && window.lucide) {
     icon.outerHTML = `<i data-lucide="${isVisible ? "eye" : "eye-off"}" aria-hidden="true"></i>`;
@@ -144,7 +122,6 @@ function togglePasswordVisibility(inputId, toggleButton) {
     return;
   }
 
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   const svg = toggleButton.querySelector("svg");
   if (svg) {
     if (isVisible) {

@@ -3,88 +3,28 @@ assertRequiredEnvironmentVariables(["JWT_SECRET"]);
 
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { randomUUID } = require("node:crypto");
 const authModel = require("../models/authModel");
 const auditService = require("../services/auditService");
 const { isValidEmailDomain } = require("../utils/emailValidation");
-const { parsePhoneNumberFromString } = require("libphonenumber-js/max");
 
-exports.registerCustomer = async (req, res) => {
-  const fullName = typeof req.body?.full_name === "string" ? req.body.full_name.trim() : "";
-  const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
-  const contact = typeof req.body?.contact_number === "string" ? req.body.contact_number.trim() : "";
-  const password = req.body?.password;
-  const confirmPassword = req.body?.confirm_password;
-  if (!fullName || fullName.length > 128) {
-    return res.status(400).json({ message: "Enter your full name (128 characters or fewer)." });
-  }
-  if (!isValidEmailDomain(email)) {
-    return res.status(400).json({ message: "Enter a valid email address." });
-  }
-  const phone = parsePhoneNumberFromString(contact, "PH");
-  if (!phone || !phone.isValid()) {
-    return res.status(400).json({
-      message: "Enter a valid phone number (for example, 09171234567 or +639171234567).",
-    });
-  }
-  if (typeof password !== "string" || password.length < 8 || password.length > 128) {
-    return res.status(400).json({ message: "Password must be between 8 and 128 characters." });
-  }
-  if (password !== confirmPassword) {
-    return res.status(400).json({ message: "Passwords do not match." });
-  }
-
-<<<<<<< HEAD
-// Helper function to validate allowed email domains
-const isValidEmailDomain = (email) => {
-  if (!email) return false;
-  
-  // PASTED HERE: Allows ANY domain as long as it has a valid format (e.g., text@domain.suffix)
-  const domainRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-  
-  return domainRegex.test(email.trim());
+const SESSION_COOKIE = "dineari_session";
+const SESSION_TTL_MS = 15 * 60 * 1000;
+const sessionCookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "strict",
+  path: "/",
 };
 
-exports.signup = async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    // Reject signup if email is completely missing or lacks a valid @domain.suffix structure
-    if (!isValidEmailDomain(email)) {
-      return res.status(400).json({ 
-        message: "Invalid email format. Please provide a complete email address (e.g., user@example.com)." 
-      });
-    }
-
-    const user = await authModel.createUser(req.body);
-    res.status(201).json(user);
-=======
-  try {
-    const user = await authModel.createCustomer({
-      fullName,
-      email,
-      contactNumber: phone.format("E.164"),
-      passwordHash: await bcrypt.hash(password, 12),
-    });
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
-    res.status(201).json({
-      token,
-      user: {
-        id: user.id,
-        fullName: user.full_name,
-        email: user.email,
-        contactNumber: user.contact_number,
-        role: user.role,
-      },
-    });
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
-  } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message });
-  }
-};
+function issueSession(res, user) {
+  const token = jwt.sign(
+    { id: user.id, email: user.email, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: "15m", jwtid: randomUUID() }
+  );
+  res.cookie(SESSION_COOKIE, token, { ...sessionCookieOptions, maxAge: SESSION_TTL_MS });
+}
 
 exports.login = async (req, res) => {
   const submittedEmail =
@@ -95,23 +35,18 @@ exports.login = async (req, res) => {
 
     // Reject login if email lacks a valid @domain.suffix structure
     if (!isValidEmailDomain(email)) {
-<<<<<<< HEAD
-=======
       await auditService.record({
         actorName: submittedEmail,
         action: "LOGIN_FAILED",
         module: "auth",
         details: { reason: "invalid_email" },
       });
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
       return res.status(400).json({ 
         message: "Invalid email format. Please log in using a complete email address (e.g., user@example.com)." 
       });
     }
 
-<<<<<<< HEAD
-=======
-    if (typeof password !== "string" || password.length === 0) {
+    if (typeof password !== "string" || password.length === 0 || Buffer.byteLength(password, "utf8") > 72) {
       await auditService.record({
         actorName: submittedEmail,
         action: "LOGIN_FAILED",
@@ -121,7 +56,6 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password." });
     }
 
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     const user = await authModel.findByEmail(email.trim());
 
     if (!user) {
@@ -147,11 +81,16 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password." });
     }
 
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
+    if (!["admin", "staff", "cashier"].includes(user.role)) {
+      await auditService.record({
+        userId: user.id,
+        actorName: user.email,
+        action: "LOGIN_FAILED",
+        module: "auth",
+        details: { reason: "role_not_allowed" },
+      });
+      return res.status(401).json({ message: "Invalid email or password." });
+    }
 
     const auditRecorded = await auditService.record({
       userId: user.id,
@@ -164,8 +103,8 @@ exports.login = async (req, res) => {
       return res.status(503).json({ message: "Login is temporarily unavailable. Please try again." });
     }
 
+    issueSession(res, user);
     res.json({
-      token,
       user: {
         id: user.id,
         fullName: user.full_name,
@@ -174,21 +113,47 @@ exports.login = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Login failed:", error);
+    res.status(500).json({ message: "Login is temporarily unavailable." });
   }
 };
 
 exports.logout = async (req, res) => {
-  const recorded = await auditService.record({
-    userId: req.user.id,
-    actorName: req.user.email,
-    action: "LOGOUT",
-    module: "auth",
-  });
-
-  if (!recorded) {
-    return res.status(503).json({ message: "Logout could not be recorded. Please retry." });
+  try {
+    const token = req.cookies?.[SESSION_COOKIE];
+    if (typeof token === "string" && token) {
+      try {
+        const payload = jwt.verify(token, process.env.JWT_SECRET);
+        if (payload?.jti && Number.isSafeInteger(payload.exp)) {
+          await authModel.revokeToken(payload.id, payload.jti, new Date(payload.exp * 1000));
+          await auditService.record({
+            userId: payload.id,
+            actorName: typeof payload.email === "string" ? payload.email : null,
+            action: "LOGOUT",
+            module: "auth",
+          });
+        }
+      } catch (error) {
+        if (!["JsonWebTokenError", "TokenExpiredError", "NotBeforeError"].includes(error.name)) {
+          throw error;
+        }
+      }
+    }
+    res.clearCookie(SESSION_COOKIE, sessionCookieOptions);
+    return res.json({ message: "Logged out." });
+  } catch (error) {
+    console.error("Logout failed:", error);
+    return res.status(503).json({ message: "Logout could not be completed. Please retry." });
   }
+};
 
-  res.json({ message: "Logged out." });
+exports.getSession = (req, res) => {
+  res.set("Cache-Control", "no-store");
+  return res.json({
+    user: {
+      id: req.user.id,
+      email: req.user.email,
+      role: req.user.role,
+    },
+  });
 };

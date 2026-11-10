@@ -5,20 +5,6 @@
   <script src="js/transitions.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<<<<<<< HEAD
-  <title>DineQueue Staff KDS</title>
-  <link rel="stylesheet" href="css/style.css?v=staff-glass-structure-20261103" />
-</head>
-
-<body class="staff-kds-page">
-  <main class="page">
-    <div class="topbar">
-      <div>
-        <span class="section-kicker">Kitchen Display</span>
-        <h1 class="logo-title">Staff KDS</h1>
-      </div>
-      <button class="secondary" onclick="logout()">Logout</button>
-=======
   <link rel="icon" href="/images/icon/dineari-logo.ico" type="image/x-icon" />
   <title>Dine-Ari Staff Workspace</title>
   <script src="js/theme.js?v=20261104-day-night-switch-2"></script>
@@ -38,7 +24,6 @@
         </picture>
         <span class="staff-brand-caption">STAFF WORKSPACE</span>
       </a>
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
     </div>
 
     <nav class="staff-nav" id="staffNavigation" aria-label="Workspace sections">
@@ -70,7 +55,7 @@
     </nav>
 
     <div class="staff-sidebar-footer">
-      <button class="staff-sidebar-logout" type="button" onclick="logout()">
+      <button class="staff-sidebar-logout" type="button" data-csp-click="logout()">
         <i data-lucide="log-out" aria-hidden="true"></i>
         <span>Logout</span>
       </button>
@@ -88,37 +73,6 @@
         <span class="section-kicker">STAFF WORKSPACE</span>
         <h1>Kitchen operations</h1>
       </div>
-<<<<<<< HEAD
-    </section>
-
-    <section id="staffReservationsPanel" class="panel staff-reservations-panel" hidden>
-      <div class="card-header">
-        <div>
-          <h2>Table Reservations</h2>
-          <p class="muted">Check in guests when they arrive. Complete or cancel reservations from this list.</p>
-        </div>
-      </div>
-      <div class="staff-reservations-scroll">
-        <table class="staff-reservations-table">
-          <thead>
-            <tr>
-              <th>Table</th>
-              <th>Customer</th>
-              <th>Contact</th>
-              <th>Guests</th>
-              <th>Date &amp; Time</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="staffReservations">
-            <tr><td colspan="7" class="muted">Loading reservations...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-=======
     </header>
 
     <div class="staff-content">
@@ -460,19 +414,15 @@
         </div>
       </section>
     </div>
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
   </main>
 
   <script src="js/notifications.js?v=20261105-global-notifications-5"></script>
   <script src="js/api.js"></script>
-<<<<<<< HEAD
-  <script src="js/staff.js?v=staff-glass-structure-20261103"></script>
-=======
   <script src="/vendor/zxing/zxing-browser.min.js?v=0.2.1"></script>
   <script src="js/staff.js?v=20261109-cashier-workspace-1"></script>
   <script src="js/staff-arrival-scanner.js?v=20261109-auto-arrival-scan-1"></script>
-  <script>if (window.lucide) lucide.createIcons();</script>
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
+  <script src="/js/init-icons.js"></script>
+  <script src="/js/csp-events.js"></script>
 </body>
 
 </html>

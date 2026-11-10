@@ -9,6 +9,11 @@ function responseCapture() {
   return {
     statusCode: 200,
     body: null,
+    cookies: {},
+    cookie(name, value, options) {
+      this.cookies[name] = { value, options };
+      return this;
+    },
     status(code) {
       this.statusCode = code;
       return this;
@@ -46,7 +51,10 @@ test("successful login records an audit event without credentials", async () => 
     );
 
     assert.equal(response.statusCode, 200);
-    assert.equal(typeof response.body.token, "string");
+    assert.equal("token" in response.body, false);
+    assert.equal(typeof response.cookies.dineari_session.value, "string");
+    assert.equal(response.cookies.dineari_session.options.httpOnly, true);
+    assert.equal(response.cookies.dineari_session.options.sameSite, "strict");
     assert.equal("password_hash" in response.body.user, false);
     assert.equal(events.length, 1);
     assert.equal(events[0].action, "LOGIN_SUCCESS");

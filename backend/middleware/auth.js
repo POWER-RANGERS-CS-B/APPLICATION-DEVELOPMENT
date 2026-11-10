@@ -1,16 +1,10 @@
 const jwt = require("jsonwebtoken");
+const authModel = require("../models/authModel");
 
-function authenticate(req, res, next) {
-  const header = req.headers.authorization;
-
-  if (typeof header !== "string") {
-    return res.status(401).json({ message: "No token provided." });
-  }
-
-  const [scheme, token, ...extraParts] = header.split(" ");
-
-  if (scheme !== "Bearer" || !token || extraParts.length > 0) {
-    return res.status(401).json({ message: "Invalid authorization header." });
+async function authenticate(req, res, next) {
+  const token = req.cookies?.dineari_session;
+  if (typeof token !== "string" || !token) {
+    return res.status(401).json({ message: "Authentication required." });
   }
 
   let payload;
@@ -27,15 +21,34 @@ function authenticate(req, res, next) {
       (typeof payload.id === "string" && payload.id.length > 0) ||
       Number.isSafeInteger(payload.id)
     ) ||
-    !["staff", "cashier", "admin", "customer"].includes(payload.role)
+    !["staff", "cashier", "admin"].includes(payload.role) ||
+    typeof payload.jti !== "string" ||
+    !Number.isSafeInteger(payload.exp)
   ) {
     return res.status(401).json({ message: "Invalid authentication token." });
   }
 
+  let account;
+  try {
+    const [revoked, activeAccount] = await Promise.all([
+      authModel.isTokenRevoked(payload.jti),
+      authModel.findActiveAccount(payload.id),
+    ]);
+    if (revoked || !activeAccount || activeAccount.role !== payload.role) {
+      return res.status(401).json({ message: "Session is no longer valid." });
+    }
+    account = activeAccount;
+  } catch (error) {
+    console.error("Authentication state could not be checked:", error);
+    return res.status(503).json({ message: "Authentication is temporarily unavailable." });
+  }
+
   req.user = {
     id: payload.id,
-    role: payload.role,
-    email: typeof payload.email === "string" ? payload.email : null,
+    role: account.role,
+    email: account.email,
+    tokenId: payload.jti,
+    tokenExpiresAt: new Date(payload.exp * 1000),
   };
   next();
 }

@@ -1,11 +1,13 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const express = require("express");
-const jwt = require("jsonwebtoken");
+const { installSessionAuth } = require("./helpers/sessionAuth");
 const db = require("../config/db");
 const auditService = require("../services/auditService");
 const reservationModel = require("../models/reservationModel");
 const reservationRoutes = require("../routes/reservationRoutes");
+const sessionAuth = installSessionAuth();
+test.after(() => sessionAuth.restore());
 
 test("historical reservation archive is soft, audited, and transactional", async (t) => {
   const originalConnect = db.connect;
@@ -131,6 +133,7 @@ test("only admins can archive historical reservations through the API", async (t
   });
   auditService.insert = async (_client, event) => auditEvents.push(event);
   const app = express();
+  app.use(sessionAuth.cookieParser());
   app.use(express.json());
   app.use("/api/reservations", reservationRoutes);
   const server = app.listen(0);
@@ -143,21 +146,21 @@ test("only admins can archive historical reservations through the API", async (t
   });
   await new Promise((resolve) => server.once("listening", resolve));
   const baseUrl = `http://127.0.0.1:${server.address().port}/api/reservations/21`;
-  const staffToken = jwt.sign({ id: 8, role: "staff" }, process.env.JWT_SECRET);
+  const staffToken = sessionAuth.cookieFor("staff", 8);
   const staffResponse = await fetch(baseUrl, {
     method: "DELETE",
     headers: {
-      Authorization: `Bearer ${staffToken}`,
+      Cookie: staffToken,
       Connection: "close",
     },
   });
   assert.equal(staffResponse.status, 403);
 
-  const adminToken = jwt.sign({ id: 7, role: "admin" }, process.env.JWT_SECRET);
+  const adminToken = sessionAuth.cookieFor("admin", 7);
   const adminResponse = await fetch(baseUrl, {
       method: "DELETE",
       headers: {
-        Authorization: `Bearer ${adminToken}`,
+        Cookie: adminToken,
         Connection: "close",
       },
     });

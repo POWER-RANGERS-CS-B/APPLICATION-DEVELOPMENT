@@ -4,7 +4,7 @@ const test = require("node:test");
 const Module = require("node:module");
 const path = require("node:path");
 const express = require("express");
-const jwt = require("jsonwebtoken");
+const { installSessionAuth } = require("./helpers/sessionAuth");
 
 const dbPath = require.resolve("../config/db");
 const db = {};
@@ -248,13 +248,16 @@ test("cashier refund API allows cashier JWTs and denies ordinary staff and admin
   const originalFindRefunds = orderModel.findLateArrivalRefunds;
   const secret = "cashier-route-test-secret";
   process.env.JWT_SECRET = secret;
+  const sessionAuth = installSessionAuth();
   orderModel.findLateArrivalRefunds = async () => [{ id: 21, refund_status: "pending" }];
   const app = express();
+  app.use(sessionAuth.cookieParser());
   app.use("/api/staff", require("../routes/staffRoutes"));
   const server = app.listen(0);
   t.after(() => new Promise((resolve) => {
     server.close(() => {
       orderModel.findLateArrivalRefunds = originalFindRefunds;
+      sessionAuth.restore();
       if (originalSecret === undefined) delete process.env.JWT_SECRET;
       else process.env.JWT_SECRET = originalSecret;
       resolve();
@@ -265,7 +268,7 @@ test("cashier refund API allows cashier JWTs and denies ordinary staff and admin
 
   const request = (role) => fetch(url, {
     headers: {
-      Authorization: `Bearer ${jwt.sign({ id: 7, role }, secret)}`,
+      Cookie: sessionAuth.cookieFor(role),
       Connection: "close",
     },
   });

@@ -1,12 +1,17 @@
 const express = require("express");
 const router = express.Router();
 const chairController = require("../controllers/chairController");
+const { rateLimit } = require("express-rate-limit");
+
+const guestTableLockLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { message: "Too many table selection requests. Please try again shortly." },
+});
 
 router.get("/", chairController.getChairs);
-<<<<<<< HEAD
-router.post("/lock", chairController.lockTable);
-=======
-router.post("/lock", authenticate, chairController.lockTable);
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
+router.post("/lock", guestTableLockLimiter, chairController.lockTable);
 
 module.exports = router;

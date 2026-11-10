@@ -2,98 +2,6 @@
 <html lang="en">
 
 <head>
-<<<<<<< HEAD
-  <script src="js/transitions.js"></script>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dine-Ari Staff &amp; Admin Login</title>
-  <link rel="stylesheet" href="css/style.css" />
-</head>
-
-<body>
-  <main class="page center-page">
-    <section class="auth-shell">
-      <div class="auth-brand">
-        <div>
-          <div class="logo-mark">🍽</div>
-          <h1>Dine-Ari</h1>
-          <p class="page-subtitle">Staff and administrator system access.</p>
-        </div>
-
-        <div>
-          <span class="section-kicker">Staff &amp; Admin</span>
-          <p class="page-subtitle">Sign in with your assigned account credentials.</p>
-        </div>
-      </div>
-
-      <div class="auth-main">
-        <section class="auth-card login-folders" aria-label="Choose staff or admin login">
-          <span class="section-kicker">System Access</span>
-          <h2 class="folder-heading">Choose your account</h2>
-
-          <div class="login-folder-tabs" role="tablist" aria-label="Account type">
-            <button class="login-folder-tab active" id="adminTab" type="button" role="tab" aria-selected="true" aria-controls="adminPanel" onmouseenter="switchLoginFolder('admin')" onfocus="switchLoginFolder('admin')" onclick="switchLoginFolder('admin')">
-              <span aria-hidden="true">▰</span> Admin
-            </button>
-            <button class="login-folder-tab" id="staffTab" type="button" role="tab" aria-selected="false" aria-controls="staffPanel" onmouseenter="switchLoginFolder('staff')" onfocus="switchLoginFolder('staff')" onclick="switchLoginFolder('staff')">
-              <span aria-hidden="true">▰</span> Staff
-            </button>
-          </div>
-
-          <div class="login-folder-panel active" id="adminPanel" role="tabpanel" aria-labelledby="adminTab">
-            <span class="section-kicker">Administrator</span>
-            <h1 class="logo-title">Admin Login</h1>
-            <p class="page-subtitle">Sign in with your administrator credentials.</p>
-            <input id="adminEmail" type="email" placeholder="Admin email" autocomplete="username" />
-            
-            <div class="password-field">
-              <input id="adminPassword" type="password" placeholder="Admin password" autocomplete="current-password" />
-              <button
-                class="password-toggle"
-                type="button"
-                aria-label="Show password"
-                aria-pressed="false"
-                onclick="togglePasswordVisibility('adminPassword', this)"
-              >
-                <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                  <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
-                  <circle cx="12" cy="12" r="2.5" />
-                </svg>
-              </button>
-            </div>
-
-            <button type="button" onclick="login('admin')">Login as Admin</button>
-            <p id="adminAuthMessage" role="status" aria-live="polite"></p>
-          </div>
-
-          <div class="login-folder-panel" id="staffPanel" role="tabpanel" aria-labelledby="staffTab" aria-hidden="true" inert>
-            <span class="section-kicker">Staff</span>
-            <h1 class="logo-title">Staff Login</h1>
-            <p class="page-subtitle">Sign in with your staff credentials.</p>
-            <input id="staffEmail" type="email" placeholder="Staff email" autocomplete="username" />
-            
-            <div class="password-field">
-              <input id="staffPassword" type="password" placeholder="Staff password" autocomplete="current-password" />
-              <button
-                class="password-toggle"
-                type="button"
-                aria-label="Show password"
-                aria-pressed="false"
-                onclick="togglePasswordVisibility('staffPassword', this)"
-              >
-                <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                  <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
-                  <circle cx="12" cy="12" r="2.5" />
-                </svg>
-              </button>
-            </div>
-
-            <button type="button" onclick="login('staff')">Login as Staff</button>
-            <p id="staffAuthMessage" role="status" aria-live="polite"></p>
-          </div>
-
-          <a class="back-home-link" href="/">Back to Dine-Ari home</a>
-=======
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="/images/icon/dineari-logo.ico" type="image/x-icon" />
@@ -102,7 +10,7 @@
   <title>Dine-Ari Staff Login</title>
   <script src="js/theme.js?v=20261104-day-night-switch-2"></script>
   <link rel="stylesheet" href="css/style.css?v=20261105-global-notifications-3" />
-  <link rel="stylesheet" href="css/design-system.css?v=20261106-cool-input-5" />
+  <link rel="stylesheet" href="css/design-system.css?v=20261110-login-label-align-4" />
   <script src="/vendor/lucide/lucide.min.js?v=1.67.0"></script>
 </head>
 
@@ -110,28 +18,28 @@
   <main class="page center-page">
     <section class="auth-shell">
       <div class="auth-brand" aria-hidden="true"></div>
-      <div class="auth-main">
+      <div class="auth-main" data-theme-switch-host>
         <section class="auth-card login-folders" aria-label="Staff and administrator sign in">
           <picture class="system-logo-picture">
             <source srcset="images/Logo/dineari-logo.webp" type="image/webp" />
             <img class="system-logo system-logo-login" src="images/Logo/Dine-ari%20Chef%E2%80%99s%20Table%20Logo.png" alt="Dine-Ari Chef’s Table" width="1536" height="1024" decoding="async" />
           </picture>
-          <p class="login-welcome">Welcome back</p>
+          <h1 class="login-welcome">Welcome back</h1>
           <p class="login-intro">Sign in with your assigned account credentials.</p>
 
           <div class="login-folder-tabs" role="tablist" aria-label="Account type">
-            <button class="login-folder-tab active" id="staffTab" type="button" role="tab" aria-selected="true" aria-controls="staffPanel" onfocus="switchLoginFolder('staff')" onclick="switchLoginFolder('staff')">
+            <button class="login-folder-tab active" id="staffTab" type="button" role="tab" aria-selected="true" aria-controls="staffPanel" data-csp-focus="switchLoginFolder('staff')" data-csp-click="switchLoginFolder('staff')">
               <i data-lucide="user-round" aria-hidden="true"></i> Staff
             </button>
-            <button class="login-folder-tab" id="adminTab" type="button" role="tab" aria-selected="false" aria-controls="adminPanel" onfocus="switchLoginFolder('admin')" onclick="switchLoginFolder('admin')">
+            <button class="login-folder-tab" id="adminTab" type="button" role="tab" aria-selected="false" aria-controls="adminPanel" data-csp-focus="switchLoginFolder('admin')" data-csp-click="switchLoginFolder('admin')">
               <i data-lucide="shield-check" aria-hidden="true"></i> Admin
             </button>
           </div>
 
           <div class="login-folder-panel active" id="staffPanel" role="tabpanel" aria-labelledby="staffTab">
-            <h1 class="logo-title">Staff Login</h1>
+            <h2 class="logo-title">Staff Login</h2>
             <p class="login-panel-description">Access your Dine-Ari staff workspace.</p>
-            <form class="login-form" onsubmit="event.preventDefault(); login('staff')">
+            <form class="login-form" data-csp-submit="login('staff')" data-csp-prevent-default="true">
               <div class="coolinput">
                 <label class="text" for="staffEmail">Email address</label>
                 <div class="login-input-wrap">
@@ -149,7 +57,7 @@
                     type="button"
                     aria-label="Show password"
                     aria-pressed="false"
-                    onclick="togglePasswordVisibility('staffPassword', this)"
+                    data-csp-click="togglePasswordVisibility('staffPassword', this)"
                   >
                     <i data-lucide="eye" aria-hidden="true"></i>
                   </button>
@@ -161,9 +69,9 @@
           </div>
 
           <div class="login-folder-panel" id="adminPanel" role="tabpanel" aria-labelledby="adminTab" aria-hidden="true" inert>
-            <h1 class="logo-title">Admin Login</h1>
+            <h2 class="logo-title">Admin Login</h2>
             <p class="login-panel-description">Access your Dine-Ari administration workspace.</p>
-            <form class="login-form" onsubmit="event.preventDefault(); login('admin')">
+            <form class="login-form" data-csp-submit="login('admin')" data-csp-prevent-default="true">
               <div class="coolinput">
                 <label class="text" for="adminEmail">Email address</label>
                 <div class="login-input-wrap">
@@ -181,7 +89,7 @@
                     type="button"
                     aria-label="Show password"
                     aria-pressed="false"
-                    onclick="togglePasswordVisibility('adminPassword', this)"
+                    data-csp-click="togglePasswordVisibility('adminPassword', this)"
                   >
                     <i data-lucide="eye" aria-hidden="true"></i>
                   </button>
@@ -192,24 +100,21 @@
             </form>
           </div>
 
-          <a class="back-home-link" href="/choice.html">Back to Customer Order Flow</a>
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
+          <a class="back-home-link" href="/choice.html">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19 12H5m7 7-7-7 7-7" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" /></svg>
+            <span>Back to Customer Order Flow</span>
+          </a>
         </section>
       </div>
     </section>
   </main>
 
-<<<<<<< HEAD
-  <script src="js/api.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/login-folders.js"></script>
-=======
   <script src="js/notifications.js?v=20261105-global-notifications-5"></script>
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/login-folders.js"></script>
-  <script>if (window.lucide) lucide.createIcons();</script>
->>>>>>> dec813b30e6e693a0d780375b8a2669b5c157d50
+  <script src="/js/init-icons.js"></script>
+  <script src="/js/csp-events.js"></script>
 </body>
 
 </html>

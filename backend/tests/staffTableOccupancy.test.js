@@ -2,7 +2,7 @@ const assert = require("node:assert/strict");
 const http = require("node:http");
 const test = require("node:test");
 const express = require("express");
-const jwt = require("jsonwebtoken");
+const { installSessionAuth } = require("./helpers/sessionAuth");
 const Module = require("node:module");
 
 const dbPath = require.resolve("../config/db");
@@ -21,6 +21,8 @@ require.cache[dbPath] = dbModule;
 const auditService = require("../services/auditService");
 const tableModel = require("../models/tableModel");
 const tableRoutes = require("../routes/tableRoutes");
+const sessionAuth = installSessionAuth();
+test.after(() => sessionAuth.restore());
 const originalAuditInsert = auditService.insert;
 process.env.JWT_SECRET = "staff-table-occupancy-test-secret";
 
@@ -167,7 +169,7 @@ test("a second occupancy attempt cannot reuse an already occupied table", async 
   );
 });
 
-test("only authenticated staff or admins can use the occupancy endpoint", async (t) => {
+test("only staff or admins can use the occupancy endpoint", async (t) => {
   const fixture = configureClient();
   auditService.insert = async () => {};
   t.after(() => {
@@ -175,6 +177,7 @@ test("only authenticated staff or admins can use the occupancy endpoint", async 
   });
 
   const app = express();
+  app.use(sessionAuth.cookieParser());
   app.use(express.json(), tableRoutes);
   const server = http.createServer(app);
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -186,23 +189,17 @@ test("only authenticated staff or admins can use the occupancy endpoint", async 
   const unauthenticated = await fetch(baseUrl, { method: "PATCH" });
   assert.equal(unauthenticated.status, 401);
 
-  const customerToken = jwt.sign(
-    { id: 12, role: "customer" },
-    process.env.JWT_SECRET
-  );
+  const customerCookie = sessionAuth.cookieFor("customer", 12);
   const forbidden = await fetch(baseUrl, {
     method: "PATCH",
-    headers: { Authorization: `Bearer ${customerToken}` },
+    headers: { Cookie: customerCookie },
   });
-  assert.equal(forbidden.status, 403);
+  assert.equal(forbidden.status, 401);
 
-  const staffToken = jwt.sign(
-    { id: 4, role: "staff", email: "staff@example.test" },
-    process.env.JWT_SECRET
-  );
+  const staffCookie = sessionAuth.cookieFor("staff", 4);
   const accepted = await fetch(baseUrl, {
     method: "PATCH",
-    headers: { Authorization: `Bearer ${staffToken}` },
+    headers: { Cookie: staffCookie },
   });
   assert.equal(accepted.status, 200);
   assert.equal((await accepted.json()).table.status, "occupied");
