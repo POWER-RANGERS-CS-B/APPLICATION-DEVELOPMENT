@@ -1,44 +1,68 @@
+# DineAri – Cross-Platform Restaurant Management System
 
-## DineAri - Cross-Platform Restaurant Management System
-
-Team Roles & Responsibilities
-- Team Leader: Gwynyth Edzcharyz Q Gomonit
-- Developer: Guy Magcanta
-           : Glenn Gabriel Sanchez
-- Quality Assurance (QA): Zaira M. Alumbro
-- Project Manager: Kimberly O. Carin
+A cross-platform restaurant management system supporting **Desktop, Web, and Mobile** frontends, powered by a Node.js/Express backend, PostgreSQL database, and a local Python Random Forest reservation demand forecasting engine.
 
 ---
 
-## System Requirements & Software to Install
+## 👥 Team Structure, Roles & Engineering Governance
 
-Before setting up the project, make sure you have the following software installed on your machine:
+### 1. Core Team Roster & Responsibilities
+* **Team Leader:** Gwynyth Edzcharyz Q. Gomonit  
+  * *Responsibilities:* Convenes and facilitates mandatory weekly GitHub status meetings, oversees cross-platform alignment, resolves high-level blockers, and ensures milestone deadlines are met.
+* **Project Manager (PM):** Kimberly O. Carin  
+  * *Responsibilities:* Maintains GitHub Project documentation (Backlog, Board, Current Iteration, and Roadmap), tracks sprint progress, audits open issues, and records/submits weekly meeting minutes to Google Classroom.
+* **Quality Assurance (QA) Lead:** Zaira M. Alumbro  
+  * *Responsibilities:* Validates code stability across platforms, tests pull requests prior to merging into `main`, verifies bug fixes, and serves as backup minutes taker when the PM acts as Team Leader.
+* **Software Developers:** Guy Magcanta & Glenn Gabriel Sanchez  
+  * *Responsibilities:* Architect, build, and maintain the system across all three target frontends (Desktop, Web, and Mobile Application) while adhering strictly to repository and code quality standards.
+
+### 2. Standard Operating Procedures (Team Rules)
+
+#### A. Version Control & Git Workflow
+* **Selective Commits Only:** Developers must **never** stage or push all project files at once (`git add .` is prohibited for bulk unreviewed changes). Select and commit only the specific files modified for a given task or issue.
+* **Main Branch Protection:** The `main` branch must remain stable and functional at all times. Broken or untested code must never be pushed directly to `main`.
+* **Mandatory Code Documentation:** All pushed files must contain clear, descriptive inline comments explaining logic, functions, and structural changes so the entire team can easily read and maintain the codebase.
+
+#### B. GitHub Project & Issue Management
+* **Single Source of Truth:** All active tasks, features, and bug fixes must be documented and kept up to date across all GitHub Project views (**Backlog, Kanban Board, Current Iteration, and Roadmap**).
+* **Issue Accountability:** Team members must update the status of their assigned GitHub Issues prior to the weekly status meeting. Stalled or blocked tasks will be audited and reassigned during the weekly sync.
+
+#### C. Weekly Synchronization & Governance
+* **Mandatory Attendance:** All members must attend the weekly GitHub Organization Status Meeting to review sprint health, audit blockers, and finalize action plans for upcoming milestones.
+* **Deliverable Compliance:** The designated Minutes Taker must compile and upload the official meeting notes to Google Classroom immediately following each session.
+
+---
+
+## 💻 System Requirements & Software to Install
+
+Before setting up the project, ensure you have the following software installed on your machine:
 
 1. **Node.js (v18 or higher / LTS recommended)**
-   - Includes `npm` for managing backend packages and dependencies.
-   - [Download Node.js](https://nodejs.org/)
-
+   * Includes `npm` for managing backend packages and dependencies.
+   * [Download Node.js](https://nodejs.org)
 2. **PostgreSQL & pgAdmin 4**
-   - Relational database management system used to host `dinequeue_db`.
-   - [Download PostgreSQL](https://www.postgresql.org/download/)
-
+   * Relational database management system used to host `dinequeue_db`.
+   * [Download PostgreSQL](https://postgresql.org)
 3. **Python (v3.8 or higher)**
-   - Required for running the local Random Forest reservation demand forecasting model.
-   - [Download Python](https://www.python.org/downloads/)
+   * Required for running the local Random Forest reservation demand forecasting model.
+   * [Download Python](https://python.org)
 
 ---
 
-Local PostgreSQL Setup
-Follow [database/LOCAL_POSTGRESQL_SETUP.md](database/LOCAL_POSTGRESQL_SETUP.md) for pgAdmin 4 instructions and the project schema SQL. The backend connects to database `dinequeue_db` and uses schema `restaurant`.
+## 🗄️ Local PostgreSQL Setup & Migrations
+
+* Follow `database/LOCAL_POSTGRESQL_SETUP.md` for pgAdmin 4 instructions and the project schema SQL.
+* The backend connects to database **`dinequeue_db`** and uses schema **`restaurant`**.
+* **For Existing Databases:** Apply all required migrations in `database/migrations/` in chronological date order—including `20261109_late_arrival_refunds.sql`—via the pgAdmin Query Tool before starting the updated backend. *(Note: This migration adds cashier authorization and completion metadata to existing order refund fields; it does not create new refund records or tables).*
 
 ---
 
-## Backend Setup (Node.js & Express)
+## ⚙️ Backend Setup (Node.js & Express)
 
-To run the system cleanly and avoid module/dependency errors, run these commands inside your terminal first:
+To run the system cleanly and avoid module or dependency errors, execute the following commands in your terminal:
 
-```powershell
-# 1. Open terminal inside the backend folder
+```bash
+# 1. Navigate to the backend folder
 cd backend
 
 # 2. Clear old module caches and lock files (Windows CMD / PowerShell)
@@ -47,84 +71,95 @@ del package-lock.json
 
 # 3. Install fresh dependencies
 npm install
-
 ```
 
-After running those commands:
-
-1. Copy `.env.example` to `.env` and set your local PostgreSQL values (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`).
+### Environment Configuration & Startup
+1. Copy `.env.example` to `.env` inside `/backend` and configure your local PostgreSQL credentials (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`).
 2. Keep `JWT_SECRET` set to a secure local value.
-3. Run `npm run dev` to start the server (runs on port 3000).
+3. Start the development server (runs on port `3000`):
+   ```bash
+   npm run dev
+   ```
 
-The admin **Audit Logs** tab records successful and failed logins, logout, account and menu changes, inventory changes, table/chair activity, reservation creation, and order activity. Business-state mutations and their audit rows share a database transaction; authentication events are recorded immediately after the outcome. Logs can be searched and filtered through the admin-only audit endpoint. For an existing database, apply the required migrations in `database/migrations/` in date order, including `20261109_late_arrival_refunds.sql`, in pgAdmin Query Tool before starting the updated backend. This migration adds cashier authorization and completion metadata to the existing order refund fields; it does not create refund records or tables.
+### Audit Logging
+* The admin **Audit Logs** tab tracks successful/failed logins, logouts, account/menu updates, inventory changes, table/chair activity, reservation creation, and order activity.
+* Business-state mutations and their audit rows share a database transaction; authentication events are recorded immediately after the outcome. Logs are searchable and filterable via the admin-only audit endpoint.
 
-## Reservation Demand Forecasting
+---
 
-The admin dashboard includes a locally executed Random Forest forecast trained from eligible PostgreSQL reservation history. Cancelled, rejected, soft-deleted, future-dated, and out-of-range records are excluded. Rows are counted once by their unique reservation ID; duplicate IDs in a model input are ignored, while records with different IDs are retained because identical date/time/guest values can still be legitimate separate bookings.
+## 📈 Reservation Demand Forecasting
 
-The model requires at least 30 eligible reservations over 14 booking days spanning 30 calendar days, plus three complete rolling-origin seven-day validation windows. Otherwise it returns a data-readiness message instead of predictions. Validation reports MAE and RMSE separately for daily reservations, daily guests, and hourly reservations, compared with a same-weekday seasonal baseline. These are historical validation results, not guarantees of production accuracy.
+The admin dashboard includes a locally executed **Random Forest** forecast trained from eligible PostgreSQL reservation history.
 
-1. Install Node dependencies in `/backend` with `npm install`. Chart.js is served locally from the backend; the dashboard does not fetch chart code from a CDN.
-2. Install Python dependencies into the repository-local environment from `/backend`: on Windows run `..\.venv-win\Scripts\python.exe -m pip install -r forecasting/requirements.txt`; on other platforms run `../.venv/bin/python -m pip install -r forecasting/requirements.txt`. The backend automatically uses that project-local environment when present. Optionally set `PYTHON_EXECUTABLE` in `backend/.env` to override it; relative paths resolve from the project root. Forecast generation uses local Python packages and does not call an external AI service.
-3. Generate or manually refresh forecasts from the **Reservation Forecast** admin tab. Opening the tab reuses the latest result and checks its freshness; it does not retrain the model. Results are marked outdated when eligible history changes or the forecast is at least 24 hours old. Forecast endpoints remain admin-only.
+### Data Eligibility & Model Rules
+* **Exclusions:** Cancelled, rejected, soft-deleted, future-dated, and out-of-range records are excluded.
+* **Deduplication:** Rows are counted once by unique reservation ID. Duplicate IDs in model inputs are ignored, while distinct IDs sharing identical date/time/guest values are retained as valid separate bookings.
+* **Data Readiness Threshold:** Requires at least **30 eligible reservations** over **14 booking days** spanning **30 calendar days**, plus **three complete rolling-origin seven-day validation windows**. Otherwise, a data-readiness notice is displayed instead of predictions.
+* **Metrics:** Validation reports **MAE** and **RMSE** separately for daily reservations, daily guests, and hourly reservations against a same-weekday seasonal baseline *(historical validation only; not a production accuracy guarantee)*.
+* **Local Execution:** Chart.js is served locally from `/backend` (no external CDN), and forecast generation uses local Python libraries without calling external AI services.
 
-### Isolated forecast integration tests
+### Python Environment Setup
+Install Python dependencies into the repository-local virtual environment from inside `/backend`:
 
-Set `FORECAST_TEST_DB_NAME=dinequeue_db_forecast_test` in the local backend `.env`. This must be a dedicated PostgreSQL database name ending in `_test` and must differ from `DB_NAME`. From `/backend`, run:
+* **Windows:**
+  ```powershell
+  ..\.venv-win\Scripts\python.exe -m pip install -r forecasting/requirements.txt
+  ```
+* **macOS / Linux:**
+  ```bash
+  ../.venv/bin/python -m pip install -r forecasting/requirements.txt
+  ```
+
+*(Optional)* Set `PYTHON_EXECUTABLE` in `backend/.env` to override the default environment path (relative paths resolve from the project root).
+
+### Generating Forecasts
+* Trigger or manually refresh forecasts from the **Reservation Forecast** admin tab (admin-only endpoints).
+* Opening the tab reuses the latest cached result and checks freshness without retraining. Results are flagged as outdated if eligible history changes or if the forecast is **24+ hours old**.
+
+### Isolated Forecast Integration Tests
+Set `FORECAST_TEST_DB_NAME=dinequeue_db_forecast_test` in `backend/.env` (must be a dedicated PostgreSQL database ending in `_test` and distinct from `DB_NAME`). From `/backend`, run:
 
 ```powershell
 npm run prepare:forecast-test-db
 npm run test:forecast-model
-$env:FORECAST_TEST_DB_NAME = "dinequeue_db_forecast_test"
+\$env:FORECAST_TEST_DB_NAME = "dinequeue_db_forecast_test"
 npm run test:forecast-db
-
 ```
 
-The preparation script creates the separate database when needed, applies the canonical schema only to an empty test database, and inserts clearly labeled `FORECAST_TEST_*` records with varied weekdays/times/guest counts and eligible/ineligible statuses. It refuses to use the configured application database. The integration tests are read-only and use only that test database; Python model fixtures are in-memory. Do not point the test database setting at production.
-
-An isolated simulated CSV sample is also provided in `forecasting/development_reservations.csv` for development only. It is never combined with restaurant records. To enable the dashboard's separate development-data option, explicitly set `ENABLE_FORECAST_DEVELOPMENT_DATA=true`; leave it disabled in production.
-
----
-
-## Account Access
-
-Use credentials assigned by the restaurant system administrator. The application does not provide a self-service password reset; an authorized database administrator must verify the account owner and coordinate password recovery. Do not rely on credentials from old setup notes.
+* `prepare:forecast-test-db` creates the isolated test database, applies the canonical schema only if empty, and populates clearly labeled `FORECAST_TEST_*` records. It strictly refuses to run against the primary application database.
+* **Development Simulation Data:** An isolated sample file (`forecasting/development_reservations.csv`) is available for development testing only and is never mixed with live restaurant records. Enable it via `ENABLE_FORECAST_DEVELOPMENT_DATA=true` in `.env` (**keep disabled in production**).
 
 ---
 
-## Postman API Testing Guide
+## 🔐 Account Access & Security
 
-Follow these steps to test your API endpoints using Postman:
+* Use credentials assigned by the restaurant system administrator.
+* Self-service password resets are disabled by design; an authorized database administrator must verify account ownership and coordinate password recovery. Do not rely on default credentials from legacy setup notes.
+
+---
+
+## 🧪 Postman API Testing Guide
 
 ### Step 1: Start the Server
-
-Make sure your backend server is active:
-
-1. Open a terminal inside the `backend` folder.
-2. Run `npm run dev` to start the server at `http://localhost:3000`.
-
-### Step 2: Authenticate and Get a JWT Token
-
-1. Open Postman and create a new **POST** request.
-2. Set the request URL to: `http://localhost:3000/api/auth/login`
-3. Go to the **Body** tab, select **raw**, and change the format dropdown to **JSON**.
-4. Paste the following login payload:
-```json
-{
-  "email": "admin@dinequeue.com",
-  "password": "admin123"
-}
-
+Ensure the backend server is running from inside `/backend`:
+```bash
+npm run dev
 ```
+*(Server runs at `http://localhost:3000`)*
 
+### Step 2: Authenticate & Retrieve a JWT Token
+1. Open Postman and create a new **POST** request to: `http://localhost:3000/api/auth/login`
+2. Navigate to the **Body** tab, select **raw**, and set the format dropdown to **JSON**.
+3. Enter valid administrator credentials:
+   ```json
+   {
+     "email": "admin@dinequeue.com",
+     "password": "admin123"
+   }
+   ```
+4. Click **Send** and copy the returned `token` string from the JSON response.
 
-5. Click **Send**.
-6. From the JSON response, copy the generated `token` string.
-
-### Step 3: Test Protected API Endpoints
-
-1. Create a new **GET** request in Postman (e.g., to fetch the menu or tables: `http://localhost:3000/api/menu` or `http://localhost:3000/api/tables`).
-2. Navigate to the **Authorization** tab.
-3. Select **Bearer Token** from the type dropdown.
-4. Paste your copied JWT token into the **Token** field.
-5. Click **Send** to successfully retrieve protected restaurant data.
+### Step 3: Test Protected Endpoints
+1. Create a new **GET** request (e.g., `http://localhost:3000/api/menu` or `http://localhost:3000/api/tables`).
+2. Go to the **Authorization** tab and select **Bearer Token** from the Type dropdown.
+3. Paste your copied JWT token into the **Token** field and click **Send**.
