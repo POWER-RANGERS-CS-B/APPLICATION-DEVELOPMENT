@@ -1,6 +1,7 @@
 const staffModel = require("../models/staffModel");
 const arrivalScannerModel = require("../models/arrivalScannerModel");
 const orderModel = require("../models/orderModel");
+const { sendControllerError } = require("../utils/controllerError");
 
 function arrivalResponseStatus(scanStatus) {
   switch (scanStatus) {
@@ -24,7 +25,7 @@ exports.getKitchenDisplay = async (req, res) => {
   try {
     res.json(await staffModel.getKitchenOrders());
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    sendControllerError(res, error, 500);
   }
 };
 
@@ -65,7 +66,7 @@ exports.startLateArrivalRefundProcessing = async (req, res) => {
     res.set("Cache-Control", "no-store");
     res.json(await orderModel.startLateArrivalRefundProcessing(req.params.id, req.user));
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message });
+    sendControllerError(res, error);
   }
 };
 
@@ -74,6 +75,6 @@ exports.completeLateArrivalRefund = async (req, res) => {
     res.set("Cache-Control", "no-store");
     res.json(await orderModel.completeLateArrivalRefund(req.params.id, req.user));
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message });
+    sendControllerError(res, error);
   }
 };

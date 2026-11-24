@@ -420,6 +420,7 @@ test("Google customer database failures are logged without exposing details to t
   assert.equal(logged[0][1].endpoint, "POST /auth/google");
   assert.equal(logged[0][1].operation, "insert_google_customer");
   assert.equal(logged[0][1].code, "42703");
-  assert.equal(logged[0][1].position, "104");
-  assert.equal(logged[0][1].routine, "checkInsertTargets");
+  assert.equal(logged[0][1].errorType, "Error");
+  assert.equal("position" in logged[0][1], false);
+  assert.equal("routine" in logged[0][1], false);
 });

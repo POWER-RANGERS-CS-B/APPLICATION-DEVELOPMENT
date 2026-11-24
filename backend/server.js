@@ -1,13 +1,66 @@
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
+const { rateLimit } = require("express-rate-limit");
 const path = require("path");
 const orderModel = require("./models/orderModel");
 
 const app = express();
 
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+const allowedOrigins = new Set(
+  (process.env.CORS_ORIGINS || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+    .map((origin) => {
+      let parsedOrigin;
+      try {
+        parsedOrigin = new URL(origin);
+      } catch {
+        throw new Error("CORS_ORIGINS must contain valid absolute origins.");
+      }
+      if (
+        parsedOrigin.origin !== origin ||
+        (process.env.NODE_ENV === "production" && parsedOrigin.protocol !== "https:")
+      ) {
+        throw new Error("CORS_ORIGINS entries must be exact origins and use HTTPS in production.");
+      }
+      return parsedOrigin.origin;
+    })
+);
+
+if (process.env.TRUST_PROXY_HOPS !== undefined) {
+  const trustedProxyHops = Number(process.env.TRUST_PROXY_HOPS);
+  if (!Number.isSafeInteger(trustedProxyHops) || trustedProxyHops < 0 || trustedProxyHops > 10) {
+    throw new Error("TRUST_PROXY_HOPS must be an integer between 0 and 10.");
+  }
+  app.set("trust proxy", trustedProxyHops);
+}
+
+app.disable("x-powered-by");
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+  crossOriginResourcePolicy: false,
+}));
+app.use(cors({
+  origin(origin, callback) {
+    callback(null, !origin || allowedOrigins.has(origin));
+  },
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  maxAge: 600,
+}));
+app.use(express.json({ limit: "100kb" }));
+app.use(express.urlencoded({ extended: false, limit: "100kb" }));
+
+const apiRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 300,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { message: "Too many requests. Please try again later." },
+});
 
 const staticImageOptions = {
   setHeaders(res, filePath) {
@@ -83,6 +136,7 @@ app.get("/", (req, res) => {
    API ROUTES
 ====================================== */
 
+app.use("/api", apiRateLimit);
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/customers", require("./routes/customerRoutes"));
 app.use("/api/menu", require("./routes/menuRoutes"));
@@ -95,6 +149,23 @@ app.use("/api/tables", require("./routes/tableRoutes"));
 app.use("/api/staff", require("./routes/staffRoutes"));
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/audit-logs", require("./routes/auditRoutes"));
+
+app.use((error, req, res, next) => {
+  if (res.headersSent) return next(error);
+
+  const status = error.status ||
+    error.statusCode ||
+    (error.code === "LIMIT_FILE_SIZE" ? 413 : undefined);
+  const clientError = Number.isInteger(status) && status >= 400 && status < 500;
+  console.error("Request processing failed.", {
+    method: req.method,
+    errorType: error.name || "Error",
+    errorCode: error.code,
+  });
+  res.status(clientError ? status : 500).json({
+    message: clientError ? error.message : "The request could not be completed.",
+  });
+});
 
 /* ======================================
    START SERVER

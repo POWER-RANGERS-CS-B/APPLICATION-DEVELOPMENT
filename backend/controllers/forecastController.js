@@ -1,4 +1,5 @@
 const forecastService = require("../services/forecastService");
+const { sendControllerError } = require("../utils/controllerError");
 
 exports.getForecast = async (req, res) => {
   try {
@@ -15,10 +16,12 @@ exports.getForecast = async (req, res) => {
           }
     );
   } catch (error) {
-    console.error("Reservation forecast freshness check failed:", error.message);
-    res.status(503).json({
-      message: "Unable to check reservation forecast freshness.",
-    });
+    sendControllerError(
+      res,
+      error,
+      503,
+      "Unable to check reservation forecast freshness."
+    );
   }
 };
 
@@ -28,9 +31,11 @@ exports.generateForecast = async (req, res) => {
     const forecast = await forecastService.generate(source);
     res.json(forecast);
   } catch (error) {
-    console.error("Reservation forecast generation failed:", error.message);
-    res
-      .status(error.status || 503)
-      .json({ message: error.message || "Unable to generate reservation forecast." });
+    sendControllerError(
+      res,
+      error,
+      error.status || 503,
+      "Unable to generate reservation forecast."
+    );
   }
 };

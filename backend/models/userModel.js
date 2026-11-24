@@ -101,6 +101,7 @@ exports.updateStaff = async (id, { fullName, username, email, role }, actor) => 
            username = $3,
            email = $4,
            role = $5,
+           auth_version = auth_version + CASE WHEN role <> $5 THEN 1 ELSE 0 END,
            updated_at = NOW()
        WHERE id = $1 AND role IN ('staff', 'cashier')
        RETURNING id, full_name, username, email, role, deleted_at, created_at`,
@@ -151,6 +152,7 @@ exports.setStaffStatus = async (id, active, actor) => {
     const result = await client.query(
       `UPDATE restaurant.users
        SET deleted_at = CASE WHEN $2 THEN NULL ELSE NOW() END,
+           auth_version = auth_version + 1,
            updated_at = NOW()
        WHERE id = $1 AND role IN ('staff', 'cashier')
        RETURNING id, full_name, username, email, role, deleted_at, created_at`,

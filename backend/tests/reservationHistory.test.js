@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const express = require("express");
-const jwt = require("jsonwebtoken");
+const { createAuthTestToken } = require("./authTestHelpers");
 const db = require("../config/db");
 const auditService = require("../services/auditService");
 const reservationModel = require("../models/reservationModel");
@@ -143,7 +143,7 @@ test("only admins can archive historical reservations through the API", async (t
   });
   await new Promise((resolve) => server.once("listening", resolve));
   const baseUrl = `http://127.0.0.1:${server.address().port}/api/reservations/21`;
-  const staffToken = jwt.sign({ id: 8, role: "staff" }, process.env.JWT_SECRET);
+  const staffToken = createAuthTestToken({ id: 8, role: "staff" });
   const staffResponse = await fetch(baseUrl, {
     method: "DELETE",
     headers: {
@@ -153,7 +153,7 @@ test("only admins can archive historical reservations through the API", async (t
   });
   assert.equal(staffResponse.status, 403);
 
-  const adminToken = jwt.sign({ id: 7, role: "admin" }, process.env.JWT_SECRET);
+  const adminToken = createAuthTestToken({ id: 7, role: "admin" });
   const adminResponse = await fetch(baseUrl, {
       method: "DELETE",
       headers: {

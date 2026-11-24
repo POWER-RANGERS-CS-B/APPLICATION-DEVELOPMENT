@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const express = require("express");
-const jwt = require("jsonwebtoken");
+const { createAuthTestToken } = require("./authTestHelpers");
 const db = require("../config/db");
 const auditService = require("../services/auditService");
 const reservationModel = require("../models/reservationModel");
@@ -290,7 +290,7 @@ test("staff accounts cannot confirm or reject reservations", async (t) => {
   app.use(express.json());
   app.use("/api/reservations", reservationRoutes);
   const server = app.listen(0);
-  const token = jwt.sign({ id: 8, role: "staff" }, process.env.JWT_SECRET);
+  const token = createAuthTestToken({ id: 8, role: "staff" });
   t.after(async () => {
     await new Promise((resolve, reject) => {
       server.close((error) => (error ? reject(error) : resolve()));

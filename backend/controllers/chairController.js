@@ -1,11 +1,12 @@
 const chairModel = require("../models/chairModel");
+const { sendControllerError } = require("../utils/controllerError");
 
 exports.getChairs = async (req, res) => {
   try {
     await chairModel.releaseExpiredLocks();
     res.json(await chairModel.findAll());
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    sendControllerError(res, error, 500);
   }
 };
 
@@ -26,6 +27,6 @@ exports.lockTable = async (req, res) => {
 
     res.json(await chairModel.lockTable(tableId, req.user));
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    sendControllerError(res, error, 400);
   }
 };

@@ -1,5 +1,7 @@
 const reservationModel = require("../models/reservationModel");
 const { normalizeReservationCustomer } = require("../utils/reservationCustomerValidation");
+const { normalizePaymentProofUrl } = require("../utils/safePaymentProofUrl");
+const { sendControllerError } = require("../utils/controllerError");
 
 exports.createReservation = async (req, res) => {
   try {
@@ -22,12 +24,12 @@ exports.createReservation = async (req, res) => {
       paymentMethod: body.payment_method || "GCash",
       paymentReference: body.gcash_reference || body.payment_reference || null,
       gcashSenderName: body.gcash_sender_name || null,
-      paymentProofUrl: body.payment_proof_url || null,
+      paymentProofUrl: normalizePaymentProofUrl(body.payment_proof_url),
     });
 
     res.status(201).json(reservation);
   } catch (error) {
-    res.status(error.statusCode || 400).json({ message: error.message });
+    sendControllerError(res, error, error.statusCode || 400);
   }
 };
 
@@ -36,7 +38,7 @@ exports.getReservations = async (req, res) => {
     const reservations = await reservationModel.findAll();
     res.json(reservations);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    sendControllerError(res, error, 500);
   }
 };
 
@@ -48,7 +50,7 @@ exports.archiveHistoricalReservation = async (req, res) => {
     });
     res.json(reservation);
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message });
+    sendControllerError(res, error);
   }
 };
 
@@ -60,7 +62,7 @@ exports.confirmReservation = async (req, res) => {
     });
     res.json(reservation);
   } catch (error) {
-    res.status(error.statusCode || 400).json({ message: error.message });
+    sendControllerError(res, error, error.statusCode || 400);
   }
 };
 
@@ -72,7 +74,7 @@ exports.rejectReservation = async (req, res) => {
     });
     res.json(reservation);
   } catch (error) {
-    res.status(error.statusCode || 400).json({ message: error.message });
+    sendControllerError(res, error, error.statusCode || 400);
   }
 };
 
@@ -81,7 +83,7 @@ exports.getReservationStatus = async (req, res) => {
     const reservation = await reservationModel.findStatusByToken(req.params.token);
     res.json(reservation);
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message });
+    sendControllerError(res, error);
   }
 };
 
@@ -93,7 +95,7 @@ exports.resubmitReservationPayment = async (req, res) => {
     });
     res.json(reservation);
   } catch (error) {
-    res.status(error.statusCode || 400).json({ message: error.message });
+    sendControllerError(res, error, error.statusCode || 400);
   }
 };
 
@@ -105,6 +107,6 @@ exports.validateReservationReceipt = async (req, res) => {
     });
     res.json(reservation);
   } catch (error) {
-    res.status(error.statusCode || 400).json({ message: error.message });
+    sendControllerError(res, error, error.statusCode || 400);
   }
 };

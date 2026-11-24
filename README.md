@@ -21,6 +21,28 @@ Follow [database/LOCAL_POSTGRESQL_SETUP.md](database/LOCAL_POSTGRESQL_SETUP.md) 
 4. Keep `JWT_SECRET` set to a secure local value
 5. Run `npm run dev` (server runs on port 3000)
 
+For production, set `DB_SSL=true` so PostgreSQL connections validate the server
+certificate; provide `DB_SSL_CA_PATH` only when your database uses a private CA.
+Cross-origin browser clients are denied unless their exact origins are listed in
+`CORS_ORIGINS`. If the app is behind a reverse proxy, set `TRUST_PROXY_HOPS` to
+the number of trusted proxy hops, not `true`.
+
+Apply `database/migrations/20261124_auth_token_version.sql` after the existing
+customer-account migration and before deploying this backend version. It adds
+the account token-version field used to invalidate sessions immediately when
+staff accounts are disabled or their roles change. Existing access tokens must
+be reissued after deployment; newly issued tokens expire after eight hours and
+are revoked on logout.
+
+The backend sends Helmet security headers, limits request bodies to 100 KB,
+allows same-origin browser requests by default, and applies per-process API
+limits of 300 requests per 15 minutes (10 per 15 minutes for sign-in,
+registration, and Google authentication). If deploying multiple backend
+instances, configure a shared rate-limit store before relying on a global
+cross-instance quota. Content Security Policy remains disabled because the
+existing pages include inline scripts; keep untrusted content out of HTML and
+link attributes.
+
 Google authentication uses the Google Identity Services OAuth 2.0 popup token
 flow with explicit account selection. The browser sends the short-lived access
 token to the backend for audience validation and a verified Google user-info

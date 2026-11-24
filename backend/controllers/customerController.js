@@ -1,12 +1,13 @@
 const { parsePhoneNumberFromString } = require("libphonenumber-js/max");
 const { isValidEmailDomain } = require("../utils/emailValidation");
+const { sendControllerError } = require("../utils/controllerError");
 const customerModel = require("../models/customerModel");
 
 exports.getProfile = async (req, res) => {
   try {
     res.json(await customerModel.getProfile(req.user.id));
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message });
+    sendControllerError(res, error);
   }
 };
 
@@ -33,7 +34,7 @@ exports.updateProfile = async (req, res) => {
       contactNumber: phone.format("E.164"),
     }));
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message });
+    sendControllerError(res, error);
   }
 };
 
@@ -45,7 +46,7 @@ exports.updateSettings = async (req, res) => {
   try {
     res.json(await customerModel.updateSettings(req.user.id, { preferredTheme }));
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message });
+    sendControllerError(res, error);
   }
 };
 
@@ -60,7 +61,7 @@ exports.listNotifications = async (req, res) => {
       unreadCount,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    sendControllerError(res, error, 500);
   }
 };
 
@@ -72,7 +73,7 @@ exports.getReservation = async (req, res) => {
   try {
     res.json(await customerModel.getReservation(req.user.id, reservationId));
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message });
+    sendControllerError(res, error);
   }
 };
 
@@ -88,7 +89,7 @@ exports.markNotificationRead = async (req, res) => {
   try {
     res.json(await customerModel.markNotificationRead(req.user.id, notificationId, isRead));
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message });
+    sendControllerError(res, error);
   }
 };
 
@@ -96,7 +97,7 @@ exports.markAllNotificationsRead = async (req, res) => {
   try {
     res.json(await customerModel.markAllNotificationsRead(req.user.id));
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message });
+    sendControllerError(res, error);
   }
 };
 
@@ -108,6 +109,6 @@ exports.deleteNotification = async (req, res) => {
   try {
     res.json(await customerModel.deleteNotification(req.user.id, notificationId));
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message });
+    sendControllerError(res, error);
   }
 };

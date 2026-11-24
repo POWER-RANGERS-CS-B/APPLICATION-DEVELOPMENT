@@ -1,10 +1,11 @@
 const menuModel = require("../models/menuModel");
+const { sendControllerError } = require("../utils/controllerError");
 
 exports.getMenu = async (req, res) => {
   try {
     res.json(await menuModel.findAll());
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    sendControllerError(res, error, 500);
   }
 };
 
@@ -16,7 +17,7 @@ exports.createMenuItem = async (req, res) => {
     const newItem = await menuModel.create(itemData, req.user);
     res.status(201).json(newItem);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    sendControllerError(res, error, 400);
   }
 };
 
@@ -33,7 +34,7 @@ exports.updateMenuItem = async (req, res) => {
     }
     res.json(updatedItem);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    sendControllerError(res, error, 400);
   }
 };
 
@@ -45,6 +46,6 @@ exports.softDeleteMenuItem = async (req, res) => {
     }
     res.json(deletedItem);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    sendControllerError(res, error, 400);
   }
 };

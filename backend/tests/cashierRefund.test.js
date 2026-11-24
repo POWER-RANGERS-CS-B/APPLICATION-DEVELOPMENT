@@ -5,6 +5,7 @@ const Module = require("node:module");
 const path = require("node:path");
 const express = require("express");
 const jwt = require("jsonwebtoken");
+const { createAuthTestToken } = require("./authTestHelpers");
 
 const dbPath = require.resolve("../config/db");
 const db = {};
@@ -265,7 +266,7 @@ test("cashier refund API allows cashier JWTs and denies ordinary staff and admin
 
   const request = (role) => fetch(url, {
     headers: {
-      Authorization: `Bearer ${jwt.sign({ id: 7, role }, secret)}`,
+      Authorization: `Bearer ${createAuthTestToken({ id: 7, role }, secret)}`,
       Connection: "close",
     },
   });

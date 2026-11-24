@@ -118,3 +118,26 @@ exports.revokeToken = async (userId, tokenId, expiresAt) => {
     [tokenId, userId, expiresAt]
   );
 };
+
+exports.isSessionValid = async (userId, role, authVersion, tokenId) => {
+  const result = await db.query(
+    `SELECT
+       EXISTS (
+         SELECT 1
+         FROM restaurant.users
+         WHERE id = $1
+           AND role = $2
+           AND auth_version = $3
+           AND deleted_at IS NULL
+       )
+       AND NOT EXISTS (
+         SELECT 1
+         FROM restaurant.revoked_auth_tokens
+         WHERE token_id = $4
+           AND user_id = $1
+           AND expires_at > NOW()
+       ) AS is_valid`,
+    [userId, role, authVersion, tokenId]
+  );
+  return result.rows[0]?.is_valid === true;
+};

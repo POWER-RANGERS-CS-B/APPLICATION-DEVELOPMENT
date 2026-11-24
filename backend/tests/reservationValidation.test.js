@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const express = require("express");
-const jwt = require("jsonwebtoken");
+const { createAuthTestToken } = require("./authTestHelpers");
 const reservationModel = require("../models/reservationModel");
 const reservationRoutes = require("../routes/reservationRoutes");
 const db = require("../config/db");
@@ -16,7 +16,7 @@ async function withReservationApi(run) {
   try {
     await new Promise((resolve) => server.once("listening", resolve));
     const { port } = server.address();
-    const token = jwt.sign({ id: 27, role: "customer" }, process.env.JWT_SECRET);
+    const token = createAuthTestToken({ id: 27, role: "customer" });
     await run(`http://127.0.0.1:${port}/api/reservations`, {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,

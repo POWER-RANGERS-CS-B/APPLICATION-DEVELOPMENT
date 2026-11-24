@@ -2,7 +2,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const Module = require("node:module");
 const express = require("express");
-const jwt = require("jsonwebtoken");
+const { createAuthTestToken } = require("./authTestHelpers");
 
 const jwtSecret = process.env.JWT_SECRET || "dine-in-auth-test-secret";
 process.env.JWT_SECRET = jwtSecret;
@@ -38,7 +38,7 @@ function createResponse() {
 }
 
 function tokenFor(role, id = 42) {
-  return jwt.sign({ id, role, email: `${role}@example.test` }, jwtSecret);
+  return createAuthTestToken({ id, role, email: `${role}@example.test` }, jwtSecret);
 }
 
 function authHeaders(token) {

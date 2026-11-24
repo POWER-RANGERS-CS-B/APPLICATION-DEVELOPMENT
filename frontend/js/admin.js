@@ -351,6 +351,7 @@ function renderReservationRequests(reservations) {
     const gcashReference = paymentMethod === "GCash"
       ? (reservation.gcash_reference || "Missing")
       : "Not applicable";
+    const paymentProofUrl = getSafePaymentProofUrl(reservation.payment_proof_url);
 
     return `
       <article class="admin-item reservation-request-card">
@@ -369,7 +370,7 @@ function renderReservationRequests(reservations) {
           <p><strong>GCash reference:</strong> ${escapeAdminHtml(gcashReference)}</p>
           <p><strong>Sender's name:</strong> ${escapeAdminHtml(reservation.gcash_sender_name || "Not provided")}</p>
           <p><strong>Payment status:</strong> ${escapeAdminHtml(paymentStatus.toUpperCase())}</p>
-          ${reservation.payment_proof_url ? `<p><strong>Payment proof:</strong> <a href="${escapeAdminHtml(reservation.payment_proof_url)}" target="_blank" rel="noopener noreferrer">View submitted proof</a></p>` : ""}
+          ${paymentProofUrl ? `<p><strong>Payment proof:</strong> <a href="${escapeAdminHtml(paymentProofUrl)}" target="_blank" rel="noopener noreferrer">View submitted proof</a></p>` : reservation.payment_proof_url ? "<p><strong>Payment proof:</strong> Submitted link is unavailable.</p>" : ""}
           <p><strong>Submitted:</strong> ${escapeAdminHtml(submittedAt)}</p>
         </div>
         ${canReview ? `<div class="admin-inline-actions">
@@ -640,6 +641,21 @@ function escapeAdminHtml(value) {
     '"': "&quot;",
     "'": "&#39;",
   })[character]);
+}
+
+function getSafePaymentProofUrl(value) {
+  if (typeof value !== "string" || !value.trim() || value.length > 2048) return "";
+
+  const input = value.trim();
+  const isSameSitePath = input.startsWith("/") && !input.startsWith("//");
+  try {
+    const url = new URL(input, window.location.origin);
+    if (url.protocol === "https:") return url.href;
+    if (isSameSitePath && url.origin === window.location.origin) return url.href;
+  } catch {
+    return "";
+  }
+  return "";
 }
 
 function viewReservationDetails(id) {

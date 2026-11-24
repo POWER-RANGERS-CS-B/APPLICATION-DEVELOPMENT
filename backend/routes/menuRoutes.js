@@ -15,7 +15,27 @@ const storage = multer.diskStorage({
     cb(null, uniqueSuffix + path.extname(file.originalname));
   }
 });
-const upload = multer({ storage: storage });
+const acceptedImageTypes = new Map([
+  [".avif", "image/avif"],
+  [".gif", "image/gif"],
+  [".jpeg", "image/jpeg"],
+  [".jpg", "image/jpeg"],
+  [".png", "image/png"],
+  [".webp", "image/webp"],
+]);
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter(_req, file, callback) {
+    const extension = path.extname(file.originalname).toLowerCase();
+    if (acceptedImageTypes.get(extension) !== file.mimetype) {
+      const error = new Error("Only supported image files can be uploaded.");
+      error.statusCode = 400;
+      return callback(error);
+    }
+    callback(null, true);
+  },
+});
 
 // Anyone can view the menu items list
 router.get("/", menuController.getMenu);

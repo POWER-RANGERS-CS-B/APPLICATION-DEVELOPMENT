@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
+const authModel = require("../models/authModel");
 
-function authenticate(req, res, next) {
+async function authenticate(req, res, next) {
   const header = req.headers.authorization;
 
   if (typeof header !== "string") {
@@ -15,27 +16,56 @@ function authenticate(req, res, next) {
 
   let payload;
   try {
-    payload = jwt.verify(token, process.env.JWT_SECRET);
+    payload = jwt.verify(token, process.env.JWT_SECRET, {
+      algorithms: ["HS256"],
+    });
   } catch {
     return res.status(401).json({ message: "Invalid or expired token." });
   }
 
+  const userId = Number(payload?.id);
   if (
     !payload ||
     typeof payload !== "object" ||
-    !(
-      (typeof payload.id === "string" && payload.id.length > 0) ||
-      Number.isSafeInteger(payload.id)
-    ) ||
-    !["staff", "cashier", "admin", "customer"].includes(payload.role)
+    !Number.isSafeInteger(userId) ||
+    userId <= 0 ||
+    !["staff", "cashier", "admin", "customer"].includes(payload.role) ||
+    !Number.isSafeInteger(payload.authVersion) ||
+    payload.authVersion < 0 ||
+    typeof payload.jti !== "string" ||
+    payload.jti.length === 0 ||
+    payload.jti.length > 128 ||
+    !Number.isSafeInteger(payload.exp)
   ) {
     return res.status(401).json({ message: "Invalid authentication token." });
   }
 
+  let sessionIsValid;
+  try {
+    sessionIsValid = await authModel.isSessionValid(
+      userId,
+      payload.role,
+      payload.authVersion,
+      payload.jti
+    );
+  } catch (error) {
+    console.error("Authentication state verification failed.", {
+      errorType: error.name || "Error",
+      errorCode: error.code,
+    });
+    return res.status(503).json({ message: "Authentication is temporarily unavailable." });
+  }
+
+  if (!sessionIsValid) {
+    return res.status(401).json({ message: "Invalid or expired token." });
+  }
+
   req.user = {
-    id: payload.id,
+    id: userId,
     role: payload.role,
     email: typeof payload.email === "string" ? payload.email : null,
+    tokenId: payload.jti,
+    tokenExpiresAt: new Date(payload.exp * 1000),
   };
   next();
 }

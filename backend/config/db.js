@@ -1,4 +1,5 @@
 const { Pool } = require("pg");
+const fs = require("fs");
 const { assertRequiredEnvironmentVariables } = require("./env");
 
 assertRequiredEnvironmentVariables([
@@ -23,6 +24,23 @@ if (!Number.isInteger(connectionTimeoutMillis) || connectionTimeoutMillis < 1) {
   throw new Error("DB_CONNECTION_TIMEOUT_MS must be a positive integer.");
 }
 
+if (process.env.NODE_ENV === "production" && process.env.DB_SSL !== "true") {
+  throw new Error("DB_SSL=true is required in production.");
+}
+
+let ssl = false;
+if (process.env.DB_SSL === "true") {
+  ssl = { rejectUnauthorized: true };
+  const caPath = process.env.DB_SSL_CA_PATH?.trim();
+  if (caPath) {
+    try {
+      ssl.ca = fs.readFileSync(caPath, "utf8");
+    } catch {
+      throw new Error("DB_SSL_CA_PATH could not be read.");
+    }
+  }
+}
+
 const pool = new Pool({
   host: process.env.DB_HOST,
   port: databasePort,
@@ -30,7 +48,7 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   options: "-c search_path=restaurant,public",
-  ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
+  ssl,
   connectionTimeoutMillis,
   idleTimeoutMillis: 30000,
   max: 10,

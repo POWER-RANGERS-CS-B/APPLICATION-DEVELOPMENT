@@ -1,5 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const authModel = require("../models/authModel");
 const auditService = require("../services/auditService");
@@ -47,6 +48,12 @@ test("successful login records an audit event without credentials", async () => 
 
     assert.equal(response.statusCode, 200);
     assert.equal(typeof response.body.token, "string");
+    const claims = jwt.verify(response.body.token, process.env.JWT_SECRET, {
+      algorithms: ["HS256"],
+    });
+    assert.equal(typeof claims.jti, "string");
+    assert.equal(claims.authVersion, 0);
+    assert.equal(claims.exp - claims.iat, 8 * 60 * 60);
     assert.equal("password_hash" in response.body.user, false);
     assert.equal(events.length, 1);
     assert.equal(events[0].action, "LOGIN_SUCCESS");
@@ -55,6 +62,44 @@ test("successful login records an audit event without credentials", async () => 
   } finally {
     authModel.findByEmail = originalFindByEmail;
     bcrypt.compare = originalCompare;
+    auditService.record = originalRecord;
+  }
+});
+
+test("logout revokes the active token before confirming the audit event", async () => {
+  const originalRevokeToken = authModel.revokeToken;
+  const originalRecord = auditService.record;
+  const operations = [];
+  authModel.revokeToken = async (...args) => operations.push(["revoke", ...args]);
+  auditService.record = async (event) => {
+    operations.push(["audit", event]);
+    return true;
+  };
+
+  try {
+    const response = responseCapture();
+    await authController.logout(
+      {
+        user: {
+          id: 123,
+          email: "audit-test@gmail.com",
+          tokenId: "logout-token-id",
+          tokenExpiresAt: new Date("2026-11-25T00:00:00Z"),
+        },
+      },
+      response
+    );
+
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(operations[0], [
+      "revoke",
+      123,
+      "logout-token-id",
+      new Date("2026-11-25T00:00:00Z"),
+    ]);
+    assert.equal(operations[1][0], "audit");
+  } finally {
+    authModel.revokeToken = originalRevokeToken;
     auditService.record = originalRecord;
   }
 });

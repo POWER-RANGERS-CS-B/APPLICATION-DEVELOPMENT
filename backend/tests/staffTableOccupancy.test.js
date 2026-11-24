@@ -2,7 +2,7 @@ const assert = require("node:assert/strict");
 const http = require("node:http");
 const test = require("node:test");
 const express = require("express");
-const jwt = require("jsonwebtoken");
+const { createAuthTestToken } = require("./authTestHelpers");
 const Module = require("node:module");
 
 const dbPath = require.resolve("../config/db");
@@ -186,20 +186,18 @@ test("only authenticated staff or admins can use the occupancy endpoint", async 
   const unauthenticated = await fetch(baseUrl, { method: "PATCH" });
   assert.equal(unauthenticated.status, 401);
 
-  const customerToken = jwt.sign(
-    { id: 12, role: "customer" },
-    process.env.JWT_SECRET
-  );
+  const customerToken = createAuthTestToken({ id: 12, role: "customer" });
   const forbidden = await fetch(baseUrl, {
     method: "PATCH",
     headers: { Authorization: `Bearer ${customerToken}` },
   });
   assert.equal(forbidden.status, 403);
 
-  const staffToken = jwt.sign(
-    { id: 4, role: "staff", email: "staff@example.test" },
-    process.env.JWT_SECRET
-  );
+  const staffToken = createAuthTestToken({
+    id: 4,
+    role: "staff",
+    email: "staff@example.test",
+  });
   const accepted = await fetch(baseUrl, {
     method: "PATCH",
     headers: { Authorization: `Bearer ${staffToken}` },

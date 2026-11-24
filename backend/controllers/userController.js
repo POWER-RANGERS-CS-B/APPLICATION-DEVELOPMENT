@@ -55,7 +55,10 @@ function respondWithError(res, error, fallbackMessage) {
     return res.status(409).json({ message: `A user with this ${field} already exists.` });
   }
 
-  console.error(fallbackMessage, error);
+  console.error(fallbackMessage, {
+    errorType: error.name || "Error",
+    errorCode: error.code,
+  });
   return res.status(500).json({ message: fallbackMessage });
 }
 

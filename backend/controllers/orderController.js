@@ -1,5 +1,6 @@
 const orderModel = require("../models/orderModel");
 const { getPublicBaseUrl } = require("../config/publicUrl");
+const { sendControllerError } = require("../utils/controllerError");
 
 exports.createOrder = async (req, res) => {
   try {
@@ -42,7 +43,7 @@ exports.createOrder = async (req, res) => {
     res.status(201).json(order);
   } catch (error) {
     const status = error.code === "PUBLIC_BASE_URL_CONFIGURATION_ERROR" ? 500 : 400;
-    res.status(status).json({ message: error.message });
+    sendControllerError(res, error, status);
   }
 };
 
@@ -50,7 +51,7 @@ exports.getKdsOrders = async (req, res) => {
   try {
     res.json(await orderModel.findKdsOrders());
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    sendControllerError(res, error, 500);
   }
 };
 
@@ -58,7 +59,7 @@ exports.updateStatus = async (req, res) => {
   try {
     res.json(await orderModel.updateStatus(req.params.id, req.body.status, req.user));
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    sendControllerError(res, error, 400);
   }
 };
 
@@ -67,7 +68,7 @@ exports.getPendingPaymentOrders = async (_req, res) => {
     res.set("Cache-Control", "no-store");
     res.json(await orderModel.findPendingPaymentOrders());
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    sendControllerError(res, error, 500);
   }
 };
 
@@ -76,7 +77,7 @@ exports.getDineInPaymentRequests = async (_req, res) => {
     res.set("Cache-Control", "no-store");
     res.json(await orderModel.findDineInPaymentRequests());
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    sendControllerError(res, error, 500);
   }
 };
 
@@ -85,7 +86,7 @@ exports.getPendingDineInRefunds = async (_req, res) => {
     res.set("Cache-Control", "no-store");
     res.json(await orderModel.findPendingDineInRefunds());
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    sendControllerError(res, error, 500);
   }
 };
 
@@ -94,7 +95,7 @@ exports.getDineInRefunds = async (_req, res) => {
     res.set("Cache-Control", "no-store");
     res.json(await orderModel.findDineInRefunds());
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    sendControllerError(res, error, 500);
   }
 };
 
@@ -110,7 +111,7 @@ exports.confirmPayment = async (req, res) => {
     const status = error.code === "PUBLIC_BASE_URL_CONFIGURATION_ERROR"
       ? 500
       : error.statusCode || 400;
-    res.status(status).json({ message: error.message });
+    sendControllerError(res, error, status);
   }
 };
 
@@ -118,7 +119,7 @@ exports.rejectPayment = async (req, res) => {
   try {
     res.json(await orderModel.rejectPayment(req.params.id, req.body?.reason, req.user));
   } catch (error) {
-    res.status(error.statusCode || 400).json({ message: error.message });
+    sendControllerError(res, error, error.statusCode || 400);
   }
 };
 
@@ -127,7 +128,7 @@ exports.getCustomerPaymentStatus = async (req, res) => {
     res.set("Cache-Control", "no-store");
     res.json(await orderModel.findCustomerPaymentStatus(req.params.id, req.user.id));
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message });
+    sendControllerError(res, error);
   }
 };
 
@@ -139,7 +140,7 @@ exports.deleteOrder = async (req, res) => {
     }
     res.json(order);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    sendControllerError(res, error, 400);
   }
 };
 
@@ -167,7 +168,7 @@ exports.getReceipt = async (req, res) => {
 
     res.json(receipt);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    sendControllerError(res, error, 500);
   }
 };
 
@@ -176,7 +177,7 @@ exports.getCategorySales = async (req, res) => {
     res.set("Cache-Control", "no-store");
     res.json(await orderModel.getCategorySales());
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    sendControllerError(res, error, 500);
   }
 };
 
@@ -185,7 +186,7 @@ exports.getOrderHistory = async (req, res) => {
     const history = await orderModel.findOrderHistory();
     res.json(history);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    sendControllerError(res, error, 500);
   }
 };
 
@@ -194,6 +195,6 @@ exports.getTodayIncome = async (req, res) => {
     const income = await orderModel.getTodayIncome();
     res.json(income);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    sendControllerError(res, error, 500);
   }
 };

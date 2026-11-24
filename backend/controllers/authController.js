@@ -9,6 +9,30 @@ const authModel = require("../models/authModel");
 const auditService = require("../services/auditService");
 const { isValidEmailDomain } = require("../utils/emailValidation");
 const { parsePhoneNumberFromString } = require("libphonenumber-js/max");
+const { sendControllerError } = require("../utils/controllerError");
+
+const ACCESS_TOKEN_TTL_SECONDS = 8 * 60 * 60;
+
+function createAccessToken(user) {
+  const issuedAt = Math.floor(Date.now() / 1000);
+  const expiresAt = issuedAt + ACCESS_TOKEN_TTL_SECONDS;
+  const tokenId = crypto.randomUUID();
+  const authVersion = Number.isSafeInteger(user.auth_version) ? user.auth_version : 0;
+  const token = jwt.sign(
+    {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      authVersion,
+      iat: issuedAt,
+      exp: expiresAt,
+      jti: tokenId,
+    },
+    process.env.JWT_SECRET,
+    { algorithm: "HS256" }
+  );
+  return { token, tokenId, expiresAt: new Date(expiresAt * 1000) };
+}
 
 exports.googleClientConfig = (_req, res) => {
   const clientId = process.env.GOOGLE_CLIENT_ID?.trim() || "";
@@ -168,11 +192,7 @@ exports.googleAuth = async (req, res) => {
       });
     }
 
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
+    const { token } = createAccessToken(user);
     if (intent === "login") {
       const auditRecorded = await auditService.record({
         userId: user.id,
@@ -198,15 +218,13 @@ exports.googleAuth = async (req, res) => {
     });
   } catch (error) {
     if (error.statusCode) {
-      return res.status(error.statusCode).json({ message: error.message });
+      return sendControllerError(res, error, error.statusCode);
     }
     console.error("Google customer authentication failed.", {
       endpoint: "POST /auth/google",
       operation,
-      message: error.message,
+      errorType: error.name || "Error",
       code: error.code,
-      position: error.position,
-      routine: error.routine,
     });
     return res.status(500).json({ message: "Google sign-in failed. Please try again." });
   }
@@ -244,11 +262,7 @@ exports.registerCustomer = async (req, res) => {
       contactNumber: phone.format("E.164"),
       passwordHash: await bcrypt.hash(password, 12),
     });
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
+    const { token } = createAccessToken(user);
     res.status(201).json({
       token,
       user: {
@@ -260,7 +274,7 @@ exports.registerCustomer = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message });
+    sendControllerError(res, error);
   }
 };
 
@@ -319,11 +333,7 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password." });
     }
 
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
+    const { token } = createAccessToken(user);
 
     const auditRecorded = await auditService.record({
       userId: user.id,
@@ -346,17 +356,40 @@ exports.login = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    sendControllerError(res, error, 500);
   }
 };
 
 exports.logout = async (req, res) => {
-  const recorded = await auditService.record({
-    userId: req.user.id,
-    actorName: req.user.email,
-    action: "LOGOUT",
-    module: "auth",
-  });
+  try {
+    await authModel.revokeToken(
+      req.user.id,
+      req.user.tokenId,
+      req.user.tokenExpiresAt
+    );
+  } catch (error) {
+    console.error("Authentication token revocation failed.", {
+      errorType: error.name || "Error",
+      errorCode: error.code,
+    });
+    return res.status(503).json({ message: "Logout could not be completed. Please retry." });
+  }
+
+  let recorded;
+  try {
+    recorded = await auditService.record({
+      userId: req.user.id,
+      actorName: req.user.email,
+      action: "LOGOUT",
+      module: "auth",
+    });
+  } catch (error) {
+    console.error("Logout audit event failed.", {
+      errorType: error.name || "Error",
+      errorCode: error.code,
+    });
+    return res.status(503).json({ message: "Logout could not be recorded. Please retry." });
+  }
 
   if (!recorded) {
     return res.status(503).json({ message: "Logout could not be recorded. Please retry." });
