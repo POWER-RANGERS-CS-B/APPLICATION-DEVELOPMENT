@@ -9,7 +9,7 @@ A cross-platform restaurant management system supporting **Desktop, Web, and Mob
 ### 1. Core Team Roster & Responsibilities
 * **Team Leader:** Gwynyth Edzcharyz Q. Gomonit  
   * *Responsibilities:* Convenes and facilitates mandatory weekly GitHub status meetings, oversees cross-platform alignment, resolves high-level blockers, and ensures milestone deadlines are met.
-* **Project Manager (PM):** Kimberly O. Carin  
+* **Project Manager (PM):** Kimberly O. Carin & Ralph Christian Jaralve 
   * *Responsibilities:* Maintains GitHub Project documentation (Backlog, Board, Current Iteration, and Roadmap), tracks sprint progress, audits open issues, and records/submits weekly meeting minutes to Google Classroom.
 * **Quality Assurance (QA) Lead:** Zaira M. Alumbro  
   * *Responsibilities:* Validates code stability across platforms, tests pull requests prior to merging into `main`, verifies bug fixes, and serves as backup minutes taker when the PM acts as Team Leader.
